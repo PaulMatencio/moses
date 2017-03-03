@@ -1,0 +1,74 @@
+package sproxyd
+
+import (
+	"errors"
+
+	"bytes"
+	hostpool "github.com/bitly/go-hostpool"
+	"io"
+	"io/ioutil"
+	"net/http"
+	"net/url"
+	"strings"
+	"time"
+	goLog "user/goLog"
+)
+
+func DoRequest(client *http.Client, req *http.Request, object []byte) (*http.Response, error) {
+	var (
+		resp     *http.Response
+		err      error
+		r        int
+		hpool    hostpool.HostPoolResponse
+		waittime time.Duration
+	)
+	u := req.URL
+	waittime = 50 * time.Millisecond
+	//goLog.Trace.Println(req.Method, req.Header, u.Host, u.Path, len(object))
+	for r = 1; r <= 3; r++ {
+		hpool = HP.Get()
+		host := hpool.Host()
+		u1, _ := url.Parse(host)
+		req.URL.Host = u1.Host
+		req.Host = u1.Host
+		req.URL.Path = u1.Path + u.Path
+		//goLog.Trace.Println(host, u1.Host, u1.Path, req.URL.Path)
+		if r > 1 && req.ContentLength > 0 && len(object) > 0 {
+			var body io.Reader
+			body = bytes.NewBuffer(object)
+			rc, ok := body.(io.ReadCloser)
+			if !ok && body != nil {
+				rc = ioutil.NopCloser(body)
+				req.Body = rc
+			}
+		}
+		//goLog.Trace.Println(req.URL)
+		if resp, err = client.Do(req); err != nil {
+			goLog.Error.Printf("Retry=%d, Url=%s Error=%s", r, req.URL, err.Error())
+			if strings.Index(err.Error(), "dial tcp") >= 0 {
+				hpool.Mark(err)
+			} else {
+				hpool.Mark(nil)
+			}
+		} else {
+			goLog.Trace.Println(host, Proxy, u.Path, resp.Status)
+			switch resp.StatusCode {
+			case 500, 503:
+				hpool.Mark(errors.New(resp.Status))
+				goLog.Error.Printf("Retry=%d, Url=%s Status Code=%s", r, req.URL, resp.Status)
+			case 423:
+				hpool.Mark(err)
+				goLog.Warning.Printf("Retry=%d after %s , Url=%s Status Code=%s", r, waittime, req.URL, resp.Status)
+				time.Sleep(waittime)
+			case 422:
+				hpool.Mark(err)
+				goLog.Warning.Printf("Retry=%d, Url=%s Status Code=%s Ring Status=%s", r, req.URL, resp.Status, resp.Header.Get("X-Scal-Ring-Status"))
+			default:
+				hpool.Mark(err)
+				goto exit
+			}
+		}
+	}
+exit:
+	return resp, err
+}

@@ -1,0 +1,340 @@
+package directory
+
+import (
+	"encoding/json"
+	"errors"
+	"net/http"
+	"runtime"
+	sindexd "sindexd/lib"
+	"strconv"
+	"strings"
+	"time"
+	goLog "user/goLog"
+)
+
+func Print(iIndex string, body []byte) int {
+
+	response := new(sindexd.Response)
+	goLog.Info.Println(response)
+	if err := json.Unmarshal(body, &response); err != nil {
+		goLog.Error.Println(err)
+	} else {
+		response.PrintFetched()
+	}
+	if len(response.Not_found) != 0 {
+		goLog.Info.Println(response.Not_found, "NOT FOUND")
+	}
+	if len(response.Common_prefix) != 0 {
+		goLog.Info.Println("Common Prefix:", response.Common_prefix)
+	}
+	if response.Truncated == true {
+		goLog.Info.Println("Response is truncated, Next_marker is:", response.GetNMarker())
+	}
+	return len(response.Fetched)
+}
+
+func PrintResponse(responses []*HttpResponse) {
+	for i := range responses {
+		var (
+			iresponse sindexd.Response
+			err       error
+			pref      string
+		)
+		pref = responses[i].Pref
+		err = responses[i].Err
+		//index_id := responses[i].indexId
+		if err == nil {
+			iresponse = *responses[i].Response
+			iresponse.PrintFetched()
+			if iresponse.Next_marker != "" {
+				goLog.Info.Println("Next marker:", iresponse.Next_marker)
+			}
+			if len(iresponse.Not_found) != 0 {
+				iresponse.PrintNotFound()
+			}
+			if len(iresponse.Common_prefix) != 0 {
+				iresponse.PrintCommonPrefix()
+			}
+		} else {
+			goLog.Error.Println(pref, err)
+		}
+	}
+}
+
+func CountResponse(responses []*HttpResponse) map[string]int {
+	m := make(map[string]int)
+	for i := range responses {
+		var (
+			iresponse sindexd.Response
+			err       error
+			pref      string
+		)
+		pref = responses[i].Pref
+		err = responses[i].Err
+		//index_id := responses[i].indexId
+		if err == nil {
+			iresponse = *responses[i].Response
+			m[pref] = len(iresponse.Fetched)
+			if iresponse.Next_marker != "" {
+				goLog.Info.Println("Next marker:", iresponse.Next_marker)
+			}
+		} else {
+			goLog.Error.Println(pref, err)
+		}
+	}
+	return m
+}
+
+func Check(iIndex string, start time.Time, resp *http.Response) {
+
+	time0 := time.Since(start)
+	var num int
+	switch iIndex {
+	case "PN":
+		num = Print(iIndex, sindexd.GetBody(resp))
+
+	case "PD":
+		num = Print(iIndex, sindexd.GetBody(resp))
+	}
+	goLog.Info.Println("Elapsed time:", time.Since(start), "Retrieve", num, "indexes in", time0)
+}
+
+func SetCPU(cpu string) error {
+	var numCPU int
+
+	availCPU := runtime.NumCPU()
+
+	if strings.HasSuffix(cpu, "%") {
+		// Percent
+		var percent float32
+		pctStr := cpu[:len(cpu)-1]
+		pctInt, err := strconv.Atoi(pctStr)
+		if err != nil || pctInt < 1 || pctInt > 100 {
+			return errors.New("Invalid CPU value: percentage must be between 1-100")
+		}
+		percent = float32(pctInt) / 100
+		numCPU = int(float32(availCPU) * percent)
+	} else {
+		// Number
+		num, err := strconv.Atoi(cpu)
+		if err != nil || num < 1 {
+			return errors.New("Invalid CPU value: provide a number or percent greater than 0")
+		}
+		numCPU = num
+	}
+
+	if numCPU > availCPU {
+		numCPU = availCPU
+	}
+
+	runtime.GOMAXPROCS(numCPU)
+	return nil
+}
+
+func BuildIndexSpec(id_spec map[string][]string) map[string]*sindexd.Index_spec {
+	m := make(map[string]*sindexd.Index_spec)
+	for k, v := range id_spec {
+
+		id := v[0]
+		cos, _ := strconv.Atoi(v[1])
+		volid, _ := strconv.Atoi(v[2])
+		specific, _ := strconv.Atoi(v[3])
+		m[k] = &sindexd.Index_spec{
+			Index_id: id,
+			Cos:      cos,
+			Vol_id:   volid,
+			Specific: specific,
+		}
+	}
+	return m
+}
+
+func GetIndexSpec(iIndex string) map[string]*sindexd.Index_spec {
+	switch iIndex {
+	case "PN":
+		return BuildIndexSpec(PnoidSpec)
+	case "PD":
+		return BuildIndexSpec(PdoidSpec)
+	default:
+		return nil
+	}
+}
+
+func GetAsyncPrefix(iIndex string, prefixs []string, delimiter string, markers []string, Limit int, Ind_Specs map[string]*sindexd.Index_spec) []*HttpResponse {
+
+	//prefixs := strings.Split(prefix, ",")
+	// url = hp.Get().Host()
+	var j, marker string
+	treq := len(prefixs)
+	ch := make(chan *HttpResponse)
+	responses := []*HttpResponse{}
+	if treq > 0 {
+		for i := range prefixs {
+			pref := prefixs[i]
+			if len(pref) > 2 {
+				j = pref[0:2]
+			} else {
+				j = pref[0:]
+			}
+			index := Ind_Specs[j]
+			if index == nil {
+				index = Ind_Specs["OTHER"]
+			}
+			if len(markers) > i {
+				marker = markers[i]
+			}
+			index.Read_only = 1
+			go func(index *sindexd.Index_spec, pref string, marker string) {
+				var (
+					iresponse *sindexd.Response
+					resp      *http.Response
+					err       error
+				)
+				client := &http.Client{}
+				if resp, err = GetPrefix(client, index, pref, delimiter, marker, Limit); err == nil {
+					if resp.StatusCode == 200 {
+						iresponse = sindexd.GetResponse(resp)
+					} else {
+						iresponse = nil
+						err = errors.New(resp.Status)
+					}
+				}
+				ch <- &HttpResponse{pref, iresponse, err}
+			}(index, pref, marker)
+		}
+		// wait for Http response message
+		for {
+			select {
+			case r := <-ch:
+				// fmt.Printf("%s was fetched\n", r.err)
+				responses = append(responses, r)
+
+				if len(responses) == treq {
+					return responses
+				}
+			case <-time.After(150 * time.Millisecond):
+				goLog.Info.Printf(".")
+			}
+		}
+	}
+	return responses
+}
+
+func GetSerialPrefix(iIndex string, prefixs []string, delimiter string, markers []string, Limit int, Ind_Specs map[string]*sindexd.Index_spec) []*HttpResponse {
+
+	var (
+		iresponse *sindexd.Response
+		resp      *http.Response
+		err       error
+		marker    string
+		j         string
+		r         *HttpResponse
+		//index     *sindexd.Index_spec
+	)
+	responses := []*HttpResponse{}
+	client := &http.Client{}
+	//prefixs = strings.Split(prefix, ",")
+	for i := range prefixs {
+		pref := prefixs[i]
+
+		if len(pref) > 2 {
+			j = pref[0:2]
+		} else {
+			j = pref[0:]
+		}
+		index := Ind_Specs[j]
+		if index == nil {
+			index = Ind_Specs["OTHER"]
+		}
+		if len(markers) > i {
+			marker = markers[i]
+		}
+		// goLog.Info.Println(index, pref, delimiter, marker, Limit)
+		if resp, err = GetPrefix(client, index, pref, delimiter, marker, Limit); err == nil {
+			// goLog.Info.Println("Status Code ===>", resp.StatusCode)
+			if resp.StatusCode == 200 {
+				iresponse = sindexd.GetResponse(resp)
+			} else {
+				iresponse = nil
+				err = errors.New(resp.Status)
+			}
+		}
+		// iresponse is nil if err != nil
+		r = &HttpResponse{pref, iresponse, err}
+		responses = append(responses, r)
+	}
+	return responses
+}
+
+func GetSerialKeys(specs map[string][]string, Ind_Specs map[string]*sindexd.Index_spec) []*HttpResponse {
+
+	var (
+		// iresponse *sindexd.Response
+		err  error
+		resp *http.Response
+	)
+	responses := []*HttpResponse{}
+	client := &http.Client{}
+
+	for k, v := range specs {
+		index := Ind_Specs[k]
+		AKey := v
+		if Action == "Ge" {
+			resp, err = GetKeys(client, index, &AKey)
+		} else {
+			resp, err = DeleteKeys(client, index, &AKey)
+		}
+		r := &HttpResponse{"", sindexd.GetResponse(resp), err}
+		responses = append(responses, r)
+	}
+	return responses
+}
+
+func GetAsyncKeys(specs map[string][]string, Ind_Specs map[string]*sindexd.Index_spec) []*HttpResponse {
+
+	//prefixs := strings.Split(prefix, ",")
+	// url = hp.Get().Host()
+
+	treq := len(specs)
+	ch := make(chan *HttpResponse)
+	responses := []*HttpResponse{}
+	if treq > 0 {
+		for k, v := range specs {
+			index := Ind_Specs[k]
+			AKey := v
+			index.Read_only = 1
+			go func(index *sindexd.Index_spec, Akey []string) {
+				var (
+					iresponse *sindexd.Response
+					resp      *http.Response
+					err       error
+				)
+				client := &http.Client{}
+				if resp, err = GetKeys(client, index, &AKey); err == nil {
+					if resp.StatusCode == 200 {
+						iresponse = sindexd.GetResponse(resp)
+					} else {
+						iresponse = nil
+						err = errors.New(resp.Status)
+					}
+				}
+				ch <- &HttpResponse{"", iresponse, err}
+			}(index, AKey)
+		}
+		// wait for Http response message
+		for {
+			select {
+			case r := <-ch:
+				// fmt.Printf("%s was fetched\n", r.err)
+				responses = append(responses, r)
+
+				if len(responses) == treq {
+					return responses
+				}
+			case <-time.After(150 * time.Millisecond):
+				goLog.Info.Printf(".")
+			}
+		}
+	}
+	return responses
+}
