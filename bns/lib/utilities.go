@@ -49,7 +49,7 @@ func ST33toFiles(inputFile string, outputusermdDir string, outputTiffDir string,
 	Little := binary.LittleEndian
 	Big := binary.BigEndian
 	enc := Big
-	documentmeta := &Documentmeta{}
+	documentMetadata := &DocumentMetadata{}
 
 	var (
 		// container          = make([]string, 0, 500)
@@ -365,13 +365,13 @@ func ST33toFiles(inputFile string, outputusermdDir string, outputTiffDir string,
 
 			/* UPDATE CONTAINER MD STRUCTURE*/
 			// documentmeta.Date_drawup = pagmeta.Date_drawup
-			documentmeta.DocumentID.CC = pagmeta.Pub_office
-			documentmeta.DocumentID.PN = pagmeta.Doc_id
-			documentmeta.DocumentID.KC = pagmeta.Kc
-			documentmeta.PublicationDate = pagmeta.Pub_date
-			documentmeta.PublicationOffice = pagmeta.Pub_office
-			documentmeta.Multimedia.TIFF = true
-			documentmeta.Multimedia.PNG = false
+			documentMetadata.PubId.CountryCode = pagmeta.Pub_office
+			documentMetadata.PubId.PubNumber = pagmeta.Doc_id
+			documentMetadata.PubId.KindCode = pagmeta.Kc
+			documentMetadata.PubDate = pagmeta.Pub_date
+			documentMetadata.PublicationOffice = pagmeta.Pub_office
+			documentMetadata.MultiMedia.Tiff = true
+			documentMetadata.MultiMedia.Png = false
 
 			file_containermd_o = outputContainerDir + string(pub) + docid + string(kc) + ".json"
 
@@ -384,38 +384,38 @@ func ST33toFiles(inputFile string, outputusermdDir string, outputTiffDir string,
 			if pagmeta.Page_number == pagmeta.Total_pages {
 				// Create the container metadata
 
-				documentmeta.PageNumber = 0
-				documentmeta.TotalPages, _ = strconv.Atoi(pagmeta.Total_pages)
-				documentmeta.PublicationID = pagmeta.Doc_id
+				documentMetadata.TotalPage = 0
+				documentMetadata.TotalPage, _ = strconv.Atoi(pagmeta.Total_pages)
+				documentMetadata.DocId = pagmeta.Doc_id
 				if len(abs) > 0 {
-					documentmeta.Abstract[0].Start = abs[0]
-					documentmeta.Abstract[0].End = abs[len(abs)-1]
+					documentMetadata.AbsRangePageNumber[0].Start = abs[0]
+					documentMetadata.AbsRangePageNumber[0].End = abs[len(abs)-1]
 				}
 				if len(bib) > 0 {
-					documentmeta.Bibliography[0].Start = bib[0]
-					documentmeta.Bibliography[0].End = bib[len(bib)-1]
+					documentMetadata.BibliRangePageNumber[0].Start = bib[0]
+					documentMetadata.BibliRangePageNumber[0].End = bib[len(bib)-1]
 				}
 				if len(cla) > 0 {
-					documentmeta.Claims[0].Start = cla[0]
-					documentmeta.Claims[0].End = cla[len(cla)-1]
+					documentMetadata.ClaimsRangePageNumber[0].Start = cla[0]
+					documentMetadata.ClaimsRangePageNumber[0].End = cla[len(cla)-1]
 				}
 				if len(desc) > 0 {
-					documentmeta.Description[0].Start = desc[0]
-					documentmeta.Description[0].End = desc[len(desc)-1]
+					documentMetadata.DescRangePageNumber[0].Start = desc[0]
+					documentMetadata.DescRangePageNumber[0].End = desc[len(desc)-1]
 				}
 				if len(draw) > 0 {
-					documentmeta.Drawings[0].Start = draw[0]
-					documentmeta.Drawings[0].End = draw[len(draw)-1]
+					documentMetadata.DrawRangePageNumber[0].Start = draw[0]
+					documentMetadata.DrawRangePageNumber[0].End = draw[len(draw)-1]
 				}
 				if len(srp) > 0 {
-					documentmeta.SearchReport[0].Start = srp[0]
-					documentmeta.SearchReport[0].End = srp[len(srp)-1]
+					documentMetadata.SearchRepRangePageNumber[0].Start = srp[0]
+					documentMetadata.SearchRepRangePageNumber[0].End = srp[len(srp)-1]
 				}
 				if len(amd) > 0 {
-					documentmeta.Amendment[0].Start = amd[0]
-					documentmeta.Amendment[0].End = amd[len(amd)-1]
+					documentMetadata.AmdRangePageNumber[0].Start = amd[0]
+					documentMetadata.AmdRangePageNumber[0].End = amd[len(amd)-1]
 				}
-				if err := documentmeta.Encode(file_containermd_o); err != nil {
+				if err := documentMetadata.Encode(file_containermd_o); err != nil {
 					goLog.Warning.Println(hostname, pid, err, "Encoding", *pagemeta)
 				}
 				bib = bib[:0]
@@ -462,7 +462,7 @@ func ST33toFiles_p(inputFile string, outputusermdDir string, outputTiffDir strin
 	Little := binary.LittleEndian
 	Big := binary.BigEndian
 	enc := Big
-	documentmeta := &Documentmeta{}
+	documentmeta := &DocumentMetadata{}
 
 	var (
 		// container          = make([]string, 0, 500)
@@ -788,38 +788,38 @@ func ST33toFiles_p(inputFile string, outputusermdDir string, outputTiffDir strin
 			if pagmeta.Page_number == pagmeta.Total_pages {
 				// Create the container metadata
 
-				documentmeta.PageNumber = 0
-				documentmeta.TotalPages, _ = strconv.Atoi(pagmeta.Total_pages)
-				documentmeta.PublicationID = pagmeta.Doc_id
+				documentMetadata.TotalPage = 0
+				documentMetadata.TotalPage, _ = strconv.Atoi(pagmeta.Total_pages)
+				documentMetadata.DocId = pagmeta.Doc_id
 				if len(abs) > 0 {
-					documentmeta.Abstract[0].Start = abs[0]
-					documentmeta.Abstract[0].End = abs[len(abs)-1]
+					documentMetadata.AbsRangePageNumber[0].Start = abs[0]
+					documentMetadata.AbsRangePageNumber[0].End = abs[len(abs)-1]
 				}
 				if len(bib) > 0 {
-					documentmeta.Bibliography[0].Start = bib[0]
-					documentmeta.Bibliography[0].End = bib[len(bib)-1]
+					documentMetadata.BibliRangePageNumber[0].Start = bib[0]
+					documentMetadata.BibliRangePageNumber[0].End = bib[len(bib)-1]
 				}
 				if len(cla) > 0 {
-					documentmeta.Claims[0].Start = cla[0]
-					documentmeta.Claims[0].End = cla[len(cla)-1]
+					documentMetadata.ClaimsRangePageNumber[0].Start = cla[0]
+					documentMetadata.ClaimsRangePageNumber[0].End = cla[len(cla)-1]
 				}
 				if len(desc) > 0 {
-					documentmeta.Description[0].Start = desc[0]
-					documentmeta.Description[0].End = desc[len(desc)-1]
+					documentMetadata.DescRangePageNumber[0].Start = desc[0]
+					documentMetadata.DescRangePageNumber[0].End = desc[len(desc)-1]
 				}
 				if len(draw) > 0 {
-					documentmeta.Drawings[0].Start = draw[0]
-					documentmeta.Drawings[0].End = draw[len(draw)-1]
+					documentMetadata.DrawRangePageNumber[0].Start = draw[0]
+					documentMetadata.DrawRangePageNumber[0].End = draw[len(draw)-1]
 				}
 				if len(srp) > 0 {
-					documentmeta.SearchReport[0].Start = srp[0]
-					documentmeta.SearchReport[0].End = srp[len(srp)-1]
+					documentMetadata.SearchRepRangePageNumber[0].Start = srp[0]
+					documentMetadata.SearchRepRangePageNumber[0].End = srp[len(srp)-1]
 				}
 				if len(amd) > 0 {
-					documentmeta.Amendment[0].Start = amd[0]
-					documentmeta.Amendment[0].End = amd[len(amd)-1]
+					documentMetadata.AmdRangePageNumber[0].Start = amd[0]
+					documentMetadata.AmdRangePageNumber[0].End = amd[len(amd)-1]
 				}
-				if err := documentmeta.Encode(file_containermd_o); err != nil {
+				if err := documentMetadata.Encode(file_containermd_o); err != nil {
 					goLog.Warning.Println(hostname, pid, err, "Encoding", *pagemeta)
 				}
 				bib = bib[:0]

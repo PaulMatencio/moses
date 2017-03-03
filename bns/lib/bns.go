@@ -31,13 +31,13 @@ func GetDocMetadata(client *http.Client, path string) ([]byte, error) {
 
 // Get total number of pages of a document
 
-func (usermd *Documentmeta) GetPageNumber() (int, error) {
+func (usermd *DocumentMetadata) GetPageNumber() (int, error) {
 	return usermd.TotalPages, nil
 
 }
 
 // Get  the publication date of a document
-func (usermd *Documentmeta) GetPubDate() (Date, error) {
+func (usermd *DocumentMetadata) GetPubDate() (Date, error) {
 	date := Date{}
 	err := error(nil)
 	if usermd.PublicationDate != "" {
@@ -65,7 +65,7 @@ func BuildSubtable(content string, index string) []int {
 	return page_tab
 }
 
-func (docmeta *Documentmeta) SetDocmd(filename string) error {
+func (docmeta *DocumentMetadata) SetDocmd(filename string) error {
 	var (
 		buf []byte
 		err error
