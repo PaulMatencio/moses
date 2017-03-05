@@ -1,11 +1,11 @@
 package bns
 
 import (
+	sproxyd "moses/sproxyd/lib"
+	base64 "moses/user/base64j"
+	goLog "moses/user/goLog"
 	"net/http"
-	sproxyd "sproxyd/lib"
 	"time"
-	base64 "user/base64j"
-	goLog "user/goLog"
 )
 
 func UpdMetadata(client *http.Client, path string, usermd []byte) (error, time.Duration) {

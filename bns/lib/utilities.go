@@ -8,17 +8,17 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	sproxyd "moses/sproxyd/lib"
+	base64 "moses/user/base64j"
+	files "moses/user/files/lib"
+	goLog "moses/user/goLog"
 	"net/http"
 	"os"
 	"os/exec"
-	sproxyd "sproxyd/lib"
 	"strconv"
 	"strings"
 	"time"
-	base64 "user/base64j"
 	"user/ebc2asc"
-	files "user/files/lib"
-	goLog "user/goLog"
 	// imaging "github.com/desintegration/imaging"
 )
 
@@ -462,7 +462,7 @@ func ST33toFiles_p(inputFile string, outputusermdDir string, outputTiffDir strin
 	Little := binary.LittleEndian
 	Big := binary.BigEndian
 	enc := Big
-	documentmeta := &DocumentMetadata{}
+	documentMetadata := &DocumentMetadata{}
 
 	var (
 		// container          = make([]string, 0, 500)
@@ -769,13 +769,13 @@ func ST33toFiles_p(inputFile string, outputusermdDir string, outputTiffDir strin
 
 			/* UPDATE CONTAINER MD STRUCTURE*/
 			// documentmeta.Date_drawup = pagmeta.Date_drawup
-			documentmeta.DocumentID.CC = pagmeta.Pub_office
-			documentmeta.DocumentID.PN = pagmeta.Doc_id
-			documentmeta.DocumentID.KC = pagmeta.Kc
-			documentmeta.PublicationDate = pagmeta.Pub_date
-			documentmeta.PublicationOffice = pagmeta.Pub_office
-			documentmeta.Multimedia.TIFF = true
-			documentmeta.Multimedia.PNG = false
+			documentMetadata.BnsId.CountryCode = pagmeta.Pub_office
+			documentMetadata.BnsId.PubNumber = pagmeta.Doc_id
+			documentMetadata.BnsId.KindCode = pagmeta.Kc
+			documentMetadata.PubDate = pagmeta.Pub_date
+			documentMetadata.PublicationOffice = pagmeta.Pub_office
+			documentMetadata.MultiMedia.Tiff = true
+			documentMetadata.MultiMedia.Png = false
 
 			file_containermd_o = outputContainerDir + string(pub) + docid + string(kc) + ".json"
 

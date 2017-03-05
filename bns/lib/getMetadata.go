@@ -1,10 +1,10 @@
 package bns
 
 import (
+	sproxyd "moses/sproxyd/lib"
+	base64 "moses/user/base64j"
+	goLog "moses/user/goLog"
 	"net/http"
-	sproxyd "sproxyd/lib"
-	base64 "user/base64j"
-	goLog "user/goLog"
 )
 
 func GetMetadata(client *http.Client, path string) ([]byte, error) {

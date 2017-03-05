@@ -2,13 +2,13 @@ package bns
 
 import (
 	"encoding/json"
+	sproxyd "moses/sproxyd/lib"
 	"net/http"
-	sproxyd "sproxyd/lib"
 	// base64 "user/base64j"
 	// "user/goLog"
 	"errors"
+	goLog "moses/user/goLog"
 	"strconv"
-	goLog "user/goLog"
 )
 
 func GetPage(client *http.Client, path string) (*http.Response, error) {

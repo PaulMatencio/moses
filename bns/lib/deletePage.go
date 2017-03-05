@@ -1,10 +1,10 @@
 package bns
 
 import (
+	sproxyd "moses/sproxyd/lib"
+	goLog "moses/user/goLog"
 	"net/http"
-	sproxyd "sproxyd/lib"
 	"time"
-	goLog "user/goLog"
 )
 
 func DeletePage(client *http.Client, path string) (error, time.Duration) {

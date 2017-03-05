@@ -15,13 +15,15 @@ import (
 const Proxy = "proxy"
 
 var (
-	Url       = "http://10.12.201.11:81/,http://10.12.201.12:81/,http://10.12.201.21:81/,http://10.12.201.22:81/,http://10.12.201.31:81/,http://10.12.201.32:81/"
-	Debug     bool
-	HP        hostpool.HostPool
-	Driver    = "chord"
+	Url   = "http://10.12.201.11:81/,http://10.12.201.12:81/,http://10.12.201.21:81/,http://10.12.201.22:81/,http://10.12.201.31:81/,http://10.12.201.32:81/"
+	Debug bool
+	HP    hostpool.HostPool
+	// Driver    = "chord"
+	Driver    = "bparc"
 	DummyHost = "http://0.0.0.0:81/"
 	Timeout   = time.Duration(50)
-	Host      = []string{"http://luo001t.internal.epo.org:81/proxy/chord/", "http://luo002t.internal.epo.org:81/proxy/chord/", "http://luo003t.internal.epo.org:81/proxy/chord/"}
+	Host      = []string{"http://10.12.201.11:81/proxy/bparc/", "http://10.12.201.12:81/proxy/bparc/", "http://10.11.201.21:81/proxy/bparc/",
+		"http://10.11.201.22:81/proxy/bparc/", "http://10.11.201.31:81/proxy/bparc/", "http://10.11.201.31:81/proxy/bparc/"}
 
 	//Host = []string{"http://10.12.201.11:81/proxy/bparc/", "http://10.12.201.12:81/proxy/bparc/"}
 	// hlist := strings.Split(sproxyd.Url, ",")

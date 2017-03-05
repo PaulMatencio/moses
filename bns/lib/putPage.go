@@ -2,10 +2,10 @@ package bns
 
 import (
 	"bytes"
+	sproxyd "moses/sproxyd/lib"
+	goLog "moses/user/goLog"
 	"net/http"
-	sproxyd "sproxyd/lib"
 	"time"
-	goLog "user/goLog"
 )
 
 //func PutPage(client *http.Client, path string, img *bytes.Buffer, usermd []byte) (error, time.Duration) {

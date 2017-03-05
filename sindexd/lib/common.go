@@ -5,14 +5,10 @@ import (
 )
 
 const (
-	V  = ","
-	AG = "["
-	AD = "]"
-
-	// Url = "http://10.12.17.142:81/sindexd.fcgi,http://10.12.17.141:81/sindexd.fcgi"
-	// Url    = "http://10.12.17.142:81/sindexd.fcgi,http://10.12.17.141:81/sindexd.fcgi,http://10.12.17.123:81/sindexd.fcgi,http://10.12.17.122:82/sindexd.fcgi"
-	Url = "http://10.12.201.11:81/sindexd.fcgi,http://10.12.201.12:81/sindexd.fcgi,http://10.12.201.21:81/sindexd.fcgi,http://10.12.201.22:81/sindexd.fcgi,http://10.12.201.31:81/sindexd.fcgi,http://10.12.201.32:81/sindexd.fcgi"
-	// Url    = "http://10.12.201.11:81/sindexd.fcgi"
+	V      = ","
+	AG     = "["
+	AD     = "]"
+	Url    = "http://10.12.201.11:81/sindexd.fcgi,http://10.12.201.12:81/sindexd.fcgi,http://10.12.201.21:81/sindexd.fcgi,http://10.12.201.22:81/sindexd.fcgi,http://10.12.201.31:81/sindexd.fcgi,http://10.12.201.32:81/sindexd.fcgi"
 	HELLO  = `{ "hello" : { "protocol" : "sindexd-1" }}`
 	CONFIG = `{"config":{}}`
 )

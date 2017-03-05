@@ -3,8 +3,8 @@ package bns
 import (
 	"fmt"
 	"io/ioutil"
+	sproxyd "moses/sproxyd/lib"
 	"net/http"
-	sproxyd "sproxyd/lib"
 	"time"
 )
 

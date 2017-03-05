@@ -26,13 +26,15 @@ func GetPageMetadata(client *http.Client, path string) ([]byte, error) {
 }
 
 func GetDocMetadata(client *http.Client, path string) ([]byte, error) {
+	// the metadata of the document is the metadata of the p0 object
+	path = path + "p0"
 	return GetMetadata(client, path)
 }
 
 // Get total number of pages of a document
 
 func (usermd *DocumentMetadata) GetPageNumber() (int, error) {
-	return usermd.TotalPages, nil
+	return usermd.TotalPage, nil
 
 }
 
@@ -40,8 +42,8 @@ func (usermd *DocumentMetadata) GetPageNumber() (int, error) {
 func (usermd *DocumentMetadata) GetPubDate() (Date, error) {
 	date := Date{}
 	err := error(nil)
-	if usermd.PublicationDate != "" {
-		date, err = ParseDate(usermd.PublicationDate)
+	if usermd.PubDate != "" {
+		date, err = ParseDate(usermd.PubDate)
 	} else {
 		err = errors.New("no Publication date")
 	}
