@@ -2,8 +2,8 @@ package directory
 
 import (
 	"errors"
+	sindexd "moses/sindexd/lib"
 	"net/http"
-	sindexd "sindexd/lib"
 )
 
 /*

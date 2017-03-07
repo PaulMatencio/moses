@@ -5,21 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"io/ioutil"
+	goLog "moses/user/goLog"
 	"net/http"
-	"poc/goLog"
-	"strconv"
+	// "strconv"
 	"strings"
 )
-
-// OBSOLETE
-func (usermd *Docmeta) GetPageNumber() (int, error) {
-	if usermd.Total_pages != "" {
-		t_pages, err := strconv.Atoi(usermd.Total_pages)
-		return t_pages, err
-	} else {
-		return 0, errors.New("Invalid user metadata")
-	}
-}
 
 func GetPageMetadata(client *http.Client, path string) ([]byte, error) {
 	return GetMetadata(client, path)
@@ -27,7 +17,7 @@ func GetPageMetadata(client *http.Client, path string) ([]byte, error) {
 
 func GetDocMetadata(client *http.Client, path string) ([]byte, error) {
 	// the metadata of the document is the metadata of the p0 object
-	path = path + "p0"
+	// path = path + "/p0"
 	return GetMetadata(client, path)
 }
 

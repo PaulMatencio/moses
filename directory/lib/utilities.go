@@ -3,13 +3,13 @@ package directory
 import (
 	"encoding/json"
 	"errors"
+	sindexd "moses/sindexd/lib"
+	goLog "moses/user/goLog"
 	"net/http"
 	"runtime"
-	sindexd "sindexd/lib"
 	"strconv"
 	"strings"
 	"time"
-	goLog "user/goLog"
 )
 
 func Print(iIndex string, body []byte) int {

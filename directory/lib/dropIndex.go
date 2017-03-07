@@ -2,8 +2,8 @@ package directory
 
 import (
 	// hostpool "github.com/bitly/go-hostpool"
+	sindexd "moses/sindexd/lib"
 	"net/http"
-	sindexd "sindexd/lib"
 )
 
 func Drop(client *http.Client, index *sindexd.Index_spec, force bool, admin bool) (*http.Response, error) {

@@ -4,10 +4,11 @@ package sproxyd
 import (
 	"encoding/json"
 	"fmt"
-	hostpool "github.com/bitly/go-hostpool"
 	"os"
 	"os/user"
 	"path"
+
+	hostpool "github.com/bitly/go-hostpool"
 )
 
 // var Host = []string{"http://luo001t.internal.epo.org:81/proxy/chord/", "http://luo002t.internal.epo.org:81/proxy/chord/", "http://luo003t.internal.epo.org:81/proxy/chord/"}
@@ -15,12 +16,12 @@ import (
 func GetConfig(c_file string) (Configuration, error) {
 
 	usr, _ := user.Current()
-	configdir := path.Join(usr.HomeDir, "sproxyd")
+	configdir := path.Join(usr.HomeDir, "sproxyd/config")
 	configfile := path.Join(configdir, c_file)
 	cfile, err := os.Open(configfile)
 	defer cfile.Close()
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println("sproxyd.GetConfig", err)
 		os.Exit(2)
 	}
 	decoder := json.NewDecoder(cfile)

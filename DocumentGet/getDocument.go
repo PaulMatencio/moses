@@ -3,12 +3,12 @@ package main
 /*   ./DocumentGet  -action getPage -media pdf   -page p3  -pn /HR/P20020309/A2 -t 1   */
 import (
 	directory "directory/lib"
-	bns "moses/bns/lib"
-	/* "encoding/json" */
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
 	"io/ioutil"
+	bns "moses/bns/lib"
 	sproxyd "moses/sproxyd/lib"
 	"net/http"
 	"os"
@@ -16,135 +16,18 @@ import (
 	"strings"
 	"time"
 
-	hostpool "github.com/bitly/go-hostpool"
-	//base64 "moses/user/base64j"
+	base64 "moses/user/base64j"
 	file "moses/user/files/lib"
 	goLog "moses/user/goLog"
+
+	hostpool "github.com/bitly/go-hostpool"
 )
 
-type DocumentMetadata struct {
-	PubId struct {
-		CountryCode string `json: "countryCode`
-		PubNumber   string `json: "pubNumber"`
-		KindCode    string `json: "kindCode"`
-	} `json: "PubId,omitempty"`
-
-	BnsId struct {
-		CountryCode string `json: "countryCode`
-		PubNumber   string `json: "pubNumber"`
-		KindCode    string `json: "kindCode"`
-	} `json: "bnsId,omitempty"`
-
-	DocId             string `json:"docId`
-	PublicationOffice string `json:"publicationOffice`
-	FamilyId          string `json:"familyId"`
-	TotalPage         int    `json:totalPage"`
-	DocType           string `json:docType"`
-	PubDate           string `json:pubDate"`
-	LoadDate          string `json:loadDate"`
-	Copyright         string `json:"copyright,omitempty"`
-
-	LinkPubId []struct {
-		CountryCode string `json: "countryCode`
-		PubNumber   string `json: "pubNumber"`
-		KindCode    string `json: "kindCode"`
-	} `json: "linkPubId,omitemty`
-
-	MultiMedia struct {
-		Tiff  bool `json:"tiff"`
-		Png   bool `json:"png"`
-		Pdf   bool `json:"pdf"`
-		Video bool `json:"video"`
-	} `json:"multiMedia"`
-
-	AbsRangePageNumber []struct {
-		Start int `json:"start"`
-		End   int `json:"end"`
-	} `json:"absRangePageNumber,omitempty"`
-
-	AmdRangePageNumber []struct {
-		Start int `json:"start"`
-		End   int `json:"end"`
-	} `json:"amdRangePageNumber,omitempty"`
-
-	BibliRangePageNumber []struct {
-		Start int `json:"start"`
-		End   int `json:"end"`
-	} `json:"bibliRangePageNumber,omitempty"`
-
-	ClaimsRangePageNumber []struct {
-		Start int `json:"start"`
-		End   int `json:"end"`
-	} `json:"claimsRangePageNumber,omitempty"`
-
-	DescRangePageNumber []struct {
-		Start int `json:"start"`
-		End   int `json:"end"`
-	} `json:"descRangePageNumber,omitempty"`
-
-	DrawRangePageNumber []struct {
-		Start int `json:"start"`
-		End   int `json:"end"`
-	} `json:"drawRangePageNumber,omitempty"`
-
-	SearchRepRangePageNumber []struct {
-		Start int `json:"start"`
-		End   int `json:"end"`
-	} `json:"searchRepRangePageNumber,omitempty"`
-
-	DnaSequenceRangePageNumber []struct {
-		Start int `json:"start"`
-		End   int `json:"end"`
-	} `json:"dnaSequenceRangePageNumber,omoitempty"`
-
-	ApplicantCitationsRangePageNumber []struct {
-		Start int `json:"start"`
-		End   int `json:"end"`
-	} `json:"applicantCitationsRangePageNumber,omitempty"`
-
-	Classification []string `json:"classification,omitempty"`
-}
-
-type Pagemeta struct {
-	DocumentID struct {
-		CountryCode  string `json:"countryCode"`
-		KindCode     string `json:"kindCode"`
-		PatentNumber string `json:"patentNumber"`
-	} `json:"documentId"`
-	MultiMedia struct {
-		Pdf   bool `json:"pdf"`
-		Png   bool `json:"png"`
-		Tiff  bool `json:"tiff"`
-		Video bool `json:"video"`
-	} `json:"multiMedia"`
-	PageIndicator []string `json:"pageIndicator"`
-	PageLength    int      `json:"pageLength"`
-	PageNumber    int      `json:"pageNumber"`
-	PdfOffset     struct {
-		Start int `json:"start"`
-		End   int `json:"end"`
-	} `json:"pdfOffset,omitempty"`
-	PngOffset struct {
-		Start int `json:"start"`
-		End   int `json:"end"`
-	} `json:"pngOffset,omitempty"`
-	PublicationOffice string `json:"publicationOffice"`
-	RotationCode      struct {
-		Pdf  int `json:"pdf"`
-		Png  int `json:"png"`
-		Tiff int `json:"tiff"`
-	} `json:"rotationCode"`
-	TiffOffset struct {
-		Start int `json:"start"`
-		End   int `json:"end"`
-	} `json:"tiffOffset,omitempty"`
-}
-
 var (
-	action, config, logPath, outDir, application, testname, hostname, pn, page, trace, media string
-	Trace                                                                                    bool
-	pid                                                                                      int
-	timeout                                                                                  time.Duration
+	action, config, env, logPath, outDir, application, testname, hostname, pn, page, trace, media string
+	Trace                                                                                         bool
+	pid                                                                                           int
+	timeout                                                                                       time.Duration
 )
 
 func usage() {
@@ -163,11 +46,46 @@ func check(e error) {
 	}
 }
 
+func writeMeta(outDir string, page string, metadata []byte) {
+
+	if !file.Exist(outDir) {
+		_ = os.MkdirAll(outDir, 0755)
+	}
+	myfile := outDir + string(os.PathSeparator) + bns.RemoveSlash(pn) + page + ".md"
+	goLog.Trace.Println("myfile:", myfile)
+	err := ioutil.WriteFile(myfile, metadata, 0644)
+	check(err)
+}
+
+func writeImage(outDir string, page string, media string, body []byte) {
+
+	if !file.Exist(outDir) {
+		_ = os.MkdirAll(outDir, 0755)
+	}
+	myfile := outDir + string(os.PathSeparator) + bns.RemoveSlash(pn) + page + "." + strings.ToLower(media)
+	goLog.Trace.Println("myfile:", myfile)
+	err := ioutil.WriteFile(myfile, body, 0644)
+	check(err)
+}
+
+func buildBnsResponse(resp *http.Response, contentType string, body []byte) (bsnImage bns.BnsImages) {
+
+	bnsImage := bns.BnsImages{}
+	if pagemd, err := base64.Decode64(resp.Header["X-Scal-Usermd"][0]); err == nil {
+		bnsImage.Pagemd = string(pagemd)
+		goLog.Trace.Println(bnsImage.Pagemd)
+	}
+	bnsImage.Image = body
+	bnsImage.ContentType = contentType
+	return bnsImage
+}
+
 func main() {
 
 	flag.Usage = usage
-	flag.StringVar(&action, "action", "", "<getPageMeta> <getDocumentMeta> <getPage> <getDocument> <Getpagerange>")
-	flag.StringVar(&config, "config", "chord", "Config file")
+	flag.StringVar(&action, "action", "", "<getPageMeta> <getDocumentMeta> <getPage> <getDocument> <GetPagerange>")
+	flag.StringVar(&config, "config", "storage", "Config file")
+	flag.StringVar(&env, "env", "prod", "Environment")
 	flag.StringVar(&trace, "t", "0", "Trace")    // Trace
 	flag.StringVar(&testname, "T", "getDoc", "") // Test name
 	flag.StringVar(&pn, "pn", "", "Publication number")
@@ -179,7 +97,9 @@ func main() {
 	if len(action) == 0 {
 		usage()
 	}
-
+	if len(pn) == 0 {
+		fmt.Println("-pn <DocumentId> is missing")
+	}
 	application = "DocumentGet"
 	pid := os.Getpid()
 	hostname, _ := os.Hostname()
@@ -246,44 +166,97 @@ func main() {
 	directory.SetCPU("100%")
 	client := &http.Client{}
 	start := time.Now()
-	pathname := "test/" + pn
+	page = "p" + page
+	pathname := env + "/" + pn
 	switch action {
 	case "getPageMeta":
 		pathname = pathname + "/" + page
-		usermd, err := bns.GetPageMetadata(client, pathname)
+		pagemd, err := bns.GetPageMetadata(client, pathname)
 		if err == nil {
-			goLog.Info.Println(string(usermd))
+			// goLog.Info.Println(string(pagemd))
+			writeMeta(outDir, page, pagemd)
 		} else {
 			goLog.Error.Println(err)
 		}
 	case "getDocumentMeta":
-		// the document metatadata is
+		// the document metatadata is the metadata the <pathname>
+		docmd, err := bns.GetDocMetadata(client, pathname)
+		docmeta := bns.DocumentMetadata{}
 
-		usermd, err := bns.GetDocMetadata(client, pathname)
 		if err == nil {
-			goLog.Info.Println(string(usermd))
+			goLog.Info.Println(string(docmd))
+			if err := json.Unmarshal(docmd, &docmeta); err != nil {
+				goLog.Error.Println(err)
+			} else {
+				writeMeta(outDir, "", docmd)
+			}
 		} else {
 			goLog.Error.Println(err)
 		}
+
+	case "getDocument":
+		// the document metatadata is the metadata the <pathname>
+		docmd, err := bns.GetDocMetadata(client, pathname)
+		docmeta := bns.DocumentMetadata{}
+
+		if err == nil {
+			// goLog.Info.Println(string(usermd))
+			if err := json.Unmarshal(docmd, &docmeta); err != nil {
+				goLog.Error.Println(err)
+				os.Exit(2)
+			} else {
+				writeMeta(outDir, "", docmd)
+			}
+
+		} else {
+			goLog.Error.Println(err)
+			os.Exit(2)
+		}
+		// build []urls of pages  of the document to be fecthed
+		len := docmeta.TotalPage
+		urls := make([]string, len, len)
+		getHeader := map[string]string{}
+		getHeader["Content-Type"] = "image/" + strings.ToLower(media)
+		for i := 0; i < len; i++ {
+			urls[i] = pathname + "/p" + strconv.Itoa(i+1)
+		}
+		sproxyResponses := bns.AsyncHttpGetPageType(urls, getHeader)
+		bnsResponses := make([]bns.BnsImages, len, len)
+		var pagemd []byte
+		for i, v := range sproxyResponses {
+			if err := v.Err; err == nil { //
+				resp := v.Response
+				body := v.Body
+				bnsImage := buildBnsResponse(resp, getHeader["Content-Type"], body)
+				bnsResponses[i] = bnsImage
+				page = "p" + strconv.Itoa(i+1)
+				writeImage(outDir, page, media, bnsImage.Image)
+				if pagemd, err = base64.Decode64(resp.Header["X-Scal-Usermd"][0]); err == nil {
+					writeMeta(outDir, page, pagemd)
+				}
+			}
+		}
+
 	case "getPage":
 		pathname = pathname + "/" + page
 		getHeader := map[string]string{}
 		getHeader["Content-Type"] = "image/" + strings.ToLower(media)
-		resp, err := bns.GetPageType(client, pathname, getHeader)
-		if err == nil {
+		var pagemd []byte
+		if resp, err := bns.GetPageType(client, pathname, getHeader); err == nil {
 			defer resp.Body.Close()
-			var body []byte
-			body, _ = ioutil.ReadAll(resp.Body)
-			myfile := outDir + string(os.PathSeparator) + bns.RemoveSlash(pn) + page + "." + strings.ToLower(media)
-			goLog.Trace.Println("myfile:", myfile)
-			err := ioutil.WriteFile(myfile, body, 0644)
-			check(err)
-			goLog.Info.Println(len(body))
+			body, _ := ioutil.ReadAll(resp.Body)
+			bnsImage := buildBnsResponse(resp, getHeader["Content-Type"], body)
+			writeImage(outDir, page, media, bnsImage.Image)
+			if pagemd, err = base64.Decode64(resp.Header["X-Scal-Usermd"][0]); err == nil {
+				writeMeta(outDir, page, pagemd)
+			}
 		} else {
 			goLog.Error.Println(action, pathname, err)
 		}
+
 	default:
-		goLog.Info.Println("-action is missing")
+		goLog.Info.Println("-action <action value> is missing")
 	}
+
 	goLog.Info.Println(time.Since(start))
 }

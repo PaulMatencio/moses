@@ -6,13 +6,14 @@ import (
 	"encoding/json"
 	//	"fmt"
 	"io"
+	sindexd "moses/sindexd/lib"
+	goLog "moses/user/goLog"
 	"net/http"
 	"os"
-	sindexd "sindexd/lib"
 	"sort"
 	"strings"
 	"time"
-	goLog "user/goLog"
+
 	hostpool "github.com/bitly/go-hostpool"
 )
 

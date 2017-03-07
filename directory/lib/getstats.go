@@ -1,8 +1,8 @@
 package directory
 
 import (
+	sindexd "moses/sindexd/lib"
 	"net/http"
-	sindexd "sindexd/lib"
 )
 
 func GetStats(client *http.Client, reset int, lowlevel int) (*http.Response, error) {

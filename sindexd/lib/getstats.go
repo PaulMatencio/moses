@@ -3,8 +3,8 @@ package sindexd
 import (
 	"bytes"
 	"encoding/json"
+	goLog "moses/user/goLog"
 	"net/http"
-	goLog "user/goLog"
 )
 
 type Stats struct {

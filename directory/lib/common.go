@@ -1,7 +1,7 @@
 package directory
 
 import (
-	sindexd "sindexd/lib"
+	sindexd "moses/sindexd/lib"
 )
 
 var (

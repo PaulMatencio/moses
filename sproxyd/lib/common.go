@@ -70,6 +70,6 @@ func (c Configuration) GetLogPath() (LogPath string) {
 type HttpResponse struct {
 	Url      string
 	Response *http.Response
-	Size     int
+	Body     []byte
 	Err      error
 }

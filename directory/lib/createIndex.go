@@ -2,8 +2,8 @@ package directory
 
 import (
 	//hostpool "github.com/bitly/go-hostpool"
+	sindexd "moses/sindexd/lib"
 	"net/http"
-	sindexd "sindexd/lib"
 )
 
 // func Create(client *http.Client, hp hostpool.HostPool, index *sindexd.Index_spec) (*http.Response, error) {

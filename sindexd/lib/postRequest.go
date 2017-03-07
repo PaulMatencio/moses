@@ -4,9 +4,9 @@ package sindexd
 import (
 	"bytes"
 	"errors"
+	goLog "moses/user/goLog"
 	"net/http"
 	"strconv"
-	goLog "user/goLog"
 
 	hostpool "github.com/bitly/go-hostpool"
 	//"time"

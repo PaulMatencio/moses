@@ -1,10 +1,10 @@
 package directory
 
 import (
+	sindexd "moses/sindexd/lib"
+	goLog "moses/user/goLog"
 	"net/http"
-	sindexd "sindexd/lib"
 	"time"
-	goLog "user/goLog"
 
 	hostpool "github.com/bitly/go-hostpool"
 )

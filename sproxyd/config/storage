@@ -1,0 +1,6 @@
+{
+"sproxyd":["http://10.12.201.11:81/proxy/bparc","http://10.12.201.12:81/proxy/bparc","http://10.12.201.21:81/proxy/bparc","http://10.12.201.22:81/proxy/bparc","http://10.12.201.31:81/proxy/bparc","http://10.12.201.32:81/proxy/bparc"], 
+"driver": "bparc",
+"logpath": "/home/paul/sproxyd/log"
+
+}

@@ -5,13 +5,13 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	goLog "moses/user/goLog"
 	"net/http"
 	"os"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
-	"user/goLog"
 
 	directory "moses/directory/lib"
 
@@ -85,6 +85,7 @@ func main() {
 	}
 	if len(iIndex) == 0 {
 		if action != "St" && action != "Gc" && action != "Sp" {
+			fmt.Println("-index table is missing")
 			usage()
 		}
 	}

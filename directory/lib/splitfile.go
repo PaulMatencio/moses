@@ -6,8 +6,7 @@ import (
 	// "os/user"
 	// "path"
 	// "poc/files"
-	goLog "user/goLog"
-
+	goLog "moses/user/goLog"
 	"strings"
 )
 

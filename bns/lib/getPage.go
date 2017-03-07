@@ -2,27 +2,17 @@ package bns
 
 import (
 	"encoding/json"
-	sproxyd "moses/sproxyd/lib"
-	"net/http"
-	// base64 "user/base64j"
-	// "user/goLog"
 	"errors"
+	sproxyd "moses/sproxyd/lib"
 	goLog "moses/user/goLog"
+	"net/http"
 	"strconv"
 )
 
 func GetPage(client *http.Client, path string) (*http.Response, error) {
 
 	header := map[string]string{}
-	/*
-		var resp *http.Response
-		err := error(nil)
-	*/
-	// no specific request , just give me an object
-	//start := time.Now()
-	//var elapse time.Duration
 	return sproxyd.GetObject(client, path, header)
-	//elapse = time.Since(start)
 
 }
 
@@ -46,9 +36,9 @@ func GetPageType(client *http.Client, path string, getHeader map[string]string) 
 		if err := json.Unmarshal(usermd, &pagemeta); err != nil {
 			return nil, err
 		}
-		//goLog.Trace.Println("PageMeta", pagemeta)
+
 		if contentType, ok := getHeader["Content-Type"]; ok {
-			//goLog.Trace.Println("Content-Type", contentType)
+
 			switch contentType {
 			case "image/tiff", "image/tif":
 				start := strconv.Itoa(pagemeta.TiffOffset.Start)
@@ -64,10 +54,15 @@ func GetPageType(client *http.Client, path string, getHeader map[string]string) 
 				resp, err = sproxyd.GetObject(client, path, getHeader)
 
 			case "image/pdf":
-				start := strconv.Itoa(pagemeta.PdfOffset.Start)
-				end := strconv.Itoa(pagemeta.PdfOffset.End)
-				getHeader["Range"] = "bytes=" + start + "-" + end
-				resp, err = sproxyd.GetObject(client, path, getHeader)
+				if pagemeta.PdfOffset.Start > 0 {
+					start := strconv.Itoa(pagemeta.PdfOffset.Start)
+					end := strconv.Itoa(pagemeta.PdfOffset.End)
+					getHeader["Range"] = "bytes=" + start + "-" + end
+					resp, err = sproxyd.GetObject(client, path, getHeader)
+				} else {
+					resp = nil
+					err = errors.New("Content-type " + contentType + " does not exist")
+				}
 			default:
 				err = errors.New("Content-type is missing or invalid")
 			}

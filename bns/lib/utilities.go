@@ -1,25 +1,18 @@
 package bns
 
 import (
-	"bytes"
-	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"io/ioutil"
 	sproxyd "moses/sproxyd/lib"
 	base64 "moses/user/base64j"
-	files "moses/user/files/lib"
-	goLog "moses/user/goLog"
 	"net/http"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
 	"time"
-	"user/ebc2asc"
-	// imaging "github.com/desintegration/imaging"
 )
 
 func ST33toFiles(inputFile string, outputusermdDir string, outputTiffDir string, outputContainerDir string, combine bool) error {
@@ -44,395 +37,10 @@ func ST33toFiles(inputFile string, outputusermdDir string, outputTiffDir string,
 	//      WRITE DOCUMENT  metadata
 	//  }
 	//
-	goLog.Info.Println("Combine output:", combine)
 
-	Little := binary.LittleEndian
-	Big := binary.BigEndian
-	enc := Big
-	documentMetadata := &DocumentMetadata{}
-
-	var (
-		// container          = make([]string, 0, 500)
-		abs                = make([]int, 0, 100)
-		bib                = make([]int, 0, 100)
-		cla                = make([]int, 0, 100)
-		desc               = make([]int, 0, 300)
-		draw               = make([]int, 0, 300)
-		amd                = make([]int, 0, 300)
-		srp                = make([]int, 0, 300)
-		file_containermd_o string
-		elapsetm           time.Duration
-		total_rec          uint16
-		total_length       uint32
-		// documentmd         []byte
-	)
-	total := 0
-	hostname, _ := os.Hostname()
-	pid := os.Getpid()
-
-	//buf,err := ioutil.ReadFile(inputFile)
-	abuf, err := files.ReadBuffer(inputFile)
-	if err == nil {
-
-		defer abuf.Reset()
-
-		buf := abuf.Bytes()
-		bufl := len(buf)
-		pagmeta := &Pagmeta{}
-
-		l := 0
-
-		for l < bufl {
-			k := l
-
-			var (
-				recs uint16
-				//total_rec    uint16
-				//total_length uint32
-				imgl uint16
-			)
-			buf1 := bytes.NewReader(buf[k+25 : k+27])
-			err = binary.Read(buf1, Big, &recs)
-			buf1 = bytes.NewReader(buf[k+84 : k+86])
-			err = binary.Read(buf1, Big, &total_rec)
-			buf1 = bytes.NewReader(buf[k+214 : k+218])
-			err = binary.Read(buf1, Big, &total_length)
-			buf1 = bytes.NewReader(buf[k+250 : k+252])
-			err = binary.Read(buf1, Big, &imgl)
-
-			// convert  Buf ( EBCDIC) to ST33 (ASCII)
-			st33 := ebc2asc.Ebc2asci(buf[l : l+214])
-
-			long, _ := strconv.Atoi(string(st33[0:5]))
-
-			pub := st33[5:7]
-			pagmeta.Pub_office = string(pub)
-			kc := strings.Trim(string(st33[7:9]), " ")
-			pagmeta.Kc = kc
-			docnum := st33[9:17]
-
-			pagenum := st33[17:21]
-			// goLog.Info.Printf("long=%d pub=%s kc=%s pagenum=%s k= %d l = %d bufl=%d buf:%s", long, pub, kc, pagenum, l, k, bufl, ebc2asc.Ebc2asci(buf[117450357:117450457]))
-			pagmeta.Page_number = string(pagenum)
-			// framenum := st33[21:25]
-			//recs := byte2int(buf[k+25:k+27])
-
-			pos9_ := st33[27:29]
-			docid0 := strings.Trim(string(docnum)+string(pos9_), " ")
-			docid := strings.TrimLeft(string(st33[33:45]), " ")
-
-			if len(docid) == 0 {
-				docid = docid0
-			}
-
-			pagmeta.Doc_id = docid
-			//usermd["doc_id"] = strings.TrimLeft(string(docid)," ")
-			o_pub := st33[67:69]
-			pagmeta.O_pub = string(o_pub)
-			//date_drawup := st33[69:75]
-			//usermd["date_drawup"]= string(date_drawup)
-			//rec_stat :=  st33[75:76]
-			total_pages := st33[76:80]
-			pagmeta.Total_pages = string(total_pages)
-			/*
-			   s_doc_h := st33[87:90]
-			   s_doc_w := st33[90:93]
-			*/
-			f_date_drawup := st33[93:101]
-			pagmeta.Date_drawup = string(f_date_drawup)
-			f_pub_date := st33[101:109]
-			pagmeta.Pub_date = string(f_pub_date)
-			Biblio := string(st33[133:134])
-			Claim := string(st33[134:135])
-			Drawing := string(st33[135:136])
-			Amendement := string(st33[136:137])
-			Description := string(st33[137:138])
-			Abstract := string(st33[138:139])
-			Search_report := string(st33[139:140])
-
-			// var content bytes.Buffer
-
-			// pnum:= strconv.Atoi(string(pagenum))
-			pn, _ := strconv.Atoi(string(pagenum))
-			if Biblio == "1" {
-
-				bib = append(bib, pn)
-			}
-			if Abstract == "1" {
-				abs = append(abs, pn)
-			}
-			if Claim == "1" {
-				cla = append(cla, pn)
-			}
-			if Drawing == "1" {
-				draw = append(draw, pn)
-			}
-			if Amendement == "1" {
-				amd = append(amd, pn)
-			}
-			if Description == "1" {
-				desc = append(desc, pn)
-			}
-			if Search_report == "1" {
-				srp = append(srp, pn)
-			}
-
-			// container = append(container, content.String())
-
-			/* +40*/
-			// pagmeta.Content = content.String()
-			data_type := string(st33[180:181])
-			pagmeta.Data_type = data_type
-			// comp_meth := st33[181:183]
-			// k_fac := st33[183:185]
-			// Resolution := st33[185:187]
-			s_fr_h := st33[187:190]
-			s_fr_w := st33[190:193]
-			nl_fr_h := st33[193:197]
-			nl_fr_w := st33[197:201]
-			rotation_code := st33[201:202]
-			// fr_x := st33[202:206]
-			// fr_y := st33[206:210]
-			// fr_stat := st33[210:211]
-			version := st33[211:214]
-
-			// Coniunue with Buffer
-			buf1 = bytes.NewReader(buf[k+214 : k+218])
-			if string(version) == "V30" {
-
-				// buf1 = bytes.NewReader(buf[k+214 : k+218])
-				// some V30 total_length are encoded with big Endian byte order
-				err = binary.Read(buf1, Little, &total_length)
-				if int(total_length) > 16777215 {
-					buf1 = bytes.NewReader(buf[k+214 : k+218])
-					err = binary.Read(buf1, Big, &total_length)
-				}
-
-			} else {
-				err = binary.Read(buf1, Big, &total_length)
-			}
-
-			/* write tiff images */
-			var (
-				Page = new(PAGE)
-				img  = new(bytes.Buffer)
-			)
-
-			_, err = io.WriteString(img, beHeader)          // magic number
-			err = binary.Write(img, enc, uint32(ifdOffset)) // IFD offset
-			err = binary.Write(img, enc, uint16(ifdLen))    // number of IFD entries
-
-			err = binary.Write(img, enc, uint16(tImageWidth)) //  image Width
-			err = binary.Write(img, enc, uint16(dtLong))      //  long
-			err = binary.Write(img, enc, uint32(1))           //  value
-			err = binary.Write(img, enc, getuint32(nl_fr_w))
-
-			//Imagewidth,_ := strconv.Atoi(string(nl_fr_w))
-			//err = binary.Write(img, enc, uint32(Imagewidth))  //
-
-			err = binary.Write(img, enc, uint16(tImageLength)) // Image length
-			err = binary.Write(img, enc, uint16(dtLong))       // long
-			err = binary.Write(img, enc, uint32(1))            // value
-			err = binary.Write(img, enc, getuint32(nl_fr_h))
-			// ImageLength,_ := strconv.Atoi(string(nl_fr_h))
-			// err = binary.Write(img, enc, uint32(ImageLength))  //
-
-			err = binary.Write(img, enc, uint16(tCompression)) //  Compression
-			err = binary.Write(img, enc, uint16(dtShort))      //  short
-			err = binary.Write(img, enc, uint32(1))            //  value
-			err = binary.Write(img, enc, uint16(cG4))          //  CCITT Group 4
-			err = binary.Write(img, enc, uint16(0))            //  CCITT Group 4
-
-			err = binary.Write(img, enc, uint16(tPhotometricInterpretation)) //  Photometric
-			err = binary.Write(img, enc, uint16(dtShort))                    //  short
-			err = binary.Write(img, enc, uint32(1))                          //  value
-			err = binary.Write(img, enc, uint32(0))                          //  white
-
-			err = binary.Write(img, enc, uint16(tStripOffsets)) //  StripOffsets
-			err = binary.Write(img, enc, uint16(dtLong))        //  long
-			err = binary.Write(img, enc, uint32(1))             //  value
-			err = binary.Write(img, enc, uint32(150))           //  0xA0
-
-			err = binary.Write(img, enc, uint16(tOrientation)) // Orientation
-			err = binary.Write(img, enc, uint16(dtShort))      //  short
-			err = binary.Write(img, enc, uint32(1))
-			err = binary.Write(img, enc, getOrientation(rotation_code)) // rotation code
-			err = binary.Write(img, enc, uint16(0))
-
-			err = binary.Write(img, enc, uint16(tStripByteCounts)) //  StripbyteCounts
-			err = binary.Write(img, enc, uint16(dtLong))           //  long
-			err = binary.Write(img, enc, uint32(1))
-			// fmt.Println( total_length)
-			err = binary.Write(img, enc, uint32(total_length)) //  image size
-
-			err = binary.Write(img, enc, uint16(tXResolution)) // Xresolution
-			err = binary.Write(img, enc, uint16(dtRational))   // rational
-			err = binary.Write(img, enc, uint32(1))
-			err = binary.Write(img, enc, uint32(xoffset)) //
-
-			err = binary.Write(img, enc, uint16(tYResolution)) // Xresolution
-			err = binary.Write(img, enc, uint16(dtRational))   //  Rational
-			err = binary.Write(img, enc, uint32(1))
-			err = binary.Write(img, enc, uint32(yoffset)) //
-
-			err = binary.Write(img, enc, uint16(tResolutionUnit)) // Xresolution
-			err = binary.Write(img, enc, uint16(dtShort))         //  value
-			err = binary.Write(img, enc, uint32(1))
-			err = binary.Write(img, enc, uint16(3)) //  cm
-			err = binary.Write(img, enc, uint16(0))
-
-			err = binary.Write(img, enc, uint32(0)) // next IFD = 0
-
-			// Xresolution value
-			err = binary.Write(img, enc, getuint32(nl_fr_w)*10)
-			err = binary.Write(img, enc, getuint32(s_fr_w))
-
-			// Yresoluton value
-			err = binary.Write(img, enc, getuint32(nl_fr_h)*10)
-			err = binary.Write(img, enc, getuint32(s_fr_h))
-
-			//write images
-			start := time.Now()
-
-			var elapse time.Duration
-
-			for r := 0; r < int(total_rec); r++ {
-				l1 := ebc2asc.Ebc2asci(buf[k : k+5])
-				long, _ = strconv.Atoi(string(l1))
-
-				//buf1 = bytes.NewReader(buf[k+250:k+252])
-				//err = binary.Read(buf1, Big, &imgl0)
-				err = binary.Read(bytes.NewReader(buf[k+250:k+252]), Big, &imgl)
-				//imgl := int(imgl0)
-				img.Write(buf[k+252 : k+252+int(imgl)])
-				k = k + long
-				//fmt.Println(r,imgl, "img len=",img.Len())
-			}
-
-			// Structure to Json
-
-			pagemeta := &Pagemeta{}
-			pagemeta.DocumentID.CountryCode = pagmeta.Pub_office
-			pagemeta.DocumentID.PatentNumber = pagmeta.Doc_id
-			pagemeta.DocumentID.KindCode = pagmeta.Kc
-
-			pagemeta.PublicationOffice = pagmeta.Pub_office
-			pagemeta.PageNumber, _ = strconv.Atoi(pagmeta.Page_number)
-			// pagemeta.PageIndicator = pagmeta.Content
-			pagemeta.MultiMedia.Tiff = true
-			pagemeta.TiffOffset.Start = 0
-			pagemeta.TiffOffset.End = pagemeta.TiffOffset.Start + img.Len()
-			/* wrtite tiff to files  */
-			//docid1        := strings.TrimLeft(string(docid)," ")
-			fulldocid := string(pub) + docid + string(kc)
-			// goLog.Info.Println("FULL:", len(fulldocid), fulldocid, string(pagenum))
-			if len(fulldocid) > 15 {
-				var meta []byte
-				err := json.Unmarshal(meta, &pagmeta)
-				goLog.Warning.Println(k, meta)
-				dump := "/tmp/dump_" + strconv.Itoa(pid)
-				files.WriteFile(dump, st33, 0644)
-				panic(err)
-			}
-			udirname_o := outputusermdDir + fulldocid
-			tdirname_o := outputTiffDir + fulldocid
-			if !combine {
-				Check(files.MakeDir(udirname_o, 0755))
-				Check(files.MakeDir(tdirname_o, 0755))
-				/*  WRITE TIFF IMAGES USING WriteFile*/
-				file_tiff_o := tdirname_o + string(os.PathSeparator) + string(pagenum) + ".tiff"
-				Check(files.WriteFile(file_tiff_o, img.Bytes(), 0644))
-				/* WRITE USERMD using Encode : From Structure to JSON File */
-				file_usermd_o := udirname_o + string(os.PathSeparator) + string(pagenum) + ".json"
-				if err := pagemeta.Encode(file_usermd_o); err != nil {
-					goLog.Warning.Println(hostname, pid, err, "Encoding", *pagemeta)
-				}
-			} else {
-				Check(files.MakeDir(tdirname_o, 0755))
-				Page.Metadata = *pagemeta
-				Page.Tiff.Size = img.Len()
-				Page.Tiff.Image = img.Bytes()
-				file_json_o := tdirname_o + string(os.PathSeparator) + string(pagenum) + ".json"
-
-				// goLog.Info.Println(file_json_o, Page.Size)
-				if err := Page.Encode(file_json_o); err != nil {
-					goLog.Warning.Println(hostname, pid, err, "Encoding", *Page)
-				}
-			}
-			elapse = time.Since(start)
-			total += 1
-			elapsetm += elapse
-
-			/* UPDATE CONTAINER MD STRUCTURE*/
-			// documentmeta.Date_drawup = pagmeta.Date_drawup
-			documentMetadata.PubId.CountryCode = pagmeta.Pub_office
-			documentMetadata.PubId.PubNumber = pagmeta.Doc_id
-			documentMetadata.PubId.KindCode = pagmeta.Kc
-			documentMetadata.PubDate = pagmeta.Pub_date
-			documentMetadata.PublicationOffice = pagmeta.Pub_office
-			documentMetadata.MultiMedia.Tiff = true
-			documentMetadata.MultiMedia.Png = false
-
-			file_containermd_o = outputContainerDir + string(pub) + docid + string(kc) + ".json"
-
-			// reset img buffer for next image
-			img.Reset()
-			// get next images in the buffer
-			l = k
-			// goLog.Info.Printf("L=%d", l)
-			// } // loop for *****************************************
-			if pagmeta.Page_number == pagmeta.Total_pages {
-				// Create the container metadata
-
-				documentMetadata.TotalPage = 0
-				documentMetadata.TotalPage, _ = strconv.Atoi(pagmeta.Total_pages)
-				documentMetadata.DocId = pagmeta.Doc_id
-				if len(abs) > 0 {
-					documentMetadata.AbsRangePageNumber[0].Start = abs[0]
-					documentMetadata.AbsRangePageNumber[0].End = abs[len(abs)-1]
-				}
-				if len(bib) > 0 {
-					documentMetadata.BibliRangePageNumber[0].Start = bib[0]
-					documentMetadata.BibliRangePageNumber[0].End = bib[len(bib)-1]
-				}
-				if len(cla) > 0 {
-					documentMetadata.ClaimsRangePageNumber[0].Start = cla[0]
-					documentMetadata.ClaimsRangePageNumber[0].End = cla[len(cla)-1]
-				}
-				if len(desc) > 0 {
-					documentMetadata.DescRangePageNumber[0].Start = desc[0]
-					documentMetadata.DescRangePageNumber[0].End = desc[len(desc)-1]
-				}
-				if len(draw) > 0 {
-					documentMetadata.DrawRangePageNumber[0].Start = draw[0]
-					documentMetadata.DrawRangePageNumber[0].End = draw[len(draw)-1]
-				}
-				if len(srp) > 0 {
-					documentMetadata.SearchRepRangePageNumber[0].Start = srp[0]
-					documentMetadata.SearchRepRangePageNumber[0].End = srp[len(srp)-1]
-				}
-				if len(amd) > 0 {
-					documentMetadata.AmdRangePageNumber[0].Start = amd[0]
-					documentMetadata.AmdRangePageNumber[0].End = amd[len(amd)-1]
-				}
-				if err := documentMetadata.Encode(file_containermd_o); err != nil {
-					goLog.Warning.Println(hostname, pid, err, "Encoding", *pagemeta)
-				}
-				bib = bib[:0]
-				abs = abs[:0]
-				desc = desc[:0]
-				cla = cla[:0]
-				draw = draw[:0]
-				amd = amd[:0]
-				srp = srp[:0]
-			} // end write metadata
-		}
-	} // end input file
-
-	total1 := total * 1000000
-	goLog.Info.Println("Elapsetm:", elapsetm, "Number of images:", total, "Average ms:", float64(elapsetm)/float64(total1))
-	// goLog.Info.Printf("%s %d %5.2f|\n", "average ms=", total, float64(totaltime)/float64(total))
-	return err
+	//   REMOVED  =>  Check old bns for how to do
+	error := errors.New("Function has been removed")
+	return error
 }
 
 func ST33toFiles_p(inputFile string, outputusermdDir string, outputTiffDir string, outputContainerDir string, combine bool) error {
@@ -457,389 +65,13 @@ func ST33toFiles_p(inputFile string, outputusermdDir string, outputTiffDir strin
 	//      WRITE DOCUMENT  metadata
 	//  }
 	//
-	goLog.Info.Println("Combine output:", combine)
 
-	Little := binary.LittleEndian
-	Big := binary.BigEndian
-	enc := Big
-	documentMetadata := &DocumentMetadata{}
-
-	var (
-		// container          = make([]string, 0, 500)
-		abs                = make([]int, 0, 100)
-		bib                = make([]int, 0, 100)
-		cla                = make([]int, 0, 100)
-		desc               = make([]int, 0, 300)
-		draw               = make([]int, 0, 300)
-		amd                = make([]int, 0, 300)
-		srp                = make([]int, 0, 300)
-		file_containermd_o string
-		elapsetm           time.Duration
-		total_rec          uint16
-		total_length       uint32
-		// documentmd         []byte
-	)
-	total := 0
-	hostname, _ := os.Hostname()
-	pid := os.Getpid()
-
-	//buf,err := ioutil.ReadFile(inputFile)
-	abuf, err := files.ReadBuffer(inputFile)
-	if err == nil {
-
-		defer abuf.Reset()
-
-		buf := abuf.Bytes()
-		bufl := len(buf)
-		pagmeta := &Pagmeta{}
-
-		l := 0
-
-		for l < bufl {
-			k := l
-
-			var (
-				recs uint16
-				//total_rec    uint16
-				//total_length uint32
-				imgl uint16
-			)
-			buf1 := bytes.NewReader(buf[k+25 : k+27])
-			err = binary.Read(buf1, Big, &recs)
-			buf1 = bytes.NewReader(buf[k+84 : k+86])
-			err = binary.Read(buf1, Big, &total_rec)
-			buf1 = bytes.NewReader(buf[k+214 : k+218])
-			err = binary.Read(buf1, Big, &total_length)
-			buf1 = bytes.NewReader(buf[k+250 : k+252])
-			err = binary.Read(buf1, Big, &imgl)
-
-			// convert  Buf ( EBCDIC) to ST33 (ASCII)
-			st33 := ebc2asc.Ebc2asci(buf[l : l+214])
-
-			long, _ := strconv.Atoi(string(st33[0:5]))
-
-			pub := st33[5:7]
-			pagmeta.Pub_office = string(pub)
-			kc := strings.Trim(string(st33[7:9]), " ")
-			pagmeta.Kc = kc
-			docnum := st33[9:17]
-
-			pagenum := st33[17:21]
-
-			pagmeta.Page_number = string(pagenum)
-
-			pos9_ := st33[27:29]
-			docid0 := strings.Trim(string(docnum)+string(pos9_), " ")
-			docid := strings.TrimLeft(string(st33[33:45]), " ")
-
-			if len(docid) == 0 {
-				docid = docid0
-			}
-
-			pagmeta.Doc_id = docid
-
-			o_pub := st33[67:69]
-			pagmeta.O_pub = string(o_pub)
-
-			total_pages := st33[76:80]
-			pagmeta.Total_pages = string(total_pages)
-
-			f_date_drawup := st33[93:101]
-			pagmeta.Date_drawup = string(f_date_drawup)
-			f_pub_date := st33[101:109]
-			pagmeta.Pub_date = string(f_pub_date)
-			Biblio := string(st33[133:134])
-			Claim := string(st33[134:135])
-			Drawing := string(st33[135:136])
-			Amendement := string(st33[136:137])
-			Description := string(st33[137:138])
-			Abstract := string(st33[138:139])
-			Search_report := string(st33[139:140])
-
-			pn, _ := strconv.Atoi(string(pagenum))
-			if Biblio == "1" {
-
-				bib = append(bib, pn)
-			}
-			if Abstract == "1" {
-				abs = append(abs, pn)
-			}
-			if Claim == "1" {
-				cla = append(cla, pn)
-			}
-			if Drawing == "1" {
-				draw = append(draw, pn)
-			}
-			if Amendement == "1" {
-				amd = append(amd, pn)
-			}
-			if Description == "1" {
-				desc = append(desc, pn)
-			}
-			if Search_report == "1" {
-				srp = append(srp, pn)
-			}
-
-			// container = append(container, content.String())
-
-			/* +40*/
-			// pagmeta.Content = content.String()
-			data_type := string(st33[180:181])
-			pagmeta.Data_type = data_type
-			// comp_meth := st33[181:183]
-			// k_fac := st33[183:185]
-			// Resolution := st33[185:187]
-			s_fr_h := st33[187:190]
-			s_fr_w := st33[190:193]
-			nl_fr_h := st33[193:197]
-			nl_fr_w := st33[197:201]
-			rotation_code := st33[201:202]
-			// fr_x := st33[202:206]
-			// fr_y := st33[206:210]
-			// fr_stat := st33[210:211]
-			version := st33[211:214]
-
-			// Coniunue with Buffer
-			buf1 = bytes.NewReader(buf[k+214 : k+218])
-			if string(version) == "V30" {
-
-				// buf1 = bytes.NewReader(buf[k+214 : k+218])
-				// some V30 total_length are encoded with big Endian byte order
-				err = binary.Read(buf1, Little, &total_length)
-				if int(total_length) > 16777215 {
-					buf1 = bytes.NewReader(buf[k+214 : k+218])
-					err = binary.Read(buf1, Big, &total_length)
-				}
-
-			} else {
-				err = binary.Read(buf1, Big, &total_length)
-			}
-
-			/* write tiff images */
-			var (
-				Page = new(PAGE)
-				img  = new(bytes.Buffer)
-			)
-
-			_, err = io.WriteString(img, beHeader)          // magic number
-			err = binary.Write(img, enc, uint32(ifdOffset)) // IFD offset
-			err = binary.Write(img, enc, uint16(ifdLen))    // number of IFD entries
-
-			err = binary.Write(img, enc, uint16(tImageWidth)) //  image Width
-			err = binary.Write(img, enc, uint16(dtLong))      //  long
-			err = binary.Write(img, enc, uint32(1))           //  value
-			err = binary.Write(img, enc, getuint32(nl_fr_w))
-
-			//Imagewidth,_ := strconv.Atoi(string(nl_fr_w))
-			//err = binary.Write(img, enc, uint32(Imagewidth))  //
-
-			err = binary.Write(img, enc, uint16(tImageLength)) // Image length
-			err = binary.Write(img, enc, uint16(dtLong))       // long
-			err = binary.Write(img, enc, uint32(1))            // value
-			err = binary.Write(img, enc, getuint32(nl_fr_h))
-			// ImageLength,_ := strconv.Atoi(string(nl_fr_h))
-			// err = binary.Write(img, enc, uint32(ImageLength))  //
-
-			err = binary.Write(img, enc, uint16(tCompression)) //  Compression
-			err = binary.Write(img, enc, uint16(dtShort))      //  short
-			err = binary.Write(img, enc, uint32(1))            //  value
-			err = binary.Write(img, enc, uint16(cG4))          //  CCITT Group 4
-			err = binary.Write(img, enc, uint16(0))            //  CCITT Group 4
-
-			err = binary.Write(img, enc, uint16(tPhotometricInterpretation)) //  Photometric
-			err = binary.Write(img, enc, uint16(dtShort))                    //  short
-			err = binary.Write(img, enc, uint32(1))                          //  value
-			err = binary.Write(img, enc, uint32(0))                          //  white
-
-			err = binary.Write(img, enc, uint16(tStripOffsets)) //  StripOffsets
-			err = binary.Write(img, enc, uint16(dtLong))        //  long
-			err = binary.Write(img, enc, uint32(1))             //  value
-			err = binary.Write(img, enc, uint32(150))           //  0xA0
-
-			err = binary.Write(img, enc, uint16(tOrientation)) // Orientation
-			err = binary.Write(img, enc, uint16(dtShort))      //  short
-			err = binary.Write(img, enc, uint32(1))
-			err = binary.Write(img, enc, getOrientation(rotation_code)) // rotation code
-			err = binary.Write(img, enc, uint16(0))
-
-			err = binary.Write(img, enc, uint16(tStripByteCounts)) //  StripbyteCounts
-			err = binary.Write(img, enc, uint16(dtLong))           //  long
-			err = binary.Write(img, enc, uint32(1))
-			// fmt.Println( total_length)
-			err = binary.Write(img, enc, uint32(total_length)) //  image size
-
-			err = binary.Write(img, enc, uint16(tXResolution)) // Xresolution
-			err = binary.Write(img, enc, uint16(dtRational))   // rational
-			err = binary.Write(img, enc, uint32(1))
-			err = binary.Write(img, enc, uint32(xoffset)) //
-
-			err = binary.Write(img, enc, uint16(tYResolution)) // Xresolution
-			err = binary.Write(img, enc, uint16(dtRational))   //  Rational
-			err = binary.Write(img, enc, uint32(1))
-			err = binary.Write(img, enc, uint32(yoffset)) //
-
-			err = binary.Write(img, enc, uint16(tResolutionUnit)) // Xresolution
-			err = binary.Write(img, enc, uint16(dtShort))         //  value
-			err = binary.Write(img, enc, uint32(1))
-			err = binary.Write(img, enc, uint16(3)) //  cm
-			err = binary.Write(img, enc, uint16(0))
-
-			err = binary.Write(img, enc, uint32(0)) // next IFD = 0
-
-			// Xresolution value
-			err = binary.Write(img, enc, getuint32(nl_fr_w)*10)
-			err = binary.Write(img, enc, getuint32(s_fr_w))
-
-			// Yresoluton value
-			err = binary.Write(img, enc, getuint32(nl_fr_h)*10)
-			err = binary.Write(img, enc, getuint32(s_fr_h))
-
-			//write images
-			start := time.Now()
-
-			var elapse time.Duration
-
-			for r := 0; r < int(total_rec); r++ {
-				l1 := ebc2asc.Ebc2asci(buf[k : k+5])
-				long, _ = strconv.Atoi(string(l1))
-
-				//buf1 = bytes.NewReader(buf[k+250:k+252])
-				//err = binary.Read(buf1, Big, &imgl0)
-				err = binary.Read(bytes.NewReader(buf[k+250:k+252]), Big, &imgl)
-				//imgl := int(imgl0)
-				img.Write(buf[k+252 : k+252+int(imgl)])
-				k = k + long
-				//fmt.Println(r,imgl, "img len=",img.Len())
-			}
-
-			// Convert Structure to Json
-
-			pagemeta := &Pagemeta{}
-			pagemeta.DocumentID.CountryCode = pagmeta.Pub_office
-			pagemeta.DocumentID.PatentNumber = pagmeta.Doc_id
-			pagemeta.DocumentID.CountryCode = pagmeta.Kc
-
-			pagemeta.PublicationOffice = pagmeta.Pub_office
-			pagemeta.PageNumber, _ = strconv.Atoi(pagmeta.Page_number)
-			// pagemeta.PageIndicator = pagmeta.Content
-			pagemeta.MultiMedia.Tiff = true
-			pagemeta.TiffOffset.Start = 0
-			pagemeta.TiffOffset.End = pagemeta.TiffOffset.Start + img.Len()
-			/* wrtite tiff to files  */
-			//docid1        := strings.TrimLeft(string(docid)," ")
-			fulldocid := string(pub) + docid + string(kc)
-			// goLog.Info.Println("FULL:", len(fulldocid), fulldocid, string(pagenum))
-
-			if len(fulldocid) > 15 {
-				var meta []byte
-				err := json.Unmarshal(meta, &pagmeta)
-				goLog.Warning.Println(k, meta)
-				dump := "/tmp/dump_" + strconv.Itoa(pid)
-				files.WriteFile(dump, st33, 0644)
-				panic(err)
-			}
-
-			udirname_o := outputusermdDir + fulldocid
-			tdirname_o := outputTiffDir + fulldocid
-			if !combine {
-				Check(files.MakeDir(udirname_o, 0755))
-				Check(files.MakeDir(tdirname_o, 0755))
-				/*  WRITE TIFF IMAGES USING WriteFile*/
-				file_tiff_o := tdirname_o + string(os.PathSeparator) + string(pagenum) + ".tiff"
-				Check(files.WriteFile(file_tiff_o, img.Bytes(), 0644))
-				/* WRITE USERMD using Encode : From Structure to JSON File */
-				file_usermd_o := udirname_o + string(os.PathSeparator) + string(pagenum) + ".json"
-				if err := pagemeta.Encode(file_usermd_o); err != nil {
-					goLog.Warning.Println(hostname, pid, err, "Encoding", *pagemeta)
-				}
-			} else {
-				Check(files.MakeDir(tdirname_o, 0755))
-				Page.Metadata = *pagemeta
-				Page.Tiff.Size = img.Len()
-				Page.Tiff.Image = img.Bytes()
-				file_json_o := tdirname_o + string(os.PathSeparator) + string(pagenum) + ".json"
-				// goLog.Info.Println(file_json_o, Page.Size)
-				if err := Page.Encode(file_json_o); err != nil {
-					goLog.Warning.Println(hostname, pid, err, "Encoding", *Page)
-				}
-			}
-			elapse = time.Since(start)
-			total += 1
-			elapsetm += elapse
-
-			/* UPDATE CONTAINER MD STRUCTURE*/
-			// documentmeta.Date_drawup = pagmeta.Date_drawup
-			documentMetadata.BnsId.CountryCode = pagmeta.Pub_office
-			documentMetadata.BnsId.PubNumber = pagmeta.Doc_id
-			documentMetadata.BnsId.KindCode = pagmeta.Kc
-			documentMetadata.PubDate = pagmeta.Pub_date
-			documentMetadata.PublicationOffice = pagmeta.Pub_office
-			documentMetadata.MultiMedia.Tiff = true
-			documentMetadata.MultiMedia.Png = false
-
-			file_containermd_o = outputContainerDir + string(pub) + docid + string(kc) + ".json"
-
-			// reset img buffer for next image
-			img.Reset()
-			// get next images in the buffer
-			l = k
-			// goLog.Info.Printf("L=%d", l)
-			// } // loop for *****************************************
-			if pagmeta.Page_number == pagmeta.Total_pages {
-				// Create the container metadata
-
-				documentMetadata.TotalPage = 0
-				documentMetadata.TotalPage, _ = strconv.Atoi(pagmeta.Total_pages)
-				documentMetadata.DocId = pagmeta.Doc_id
-				if len(abs) > 0 {
-					documentMetadata.AbsRangePageNumber[0].Start = abs[0]
-					documentMetadata.AbsRangePageNumber[0].End = abs[len(abs)-1]
-				}
-				if len(bib) > 0 {
-					documentMetadata.BibliRangePageNumber[0].Start = bib[0]
-					documentMetadata.BibliRangePageNumber[0].End = bib[len(bib)-1]
-				}
-				if len(cla) > 0 {
-					documentMetadata.ClaimsRangePageNumber[0].Start = cla[0]
-					documentMetadata.ClaimsRangePageNumber[0].End = cla[len(cla)-1]
-				}
-				if len(desc) > 0 {
-					documentMetadata.DescRangePageNumber[0].Start = desc[0]
-					documentMetadata.DescRangePageNumber[0].End = desc[len(desc)-1]
-				}
-				if len(draw) > 0 {
-					documentMetadata.DrawRangePageNumber[0].Start = draw[0]
-					documentMetadata.DrawRangePageNumber[0].End = draw[len(draw)-1]
-				}
-				if len(srp) > 0 {
-					documentMetadata.SearchRepRangePageNumber[0].Start = srp[0]
-					documentMetadata.SearchRepRangePageNumber[0].End = srp[len(srp)-1]
-				}
-				if len(amd) > 0 {
-					documentMetadata.AmdRangePageNumber[0].Start = amd[0]
-					documentMetadata.AmdRangePageNumber[0].End = amd[len(amd)-1]
-				}
-				if err := documentMetadata.Encode(file_containermd_o); err != nil {
-					goLog.Warning.Println(hostname, pid, err, "Encoding", *pagemeta)
-				}
-				bib = bib[:0]
-				abs = abs[:0]
-				desc = desc[:0]
-				cla = cla[:0]
-				draw = draw[:0]
-				amd = amd[:0]
-				srp = srp[:0]
-			} // end write metadata
-		}
-	} // end input file
-
-	total1 := total * 1000000
-	goLog.Info.Println("Elapsetm:", elapsetm, "Number of images:", total, "Average ms:", float64(elapsetm)/float64(total1))
-	// goLog.Info.Printf("%s %d %5.2f|\n", "average ms=", total, float64(totaltime)/float64(total))
-	return err
+	//   REMOVED  =>  Check old bns for how to do
+	error := errors.New("Function has been removed")
+	return error
 }
 
-func AsyncHttpGets(urls []string, getHeader map[string]string) []*sproxyd.HttpResponse {
+func AsyncHttpGetPage(urls []string, getHeader map[string]string) []*sproxyd.HttpResponse {
 
 	ch := make(chan *sproxyd.HttpResponse)
 	responses := []*sproxyd.HttpResponse{}
@@ -866,7 +98,7 @@ func AsyncHttpGets(urls []string, getHeader map[string]string) []*sproxyd.HttpRe
 
 				resp.Body.Close()
 			}
-			ch <- &sproxyd.HttpResponse{url, resp, len(body), err}
+			ch <- &sproxyd.HttpResponse{url, resp, body, err}
 
 		}(url)
 	}
@@ -883,6 +115,55 @@ func AsyncHttpGets(urls []string, getHeader map[string]string) []*sproxyd.HttpRe
 			fmt.Printf(".")
 		}
 	}
+	return responses
+}
+
+func AsyncHttpGetPageType(urls []string, getHeader map[string]string) []*sproxyd.HttpResponse {
+
+	ch := make(chan *sproxyd.HttpResponse)
+	responses := []*sproxyd.HttpResponse{}
+
+	// fmt.Println(urls)
+	treq := 0
+	fmt.Printf("\n")
+	for _, url := range urls {
+		/* just in case, the requested page number is beyond the max number of pages */
+		if len(url) == 0 {
+			break
+		} else {
+			treq += 1
+		}
+		go func(url string) {
+			client := &http.Client{}
+			// fmt.Printf("fetching %s\n", url)
+			resp, err := GetPageType(client, url, getHeader)
+			var body []byte
+			if err == nil {
+				body, _ = ioutil.ReadAll(resp.Body)
+			} else {
+				if resp != nil { // resp == nil when there is no media type in the metadata
+					resp.Body.Close()
+				}
+			}
+			ch <- &sproxyd.HttpResponse{url, resp, body, err}
+
+		}(url)
+	}
+	// wait for http response  message
+	for {
+		select {
+		case r := <-ch:
+			// fmt.Printf("%s was fetched\n", r.Url)
+			responses = append(responses, r)
+			if len(responses) == treq /*len(urls)*/ {
+				// fmt.Println(responses)
+				return responses
+			}
+		case <-time.After(100 * time.Millisecond):
+			fmt.Printf(".")
+		}
+	}
+
 	return responses
 }
 
@@ -909,7 +190,7 @@ func AsyncHttpGetMetadatas(urls []string, getHeader map[string]string) []*sproxy
 			if err != nil {
 				resp.Body.Close()
 			}
-			ch <- &sproxyd.HttpResponse{url, resp, 0, err}
+			ch <- &sproxyd.HttpResponse{url, resp, nil, err}
 
 		}(url)
 	}
@@ -950,8 +231,7 @@ func AsyncHttpPuts(urls []string, bufa [][]byte, headera []map[string]string) []
 			if resp != nil {
 				resp.Body.Close()
 			}
-
-			ch <- &sproxyd.HttpResponse{url, resp, 0, err}
+			ch <- &sproxyd.HttpResponse{url, resp, nil, err}
 		}(url)
 	}
 	for {
@@ -990,7 +270,7 @@ func AsyncHttpPut2s(urls []string, bufa [][]byte, bufb [][]byte, headera []map[s
 				resp.Body.Close()
 			}
 
-			ch <- &sproxyd.HttpResponse{url, resp, 0, err}
+			ch <- &sproxyd.HttpResponse{url, resp, nil, err}
 		}(url)
 	}
 	for {
@@ -1029,7 +309,7 @@ func AsyncHttpUpdates(urls []string, bufa [][]byte, headera []map[string]string)
 				resp.Body.Close()
 			}
 
-			ch <- &sproxyd.HttpResponse{url, resp, 0, err}
+			ch <- &sproxyd.HttpResponse{url, resp, nil, err}
 		}(url)
 	}
 	for {
@@ -1082,7 +362,7 @@ func AsyncHttpUpdMetadatas(meta string, urls []string, headera []map[string]stri
 			if resp != nil {
 				resp.Body.Close()
 			}
-			ch <- &sproxyd.HttpResponse{url, resp, 0, err}
+			ch <- &sproxyd.HttpResponse{url, resp, nil, err}
 		}(url)
 	}
 	for {
@@ -1120,7 +400,7 @@ func AsyncHttpDeletes(urls []string) []*sproxyd.HttpResponse {
 				resp.Body.Close()
 			}
 
-			ch <- &sproxyd.HttpResponse{url, resp, 0, err}
+			ch <- &sproxyd.HttpResponse{url, resp, nil, err}
 		}(url)
 	}
 	for {

@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	goLog "moses/user/goLog"
 	"net/http"
-	goLog "user/goLog"
 )
 
 type Response struct {

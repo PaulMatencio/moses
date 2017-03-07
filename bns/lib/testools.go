@@ -39,7 +39,7 @@ func AsyncHttpGet(urls []string) []*sproxyd.HttpResponse {
 
 				resp.Body.Close()
 			}
-			ch <- &sproxyd.HttpResponse{url, resp, len(body), err}
+			ch <- &sproxyd.HttpResponse{url, resp, body, err}
 
 		}(url)
 	}
@@ -80,7 +80,7 @@ func AsyncHttpUpdate(urls []string, buf []byte, header map[string]string) []*spr
 			if resp != nil {
 				resp.Body.Close()
 			}
-			ch <- &sproxyd.HttpResponse{url, resp, 0, err}
+			ch <- &sproxyd.HttpResponse{url, resp, nil, err}
 		}(url)
 	}
 
@@ -119,7 +119,7 @@ func AsyncHttpPut(urls []string, buf []byte, header map[string]string) []*sproxy
 			if resp != nil {
 				resp.Body.Close()
 			}
-			ch <- &sproxyd.HttpResponse{url, resp, 0, err}
+			ch <- &sproxyd.HttpResponse{url, resp, nil, err}
 		}(url)
 	}
 
@@ -158,7 +158,7 @@ func AsyncHttpDelete(urls []string, deleteheader map[string]string) []*sproxyd.H
 			if resp != nil {
 				resp.Body.Close()
 			}
-			ch <- &sproxyd.HttpResponse{url, resp, 0, err}
+			ch <- &sproxyd.HttpResponse{url, resp, nil, err}
 		}(url)
 	}
 

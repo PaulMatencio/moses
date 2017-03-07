@@ -221,7 +221,7 @@ func main() {
 			elapstm := time.Since(time.Now())
 			total_docs += 1
 			var err error
-			docmeta := &bns.Docmeta{}
+			docmeta := &bns.DocumentMetadata{}
 			container_fn := container_file.Name()
 			split := strings.Split(container_fn, ".")
 			docid := split[0]
@@ -437,7 +437,7 @@ func main() {
 
 			for _, doc_files := range doc_entry {
 				/* loop on the number of pages for each directory (document) */
-				pagmd := &bns.Pagmeta{}
+				pagmd := &bns.Pagemeta{}
 				page := doc_files.Name()
 				page0 := strings.Split(page, ".")[0] // remove .tiff type
 
@@ -503,7 +503,7 @@ func main() {
 						err error
 					)
 					time1 = time.Now()
-					pagmd.Page_size = strconv.Itoa(len(buf))
+					pagmd.PageLength = len(buf)
 
 					if c, err = json.Marshal(&pagmd); err == nil {
 						putheader = map[string]string{
@@ -565,7 +565,7 @@ func main() {
 						err error
 					)
 					time1 = time.Now()
-					pagmd.Page_size = strconv.Itoa(len(buf))
+					pagmd.PageLength = len(buf)
 					if c, err = json.Marshal(&pagmd); err == nil {
 						putheader = map[string]string{
 							"Usermd":       base64.Encode64(c),

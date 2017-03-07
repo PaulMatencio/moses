@@ -3,12 +3,12 @@ package directory
 import (
 	"bufio"
 	"encoding/json"
+	sindexd "moses/sindexd/lib"
+	goLog "moses/user/goLog"
 	"net/http"
 	"os"
-	sindexd "sindexd/lib"
 	"strings"
 	"time"
-	goLog "user/goLog"
 )
 
 func DeleteKeys(client *http.Client, index *sindexd.Index_spec, dKey *[]string) (resp *http.Response, err error) {

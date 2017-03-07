@@ -1,0 +1,6 @@
+{
+"hosts":["http://10.12.201.11:81/sindexd.fcgi","http://10.12.201.12:81/sindexd.fcgi","http://10.12.201.21:81/sindexd.fcgi","http://10.12.201.22:81/sindexd.fcgi","http://10.12.201.31:81/sindexd.fcgi","http://10.12.201.32:81/sindexd.fcgi"], 
+"driver": "chord",
+"logpath": "/home/paul/sindexd/log"
+
+}

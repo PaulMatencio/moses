@@ -4,14 +4,15 @@ import (
 	"errors"
 
 	"bytes"
-	hostpool "github.com/bitly/go-hostpool"
 	"io"
 	"io/ioutil"
+	goLog "moses/user/goLog"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
-	goLog "user/goLog"
+
+	hostpool "github.com/bitly/go-hostpool"
 )
 
 func DoRequest(client *http.Client, req *http.Request, object []byte) (*http.Response, error) {
@@ -32,7 +33,7 @@ func DoRequest(client *http.Client, req *http.Request, object []byte) (*http.Res
 		req.URL.Host = u1.Host
 		req.Host = u1.Host
 		req.URL.Path = u1.Path + u.Path
-		//goLog.Trace.Println(host, u1.Host, u1.Path, req.URL.Path)
+		goLog.Trace.Println(host, u1.Host, u1.Path, req.URL.Path)
 		if r > 1 && req.ContentLength > 0 && len(object) > 0 {
 			var body io.Reader
 			body = bytes.NewBuffer(object)
@@ -42,7 +43,7 @@ func DoRequest(client *http.Client, req *http.Request, object []byte) (*http.Res
 				req.Body = rc
 			}
 		}
-		//goLog.Trace.Println(req.URL)
+		goLog.Trace.Println(req.URL)
 		if resp, err = client.Do(req); err != nil {
 			goLog.Error.Printf("Retry=%d, Url=%s Error=%s", r, req.URL, err.Error())
 			if strings.Index(err.Error(), "dial tcp") >= 0 {

@@ -63,5 +63,6 @@ func SetNewHost(Config Configuration) {
 	Driver = Config.Driver
 	Host = Host[:0]
 	Host = Config.GetHost()[0:]
+	// fmt.Println(HP, Driver, Host)
 
 }
