@@ -4,6 +4,7 @@ package main
 import (
 	directory "directory/lib"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -24,10 +25,10 @@ import (
 )
 
 var (
-	action, config, env, logPath, outDir, application, testname, hostname, pn, page, trace, media string
-	Trace                                                                                         bool
-	pid                                                                                           int
-	timeout                                                                                       time.Duration
+	action, config, env, logPath, outDir, application, testname, hostname, pn, page, trace, meta, image, media string
+	Trace, Meta, Image, PutObject                                                                              bool
+	pid                                                                                                        int
+	timeout                                                                                                    time.Duration
 )
 
 func usage() {
@@ -47,53 +48,103 @@ func check(e error) {
 }
 
 func writeMeta(outDir string, page string, metadata []byte) {
-
-	if !file.Exist(outDir) {
-		_ = os.MkdirAll(outDir, 0755)
+	if !Meta {
+		return
 	}
+
+	if err := checkOutdir(outDir); err != nil {
+		goLog.Error.Println(err)
+		return
+	}
+
 	myfile := outDir + string(os.PathSeparator) + bns.RemoveSlash(pn) + page + ".md"
 	goLog.Trace.Println("myfile:", myfile)
 	err := ioutil.WriteFile(myfile, metadata, 0644)
 	check(err)
 }
 
-func writeImage(outDir string, page string, media string, body []byte) {
+func writeImage(outDir string, page string, media string, body *[]byte) {
 
-	if !file.Exist(outDir) {
-		_ = os.MkdirAll(outDir, 0755)
+	if !Image {
+		return
 	}
+
+	if err := checkOutdir(outDir); err != nil {
+		goLog.Error.Println(err)
+		return
+	}
+
 	myfile := outDir + string(os.PathSeparator) + bns.RemoveSlash(pn) + page + "." + strings.ToLower(media)
 	goLog.Trace.Println("myfile:", myfile)
-	err := ioutil.WriteFile(myfile, body, 0644)
+	err := ioutil.WriteFile(myfile, *body, 0644)
 	check(err)
 }
 
-func buildBnsResponse(resp *http.Response, contentType string, body []byte) (bsnImage bns.BnsImages) {
+func buildBnsResponse(resp *http.Response, contentType string, body *[]byte) (bsnImage bns.BnsImages) {
 
 	bnsImage := bns.BnsImages{}
-	if pagemd, err := base64.Decode64(resp.Header["X-Scal-Usermd"][0]); err == nil {
+	bnsImage.Usermd = resp.Header["X-Scal-Usermd"][0]
+	if pagemd, err := base64.Decode64(bnsImage.Usermd); err == nil {
 		bnsImage.Pagemd = string(pagemd)
 		goLog.Trace.Println(bnsImage.Pagemd)
 	}
-	bnsImage.Image = body
+	bnsImage.Image = *body
 	bnsImage.ContentType = contentType
 	return bnsImage
+}
+
+func checkOutdir(outDir string) (err error) {
+
+	if len(outDir) == 0 {
+		err = errors.New("Please specify an output directory with -outDir argument")
+	} else if !file.Exist(outDir) {
+		err = os.MkdirAll(outDir, 0755)
+	}
+	return err
+}
+
+func putObject(bnsResponses *[]bns.BnsImages, urls []string) {
+
+	for i, bnsImage := range *bnsResponses {
+		usermd := bnsImage.Usermd
+		putheader := map[string]string{
+			"Usermd": usermd,
+		}
+		image := bnsImage.Image
+		fmt.Println(i, putheader, bnsImage.Pagemd, len(image))
+	}
+	//  AsyncHttpPuts(urls []string, bufa [][]byte, headera []map[string]string) []*sproxyd.HttpResponse {
 }
 
 func main() {
 
 	flag.Usage = usage
-	flag.StringVar(&action, "action", "", "<getPageMeta> <getDocumentMeta> <getPage> <getDocument> <GetPagerange>")
+	flag.StringVar(&action, "action", "", "<getPageMeta> <getDocumentMeta> <getPage> <getDocumentType> <getObjectt> <copyObject> <GetPagerange>")
 	flag.StringVar(&config, "config", "storage", "Config file")
 	flag.StringVar(&env, "env", "prod", "Environment")
-	flag.StringVar(&trace, "t", "0", "Trace")    // Trace
+	flag.StringVar(&trace, "t", "0", "Trace") // Trace
+	flag.StringVar(&meta, "meta", "0", "Save object meta in output Directory")
+	flag.StringVar(&image, "image", "0", "Save object image  type in output Directory")
 	flag.StringVar(&testname, "T", "getDoc", "") // Test name
 	flag.StringVar(&pn, "pn", "", "Publication number")
-	flag.StringVar(&page, "page", "", "page number")
+	flag.StringVar(&page, "page", "1", "page number")
 	flag.StringVar(&media, "media", "tiff", "media type: tiff/png/pdf")
-	flag.StringVar(&outDir, "outDir", "/home/paul/outPath", "output directory")
-	Trace, _ = strconv.ParseBool(trace)
+	flag.StringVar(&outDir, "outDir", "", "output directory")
 	flag.Parse()
+	Trace, _ = strconv.ParseBool(trace)
+	Meta, _ = strconv.ParseBool(meta)
+	Image, _ = strconv.ParseBool(image)
+
+	if action == "copyObject" {
+		action = "getObject"
+		PutObject = true
+	}
+
+	if PutObject {
+		Meta = false  // do not decode Metadata and write to files
+		Image = false // do not write Object to files
+	}
+
 	if len(action) == 0 {
 		usage()
 	}
@@ -110,10 +161,17 @@ func main() {
 	if len(config) != 0 {
 
 		if Config, err := sproxyd.GetConfig(config); err == nil {
+
 			logPath = Config.GetLogPath()
+			if len(outDir) == 0 {
+				outDir = Config.GetOutputDir()
+			}
 			sproxyd.SetNewProxydHost(Config)
 			sproxyd.Driver = Config.GetDriver()
+			sproxyd.SetNewTargetProxydHost(Config)
+			sproxyd.TargetDriver = Config.GetTargetDriver()
 			fmt.Println("INFO: Using config Hosts", sproxyd.Host, sproxyd.Driver, logPath)
+			fmt.Println("INFO: Using config target Hosts", sproxyd.TargetHost, sproxyd.TargetDriver, logPath)
 		} else {
 			sproxyd.HP = hostpool.NewEpsilonGreedy(sproxyd.Host, 0, &hostpool.LinearEpsilonValueCalculator{})
 			fmt.Println(err, "WARNING: Using default Hosts:", sproxyd.Host)
@@ -168,6 +226,12 @@ func main() {
 	start := time.Now()
 	page = "p" + page
 	pathname := env + "/" + pn
+
+	if action == "copyObject" {
+		action = "getObject"
+		PutObject = true
+	}
+
 	switch action {
 	case "getPageMeta":
 		pathname = pathname + "/" + page
@@ -179,7 +243,7 @@ func main() {
 			goLog.Error.Println(err)
 		}
 	case "getDocumentMeta":
-		// the document metatadata is the metadata the <pathname>
+		// the document's  metatadata is the metadata the object given <pathname>
 		docmd, err := bns.GetDocMetadata(client, pathname)
 		docmeta := bns.DocumentMetadata{}
 
@@ -194,14 +258,16 @@ func main() {
 			goLog.Error.Println(err)
 		}
 
-	case "getDocument":
+	case "getDocumentType":
 		// the document metatadata is the metadata the <pathname>
+		// all the Document's pages will be retrieved concurrently
 		docmd, err := bns.GetDocMetadata(client, pathname)
 		docmeta := bns.DocumentMetadata{}
 
 		if err == nil {
 			// goLog.Info.Println(string(usermd))
 			if err := json.Unmarshal(docmd, &docmeta); err != nil {
+				goLog.Error.Println(docmeta)
 				goLog.Error.Println(err)
 				os.Exit(2)
 			} else {
@@ -215,38 +281,122 @@ func main() {
 		// build []urls of pages  of the document to be fecthed
 		len := docmeta.TotalPage
 		urls := make([]string, len, len)
+
 		getHeader := map[string]string{}
 		getHeader["Content-Type"] = "image/" + strings.ToLower(media)
+
 		for i := 0; i < len; i++ {
 			urls[i] = pathname + "/p" + strconv.Itoa(i+1)
 		}
-		sproxyResponses := bns.AsyncHttpGetPageType(urls, getHeader)
+
+		// sproxyResponses := bns.AsyncHttpGetPageType(urls, getHeader)
+		sproxyResponses := bns.AsyncHttpGetPageType(urls, media)
+
+		// AsyncHttpGetPageType should already  close [defer resp.Body.Clsoe()] all open connections
 		bnsResponses := make([]bns.BnsImages, len, len)
 		var pagemd []byte
 		for i, v := range sproxyResponses {
 			if err := v.Err; err == nil { //
 				resp := v.Response
-				body := v.Body
-				bnsImage := buildBnsResponse(resp, getHeader["Content-Type"], body)
+				body := *v.Body
+				bnsImage := buildBnsResponse(resp, getHeader["Content-Type"], &body)
 				bnsResponses[i] = bnsImage
 				page = "p" + strconv.Itoa(i+1)
-				writeImage(outDir, page, media, bnsImage.Image)
-				if pagemd, err = base64.Decode64(resp.Header["X-Scal-Usermd"][0]); err == nil {
-					writeMeta(outDir, page, pagemd)
+				if Image {
+					writeImage(outDir, page, media, &bnsImage.Image)
+				}
+				if Meta {
+					if pagemd, err = base64.Decode64(resp.Header["X-Scal-Usermd"][0]); err == nil {
+						writeMeta(outDir, page, pagemd)
+					}
 				}
 			}
 		}
+	case "getObject":
+		// the document metatadata is the metadata the <pathname>
+		// all the Document's pages will be retrieved concurrently
+		var (
+			err           error
+			encoded_docmd string
+			docmd         []byte
+		)
+
+		if encoded_docmd, err = bns.GetEncodedMetadata(client, pathname); err == nil {
+			docmd, err = base64.Decode64(encoded_docmd)
+		}
+
+		docmeta := bns.DocumentMetadata{}
+
+		if err == nil {
+			// goLog.Info.Println(string(usermd))
+			if err := json.Unmarshal(docmd, &docmeta); err != nil {
+				goLog.Error.Println(docmeta)
+				goLog.Error.Println(err)
+				os.Exit(2)
+			} else {
+				writeMeta(outDir, "", docmd)
+			}
+
+		} else {
+			goLog.Error.Println(err)
+			os.Exit(2)
+		}
+		// build []urls of pages  of the document to be fecthed
+		len := docmeta.TotalPage
+		urls := make([]string, len, len)
+
+		getHeader := map[string]string{}
+		getHeader["Content-Type"] = "blob"
+
+		for i := 0; i < len; i++ {
+			urls[i] = pathname + "/p" + strconv.Itoa(i+1)
+		}
+
+		sproxyResponses := bns.AsyncHttpGetPage(urls, getHeader)
+
+		// AsyncHttpGetPageType should already  close [defer resp.Body.Clsoe()] all open connections
+		bnsResponses := make([]bns.BnsImages, len, len)
+		var pagemd []byte
+		for i, v := range sproxyResponses {
+			if err := v.Err; err == nil { //
+				resp := v.Response
+				body := *v.Body
+				usermd := resp.Header["X-Scal-Usermd"][0]
+				bnsImage := buildBnsResponse(resp, getHeader["Content-Type"], &body)
+
+				page = "p" + strconv.Itoa(i+1)
+				if Image {
+					writeImage(outDir, page, getHeader["Content-Type"], &bnsImage.Image)
+				}
+				if Meta {
+					if pagemd, err = base64.Decode64(usermd); err == nil {
+						writeMeta(outDir, page, pagemd)
+						bnsImage.Pagemd = string(pagemd)
+					}
+				}
+				bnsResponses[i] = bnsImage
+			}
+		}
+
+		if PutObject {
+			putObject(&bnsResponses, urls)
+		}
 
 	case "getPage":
+		// get a specific page of a document
+		// if -page is missing p1 is the default
 		pathname = pathname + "/" + page
+
 		getHeader := map[string]string{}
 		getHeader["Content-Type"] = "image/" + strings.ToLower(media)
+
 		var pagemd []byte
-		if resp, err := bns.GetPageType(client, pathname, getHeader); err == nil {
+		// if resp, err := bns.GetPageType(client, pathname, getHeader); err == nil {
+		if resp, err := bns.GetPageType(client, pathname, media); err == nil {
 			defer resp.Body.Close()
 			body, _ := ioutil.ReadAll(resp.Body)
-			bnsImage := buildBnsResponse(resp, getHeader["Content-Type"], body)
-			writeImage(outDir, page, media, bnsImage.Image)
+			bnsImage := buildBnsResponse(resp, getHeader["Content-Type"], &body)
+			writeImage(outDir, page, media, &bnsImage.Image)
 			if pagemd, err = base64.Decode64(resp.Header["X-Scal-Usermd"][0]); err == nil {
 				writeMeta(outDir, page, pagemd)
 			}
@@ -257,6 +407,7 @@ func main() {
 	default:
 		goLog.Info.Println("-action <action value> is missing")
 	}
-
-	goLog.Info.Println(time.Since(start))
+	duration := time.Since(start)
+	fmt.Println("total elapsed time:", duration)
+	goLog.Info.Println(duration)
 }

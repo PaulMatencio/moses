@@ -32,3 +32,31 @@ func GetMetadata(client *http.Client, path string) ([]byte, error) {
 	/* the resp,Body is closed by sproxyd.getMetadata */
 	return usermd, err
 }
+
+func GetEncodedMetadata(client *http.Client, path string) (string, error) {
+	// client := &http.Client{}
+	getHeader := map[string]string{}
+	var (
+		// usermd         []byte
+		encoded_usermd string
+		resp           *http.Response
+	)
+	err := error(nil)
+
+	if resp, err = sproxyd.GetMetadata(client, path, getHeader); err == nil {
+		switch resp.StatusCode {
+		case 200:
+			encoded_usermd = resp.Header["X-Scal-Usermd"][0]
+		case 404:
+			goLog.Warning.Println(resp.Request.URL.Path, resp.Status)
+		case 412:
+			goLog.Warning.Println(resp.Request.URL.Path, resp.Status, "key=", resp.Header["X-Scal-Ring-Key"], " does not exist")
+		case 422:
+			goLog.Error.Println(resp.Request.URL.Path, resp.Status, resp.Header["X-Scal-Ring-Status"])
+		default:
+			goLog.Info.Println(resp.Request.URL.Path, resp.Status)
+		}
+	}
+	/* the resp,Body is closed by sproxyd.getMetadata */
+	return encoded_usermd, err
+}

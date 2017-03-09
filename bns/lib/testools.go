@@ -39,7 +39,7 @@ func AsyncHttpGet(urls []string) []*sproxyd.HttpResponse {
 
 				resp.Body.Close()
 			}
-			ch <- &sproxyd.HttpResponse{url, resp, body, err}
+			ch <- &sproxyd.HttpResponse{url, resp, &body, err}
 
 		}(url)
 	}

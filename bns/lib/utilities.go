@@ -88,9 +88,8 @@ func AsyncHttpGetPage(urls []string, getHeader map[string]string) []*sproxyd.Htt
 		go func(url string) {
 			// fmt.Printf("Fetching %s \n", url)
 			client := &http.Client{}
-			//start := time.Now()
-			//var elapse time.Duration
 			resp, err := sproxyd.GetObject(client, url, getHeader)
+			// resp, err := GetPage(client, url, getHeader)
 			var body []byte
 			if err == nil {
 				body, _ = ioutil.ReadAll(resp.Body)
@@ -98,7 +97,7 @@ func AsyncHttpGetPage(urls []string, getHeader map[string]string) []*sproxyd.Htt
 
 				resp.Body.Close()
 			}
-			ch <- &sproxyd.HttpResponse{url, resp, body, err}
+			ch <- &sproxyd.HttpResponse{url, resp, &body, err}
 
 		}(url)
 	}
@@ -118,14 +117,15 @@ func AsyncHttpGetPage(urls []string, getHeader map[string]string) []*sproxyd.Htt
 	return responses
 }
 
-func AsyncHttpGetPageType(urls []string, getHeader map[string]string) []*sproxyd.HttpResponse {
-
+// func AsyncHttpGetPageType(urls []string, getHeader map[string]string) []*sproxyd.HttpResponse {
+func AsyncHttpGetPageType(urls []string, media string) []*sproxyd.HttpResponse {
 	ch := make(chan *sproxyd.HttpResponse)
 	responses := []*sproxyd.HttpResponse{}
 
 	// fmt.Println(urls)
 	treq := 0
 	fmt.Printf("\n")
+	client := &http.Client{}
 	for _, url := range urls {
 		/* just in case, the requested page number is beyond the max number of pages */
 		if len(url) == 0 {
@@ -133,19 +133,23 @@ func AsyncHttpGetPageType(urls []string, getHeader map[string]string) []*sproxyd
 		} else {
 			treq += 1
 		}
+
 		go func(url string) {
-			client := &http.Client{}
+			// client := &http.Client{}
 			// fmt.Printf("fetching %s\n", url)
-			resp, err := GetPageType(client, url, getHeader)
+
+			// resp, err := GetPageType(client, url, getHeader)
+			resp, err := GetPageType(client, url, media)
+			defer resp.Body.Close()
 			var body []byte
 			if err == nil {
 				body, _ = ioutil.ReadAll(resp.Body)
-			} else {
+			} /*else {
 				if resp != nil { // resp == nil when there is no media type in the metadata
 					resp.Body.Close()
 				}
-			}
-			ch <- &sproxyd.HttpResponse{url, resp, body, err}
+			} */
+			ch <- &sproxyd.HttpResponse{url, resp, &body, err}
 
 		}(url)
 	}
@@ -174,6 +178,7 @@ func AsyncHttpGetMetadatas(urls []string, getHeader map[string]string) []*sproxy
 
 	treq := 0
 	fmt.Printf("\n")
+	client := &http.Client{}
 	for _, url := range urls {
 		/* just in case, the requested page number is beyond the max number of pages */
 		if len(url) == 0 {
@@ -183,7 +188,9 @@ func AsyncHttpGetMetadatas(urls []string, getHeader map[string]string) []*sproxy
 		}
 		go func(url string) {
 			// fmt.Printf("Fetching %s \n", url)
-			client := &http.Client{}
+
+			// client := &http.Client{}
+
 			//start := time.Now()
 			//var elapse time.Duration
 			resp, err := sproxyd.GetMetadata(client, url, getHeader)
@@ -215,7 +222,7 @@ func AsyncHttpPuts(urls []string, bufa [][]byte, headera []map[string]string) []
 	ch := make(chan *sproxyd.HttpResponse)
 	responses := []*sproxyd.HttpResponse{}
 	treq := 0
-
+	clientw := &http.Client{}
 	for k, url := range urls {
 
 		if len(url) == 0 {
@@ -226,7 +233,7 @@ func AsyncHttpPuts(urls []string, bufa [][]byte, headera []map[string]string) []
 		go func(url string) {
 			var err error
 			var resp *http.Response
-			clientw := &http.Client{}
+			// clientw := &http.Client{}
 			resp, err = sproxyd.PutObject(clientw, url, bufa[k], headera[k])
 			if resp != nil {
 				resp.Body.Close()
@@ -253,7 +260,7 @@ func AsyncHttpPut2s(urls []string, bufa [][]byte, bufb [][]byte, headera []map[s
 	ch := make(chan *sproxyd.HttpResponse)
 	responses := []*sproxyd.HttpResponse{}
 	treq := 0
-
+	clientw := &http.Client{}
 	for k, url := range urls {
 
 		if len(url) == 0 {
@@ -264,7 +271,7 @@ func AsyncHttpPut2s(urls []string, bufa [][]byte, bufb [][]byte, headera []map[s
 		go func(url string) {
 			var err error
 			var resp *http.Response
-			clientw := &http.Client{}
+			// clientw := &http.Client{}
 			resp, err = sproxyd.PutObject(clientw, url, bufa[k], headera[k])
 			if resp != nil {
 				resp.Body.Close()
@@ -292,7 +299,7 @@ func AsyncHttpUpdates(urls []string, bufa [][]byte, headera []map[string]string)
 	ch := make(chan *sproxyd.HttpResponse)
 	responses := []*sproxyd.HttpResponse{}
 	treq := 0
-
+	clientw := &http.Client{}
 	for k, url := range urls {
 
 		if len(url) == 0 {
@@ -303,7 +310,7 @@ func AsyncHttpUpdates(urls []string, bufa [][]byte, headera []map[string]string)
 		go func(url string) {
 			var err error
 			var resp *http.Response
-			clientw := &http.Client{}
+			// clientw := &http.Client{}
 			resp, err = sproxyd.UpdObject(clientw, url, bufa[k], headera[k])
 			if resp != nil {
 				resp.Body.Close()
@@ -333,7 +340,7 @@ func AsyncHttpUpdMetadatas(meta string, urls []string, headera []map[string]stri
 	ch := make(chan *sproxyd.HttpResponse)
 	responses := []*sproxyd.HttpResponse{}
 	treq := 0
-
+	clientw := &http.Client{}
 	for k, url := range urls {
 
 		if len(url) == 0 {
@@ -348,7 +355,7 @@ func AsyncHttpUpdMetadatas(meta string, urls []string, headera []map[string]stri
 				err  error
 				resp *http.Response
 			)
-			clientw := &http.Client{}
+			// clientw := &http.Client{}
 			um, _ := base64.Decode64(headera[k]["Usermd"])
 			if err = json.Unmarshal(um, &pagmeta); err == nil {
 				// SET NEW METATA HERE
@@ -383,7 +390,7 @@ func AsyncHttpDeletes(urls []string) []*sproxyd.HttpResponse {
 	ch := make(chan *sproxyd.HttpResponse)
 	responses := []*sproxyd.HttpResponse{}
 	treq := 0
-
+	clientw := &http.Client{}
 	for _, url := range urls {
 
 		if len(url) == 0 {
@@ -394,7 +401,7 @@ func AsyncHttpDeletes(urls []string) []*sproxyd.HttpResponse {
 		go func(url string) {
 			var err error
 			var resp *http.Response
-			clientw := &http.Client{}
+			// clientw := &http.Client{}
 			resp, err = sproxyd.DeleteObject(clientw, url)
 			if resp != nil {
 				resp.Body.Close()

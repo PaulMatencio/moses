@@ -7,16 +7,19 @@ import (
 	goLog "moses/user/goLog"
 	"net/http"
 	"strconv"
+	"strings"
 )
 
+// GetPage  will be used by  AsyncHttpGetPage for concurrenr getPage
 func GetPage(client *http.Client, path string) (*http.Response, error) {
-
 	header := map[string]string{}
 	return sproxyd.GetObject(client, path, header)
 
 }
 
-func GetPageType(client *http.Client, path string, getHeader map[string]string) (*http.Response, error) {
+// GetPageType will be used by  AsyncHttpGetPageType for concurrent Getpagetype
+// func GetPageType(client *http.Client, path string, getHeader map[string]string) (*http.Response, error) {
+func GetPageType(client *http.Client, path string, media string) (*http.Response, error) {
 	//  getrHeader must contain Content-type
 	var (
 		usermd []byte
@@ -36,6 +39,9 @@ func GetPageType(client *http.Client, path string, getHeader map[string]string) 
 		if err := json.Unmarshal(usermd, &pagemeta); err != nil {
 			return nil, err
 		}
+
+		getHeader := map[string]string{}
+		getHeader["Content-Type"] = "image/" + strings.ToLower(media)
 
 		if contentType, ok := getHeader["Content-Type"]; ok {
 

@@ -208,8 +208,9 @@ type Configuration struct {
 }
 
 type BnsImages struct {
-	Pagemd      string `json: "pagemeta"`
-	ContentType string `json: "content-type"`
+	Pagemd      string `json: "pagemeta,omitempty"`
+	Usermd      string `json: "usermd,omitempty"`
+	ContentType string `json: "content-type,omitempty"`
 	Image       []byte `json: "images"`
 }
 
