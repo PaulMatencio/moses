@@ -18,5 +18,5 @@ func GetObject(client *http.Client, path string, getHeader map[string]string) (*
 		req.Header.Add("If-Unmodified-Since", ifunmod)
 	}
 	// resp, err := client.Do(req)
-	return DoRequest(client, req, nil)
+	return DoRequest(HP, client, req, nil)
 }

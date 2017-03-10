@@ -25,5 +25,5 @@ func UpdObject(client *http.Client, path string, object []byte, putHeader map[st
 
 	//resp, err := client.Do(req)
 
-	return DoRequest(client, req, object)
+	return DoRequest(HP, client, req, object)
 }

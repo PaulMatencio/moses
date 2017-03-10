@@ -26,7 +26,7 @@ import (
 
 var (
 	action, config, env, logPath, outDir, application, testname, hostname, pn, page, trace, meta, image, media string
-	Trace, Meta, Image, PutObject                                                                              bool
+	Trace, Meta, Image, CopyObject                                                                             bool
 	pid                                                                                                        int
 	timeout                                                                                                    time.Duration
 )
@@ -103,17 +103,62 @@ func checkOutdir(outDir string) (err error) {
 	return err
 }
 
-func putObject(bnsResponses *[]bns.BnsImages, urls []string) {
+func copyObject(bnsResponses *[]bns.BnsImages, urls []string) {
+
+	// do not forget to write the document metadata
+	// urls must be changed to use the target hostpool
+	dim := len(*bnsResponses)
+	headera := make([]map[string]string, dim, dim)
+	bufera := make([][]byte, dim, dim)
 
 	for i, bnsImage := range *bnsResponses {
 		usermd := bnsImage.Usermd
-		putheader := map[string]string{
+		headera[i] = map[string]string{
 			"Usermd": usermd,
 		}
-		image := bnsImage.Image
-		fmt.Println(i, putheader, bnsImage.Pagemd, len(image))
+		bufera[i] = bnsImage.Image
+		fmt.Println(i, headera[i], usermd, len(bufera[i]))
 	}
-	//  AsyncHttpPuts(urls []string, bufa [][]byte, headera []map[string]string) []*sproxyd.HttpResponse {
+
+	results := bns.AsyncHttpPuts(sproxyd.TargetHP, urls, bufera, headera)
+
+	ok := 0
+	req := len(urls)
+
+	for _, result := range results {
+
+		if result.Err != nil {
+			goLog.Trace.Printf("%s %d %s status: %s\n", hostname, pid, result.Url, result.Err)
+			continue
+		}
+
+		resp := result.Response
+		url := result.Url
+		if resp != nil {
+			goLog.Trace.Printf("%s %d %s status: %s\n", hostname, pid, url,
+				result.Response.Status)
+		} else {
+			goLog.Error.Printf("%s %d %s %s %s", hostname, pid, url, action, "failed")
+			continue
+		}
+
+		switch resp.StatusCode {
+		case 200:
+			goLog.Trace.Println(hostname, pid, url, resp.Status, resp.Header["X-Scal-Ring-Key"])
+			ok += 1
+		case 412:
+			goLog.Warning.Println(hostname, pid, url, resp.Status, "key=", resp.Header["X-Scal-Ring-Key"], "already exist")
+
+		case 422:
+			goLog.Error.Println(hostname, pid, url, resp.Status, resp.Header["X-Scal-Ring-Status"])
+		default:
+			goLog.Warning.Println(hostname, pid, url, resp.Status)
+		}
+		resp.Body.Close()
+	}
+	if ok < req {
+		goLog.Warning.Println(hostname, pid, ok, req, "#ok < #req => Check Warning or Error log")
+	}
 }
 
 func main() {
@@ -137,10 +182,10 @@ func main() {
 
 	if action == "copyObject" {
 		action = "getObject"
-		PutObject = true
+		CopyObject = true
 	}
 
-	if PutObject {
+	if CopyObject {
 		Meta = false  // do not decode Metadata and write to files
 		Image = false // do not write Object to files
 	}
@@ -229,7 +274,7 @@ func main() {
 
 	if action == "copyObject" {
 		action = "getObject"
-		PutObject = true
+		CopyObject = true
 	}
 
 	switch action {
@@ -346,7 +391,8 @@ func main() {
 		urls := make([]string, len, len)
 
 		getHeader := map[string]string{}
-		getHeader["Content-Type"] = "blob"
+		ct := "application/binary"
+		getHeader["Content-Type"] = ct
 
 		for i := 0; i < len; i++ {
 			urls[i] = pathname + "/p" + strconv.Itoa(i+1)
@@ -362,11 +408,11 @@ func main() {
 				resp := v.Response
 				body := *v.Body
 				usermd := resp.Header["X-Scal-Usermd"][0]
-				bnsImage := buildBnsResponse(resp, getHeader["Content-Type"], &body)
+				bnsImage := buildBnsResponse(resp, ct, &body)
 
 				page = "p" + strconv.Itoa(i+1)
 				if Image {
-					writeImage(outDir, page, getHeader["Content-Type"], &bnsImage.Image)
+					writeImage(outDir, page, ct, &bnsImage.Image)
 				}
 				if Meta {
 					if pagemd, err = base64.Decode64(usermd); err == nil {
@@ -378,8 +424,8 @@ func main() {
 			}
 		}
 
-		if PutObject {
-			putObject(&bnsResponses, urls)
+		if CopyObject {
+			copyObject(&bnsResponses, urls)
 		}
 
 	case "getPage":

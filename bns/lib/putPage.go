@@ -2,14 +2,17 @@ package bns
 
 import (
 	"bytes"
+	"fmt"
 	sproxyd "moses/sproxyd/lib"
 	goLog "moses/user/goLog"
 	"net/http"
 	"time"
+
+	hostpool "github.com/bitly/go-hostpool"
 )
 
 //func PutPage(client *http.Client, path string, img *bytes.Buffer, usermd []byte) (error, time.Duration) {
-func PutPage(client *http.Client, path string, img *bytes.Buffer, putheader map[string]string) (error, time.Duration) {
+func PutPage(hspool hostpool.HostPool, client *http.Client, path string, img *bytes.Buffer, putheader map[string]string) (error, time.Duration) {
 	/*
 		putheader := map[string]string{
 			"Usermd":       base64.Encode64(usermd),
@@ -20,7 +23,7 @@ func PutPage(client *http.Client, path string, img *bytes.Buffer, putheader map[
 	var resp *http.Response
 	start := time.Now()
 	var elapse time.Duration
-	if resp, err = sproxyd.PutObject(client, path, img.Bytes(), putheader); err != nil {
+	if resp, err = sproxyd.PutObject(hspool, client, path, img.Bytes(), putheader); err != nil {
 		goLog.Error.Println(err)
 	} else {
 		elapse = time.Since(start)
@@ -37,4 +40,84 @@ func PutPage(client *http.Client, path string, img *bytes.Buffer, putheader map[
 		resp.Body.Close() // Sproxyd did  not close the connection
 	}
 	return err, elapse
+}
+
+func AsyncHttpPuts(hspool hostpool.HostPool, urls []string, bufa [][]byte, headera []map[string]string) []*sproxyd.HttpResponse {
+
+	ch := make(chan *sproxyd.HttpResponse)
+	responses := []*sproxyd.HttpResponse{}
+	treq := 0
+	client := &http.Client{} // one client
+
+	for k, url := range urls {
+
+		if len(url) == 0 {
+			break
+		} else {
+			treq += 1
+		}
+		go func(url string) {
+			var err error
+			var resp *http.Response
+			// clientw := &http.Client{}
+			resp, err = sproxyd.PutObject(hspool, client, url, bufa[k], headera[k])
+			if resp != nil {
+				resp.Body.Close()
+			}
+			ch <- &sproxyd.HttpResponse{url, resp, nil, err}
+		}(url)
+	}
+	for {
+		select {
+		case r := <-ch:
+			responses = append(responses, r)
+			if len(responses) == treq {
+				return responses
+			}
+		case <-time.After(sproxyd.Timeout * time.Millisecond):
+			fmt.Printf(".")
+		}
+	}
+	return responses
+}
+
+func AsyncHttpPut2s(hspool hostpool.HostPool, urls []string, bufa [][]byte, bufb [][]byte, headera []map[string]string) []*sproxyd.HttpResponse {
+
+	ch := make(chan *sproxyd.HttpResponse)
+	responses := []*sproxyd.HttpResponse{}
+	treq := 0
+
+	client := &http.Client{} // one connection for all request
+
+	for k, url := range urls {
+
+		if len(url) == 0 {
+			break
+		} else {
+			treq += 1
+		}
+		go func(url string) {
+			var err error
+			var resp *http.Response
+			// clientw := &http.Client{}
+			resp, err = sproxyd.PutObject(hspool, client, url, bufa[k], headera[k])
+			if resp != nil {
+				resp.Body.Close()
+			}
+
+			ch <- &sproxyd.HttpResponse{url, resp, nil, err}
+		}(url)
+	}
+	for {
+		select {
+		case r := <-ch:
+			responses = append(responses, r)
+			if len(responses) == treq {
+				return responses
+			}
+		case <-time.After(sproxyd.Timeout * time.Millisecond):
+			fmt.Printf(".")
+		}
+	}
+	return responses
 }

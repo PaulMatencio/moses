@@ -2,6 +2,7 @@ package bns
 
 import (
 	"bytes"
+	"fmt"
 	sproxyd "moses/sproxyd/lib"
 	goLog "moses/user/goLog"
 	"net/http"
@@ -42,4 +43,42 @@ func UpdatePage(client *http.Client, path string, img *bytes.Buffer, putheader m
 	}
 	return err, elapse
 
+}
+func AsyncHttpUpdates(urls []string, bufa [][]byte, headera []map[string]string) []*sproxyd.HttpResponse {
+
+	ch := make(chan *sproxyd.HttpResponse)
+	responses := []*sproxyd.HttpResponse{}
+	treq := 0
+	clientw := &http.Client{}
+	for k, url := range urls {
+
+		if len(url) == 0 {
+			break
+		} else {
+			treq += 1
+		}
+		go func(url string) {
+			var err error
+			var resp *http.Response
+			// clientw := &http.Client{}
+			resp, err = sproxyd.UpdObject(clientw, url, bufa[k], headera[k])
+			if resp != nil {
+				resp.Body.Close()
+			}
+
+			ch <- &sproxyd.HttpResponse{url, resp, nil, err}
+		}(url)
+	}
+	for {
+		select {
+		case r := <-ch:
+			responses = append(responses, r)
+			if len(responses) == treq {
+				return responses
+			}
+		case <-time.After(sproxyd.Timeout * time.Millisecond):
+			fmt.Printf(".")
+		}
+	}
+	return responses
 }

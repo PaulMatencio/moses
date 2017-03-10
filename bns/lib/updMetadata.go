@@ -1,6 +1,8 @@
 package bns
 
 import (
+	"encoding/json"
+	"fmt"
 	sproxyd "moses/sproxyd/lib"
 	base64 "moses/user/base64j"
 	goLog "moses/user/goLog"
@@ -39,4 +41,57 @@ func UpdMetadata(client *http.Client, path string, usermd []byte) (error, time.D
 	}
 	return err, elapse
 
+}
+
+func AsyncHttpUpdMetadatas(meta string, urls []string, headera []map[string]string) []*sproxyd.HttpResponse {
+	// if meta == "Page"
+	// Update meta data read from a File
+	// TODO Update meta data reda from the Ring
+	ch := make(chan *sproxyd.HttpResponse)
+	responses := []*sproxyd.HttpResponse{}
+	treq := 0
+	clientw := &http.Client{}
+	for k, url := range urls {
+
+		if len(url) == 0 {
+			break
+		} else {
+			treq += 1
+		}
+		go func(url string) {
+			var (
+				pagmeta Pagemeta // OLD METADATA
+				// usermd  []byte
+				err  error
+				resp *http.Response
+			)
+			// clientw := &http.Client{}
+			um, _ := base64.Decode64(headera[k]["Usermd"])
+			if err = json.Unmarshal(um, &pagmeta); err == nil {
+				// SET NEW METATA HERE
+				// pmd := pagmeta.ToPagemeta()
+				//	if usermd, err = json.Marshal(&pmd); err == nil {
+				//	headera[k]["Usermd"] = base64.Encode64(usermd)
+				//	}
+			}
+			resp, err = sproxyd.UpdMetadata(clientw, url, headera[k])
+
+			if resp != nil {
+				resp.Body.Close()
+			}
+			ch <- &sproxyd.HttpResponse{url, resp, nil, err}
+		}(url)
+	}
+	for {
+		select {
+		case r := <-ch:
+			responses = append(responses, r)
+			if len(responses) == treq {
+				return responses
+			}
+		case <-time.After(sproxyd.Timeout * time.Millisecond):
+			fmt.Printf(".")
+		}
+	}
+	return responses
 }

@@ -14,5 +14,5 @@ func GetMetadata(client *http.Client, path string, getHeader map[string]string) 
 	if ifunmod, ok := getHeader["If-Unmodified-Since"]; ok {
 		req.Header.Add("If-Unmodified-Since", ifunmod)
 	}
-	return DoRequest(client, req, nil)
+	return DoRequest(HP, client, req, nil)
 }

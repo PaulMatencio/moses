@@ -17,8 +17,8 @@ var (
 	TargetHP  hostpool.HostPool
 	// Driver    = "chord"
 	Driver       = "bparc"
-	TargetDriver = "chord"
-	DummyHost    = "http://0.0.0.0:81/"
+	TargetDriver = "bpchord"
+	DummyHost    = "http://0.0.0.0:81/" // to be used by doRequest.go  to build the url with hostpool
 	Timeout      = time.Duration(50)
 	Host         = []string{"http://10.12.201.11:81/proxy/bparc/", "http://10.12.201.12:81/proxy/bparc/", "http://10.11.201.21:81/proxy/bparc/",
 		"http://10.11.201.22:81/proxy/bparc/", "http://10.11.201.31:81/proxy/bparc/", "http://10.11.201.31:81/proxy/bparc/"}

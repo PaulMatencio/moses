@@ -1,10 +1,12 @@
 package bns
 
 import (
+	"fmt"
 	sproxyd "moses/sproxyd/lib"
 	base64 "moses/user/base64j"
 	goLog "moses/user/goLog"
 	"net/http"
+	"time"
 )
 
 func GetMetadata(client *http.Client, path string) ([]byte, error) {
@@ -59,4 +61,50 @@ func GetEncodedMetadata(client *http.Client, path string) (string, error) {
 	}
 	/* the resp,Body is closed by sproxyd.getMetadata */
 	return encoded_usermd, err
+}
+
+func AsyncHttpGetMetadatas(urls []string, getHeader map[string]string) []*sproxyd.HttpResponse {
+
+	ch := make(chan *sproxyd.HttpResponse)
+	responses := []*sproxyd.HttpResponse{}
+
+	treq := 0
+	fmt.Printf("\n")
+	client := &http.Client{}
+	for _, url := range urls {
+		/* just in case, the requested page number is beyond the max number of pages */
+		if len(url) == 0 {
+			break
+		} else {
+			treq += 1
+		}
+		go func(url string) {
+			// fmt.Printf("Fetching %s \n", url)
+
+			// client := &http.Client{}
+
+			//start := time.Now()
+			//var elapse time.Duration
+			resp, err := sproxyd.GetMetadata(client, url, getHeader)
+			if err != nil {
+				resp.Body.Close()
+			}
+			ch <- &sproxyd.HttpResponse{url, resp, nil, err}
+
+		}(url)
+	}
+	// wait for http response  message
+	for {
+		select {
+		case r := <-ch:
+			// fmt.Printf("%s was fetched\n", r.url)
+			responses = append(responses, r)
+			if len(responses) == treq /*len(urls)*/ {
+				return responses
+			}
+		case <-time.After(100 * time.Millisecond):
+			fmt.Printf(".")
+		}
+	}
+	return responses
 }

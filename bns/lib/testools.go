@@ -6,6 +6,8 @@ import (
 	sproxyd "moses/sproxyd/lib"
 	"net/http"
 	"time"
+
+	hostpool "github.com/bitly/go-hostpool"
 )
 
 // Used to put/update/get a same object multiple times
@@ -98,7 +100,7 @@ func AsyncHttpUpdate(urls []string, buf []byte, header map[string]string) []*spr
 	return responses
 }
 
-func AsyncHttpPut(urls []string, buf []byte, header map[string]string) []*sproxyd.HttpResponse {
+func AsyncHttpPut(hspool hostpool.HostPool, urls []string, buf []byte, header map[string]string) []*sproxyd.HttpResponse {
 
 	ch := make(chan *sproxyd.HttpResponse)
 	responses := []*sproxyd.HttpResponse{}
@@ -115,7 +117,7 @@ func AsyncHttpPut(urls []string, buf []byte, header map[string]string) []*sproxy
 			var err error
 			var resp *http.Response
 			clientw := &http.Client{}
-			resp, err = sproxyd.PutObject(clientw, url, buf, header)
+			resp, err = sproxyd.PutObject(hspool, clientw, url, buf, header)
 			if resp != nil {
 				resp.Body.Close()
 			}

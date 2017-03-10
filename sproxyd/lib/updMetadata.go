@@ -14,7 +14,7 @@ func UpdMetadata(client *http.Client, path string, updHeader map[string]string) 
 		req.Header.Add("x-scal-cmd", "update-usermd") // tell Scality Ring to Update only the metadata
 		req.Header.Add("If-Match", "*")
 		//resp, err := client.Do(req)
-		return DoRequest(client, req, nil)
+		return DoRequest(HP, client, req, nil)
 	} else {
 		// custom http response
 		resp := new(http.Response)

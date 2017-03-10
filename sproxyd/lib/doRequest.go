@@ -15,7 +15,7 @@ import (
 	hostpool "github.com/bitly/go-hostpool"
 )
 
-func DoRequest(client *http.Client, req *http.Request, object []byte) (*http.Response, error) {
+func DoRequest(hspool hostpool.HostPool, client *http.Client, req *http.Request, object []byte) (*http.Response, error) {
 	var (
 		resp     *http.Response
 		err      error
@@ -27,7 +27,8 @@ func DoRequest(client *http.Client, req *http.Request, object []byte) (*http.Res
 	waittime = 50 * time.Millisecond
 	//goLog.Trace.Println(req.Method, req.Header, u.Host, u.Path, len(object))
 	for r = 1; r <= 3; r++ {
-		hpool = HP.Get()
+		// hpool = HP.Get()
+		hpool = hspool.Get()
 		host := hpool.Host()
 		u1, _ := url.Parse(host)
 		req.URL.Host = u1.Host

@@ -1,6 +1,7 @@
 package bns
 
 import (
+	"fmt"
 	sproxyd "moses/sproxyd/lib"
 	goLog "moses/user/goLog"
 	"net/http"
@@ -34,4 +35,43 @@ func DeletePage(client *http.Client, path string) (error, time.Duration) {
 		resp.Body.Close()
 	}
 	return err, elapse
+}
+
+func AsyncHttpDeletes(urls []string) []*sproxyd.HttpResponse {
+	ch := make(chan *sproxyd.HttpResponse)
+	responses := []*sproxyd.HttpResponse{}
+	treq := 0
+	clientw := &http.Client{}
+	for _, url := range urls {
+
+		if len(url) == 0 {
+			break
+		} else {
+			treq += 1
+		}
+		go func(url string) {
+			var err error
+			var resp *http.Response
+			// clientw := &http.Client{}
+			resp, err = sproxyd.DeleteObject(clientw, url)
+			if resp != nil {
+				resp.Body.Close()
+			}
+
+			ch <- &sproxyd.HttpResponse{url, resp, nil, err}
+		}(url)
+	}
+	for {
+		select {
+		case r := <-ch:
+			responses = append(responses, r)
+			if len(responses) == treq {
+				return responses
+			}
+		case <-time.After(sproxyd.Timeout * time.Millisecond):
+			fmt.Printf(".")
+		}
+	}
+	return responses
+
 }

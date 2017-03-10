@@ -5,9 +5,11 @@ import (
 	"bytes"
 	"net/http"
 	"strconv"
+
+	hostpool "github.com/bitly/go-hostpool"
 )
 
-func PutObject(client *http.Client, path string, object []byte, putHeader map[string]string) (*http.Response, error) {
+func PutObject(hspool hostpool.HostPool, client *http.Client, path string, object []byte, putHeader map[string]string) (*http.Response, error) {
 
 	url := DummyHost + path
 	req, _ := http.NewRequest("PUT", url, bytes.NewBuffer(object))
@@ -26,6 +28,6 @@ func PutObject(client *http.Client, path string, object []byte, putHeader map[st
 		req.Header.Add("X-Scal-Replica-Policy", policy)
 	}
 	req.Header.Add("If-None-Match", "*")
-	return DoRequest(client, req, object)
+	return DoRequest(hspool, client, req, object)
 
 }

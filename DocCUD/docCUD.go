@@ -3,13 +3,15 @@ package main
 import (
 	bns "bns/lib"
 	"bytes"
-	directory "directory/lib"
 	"encoding/json"
 	"flag"
 	"fmt"
-	hostpool "github.com/bitly/go-hostpool"
 	"io"
 	"io/ioutil"
+	directory "moses/directory/lib"
+	base64 "moses/user/base64j"
+	files "moses/user/files/lib"
+	goLog "moses/user/goLog"
 	"net/http"
 	"os"
 	"path"
@@ -17,12 +19,12 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	base64 "user/base64j"
-	files "user/files/lib"
-	goLog "user/goLog"
+
+	hostpool "github.com/bitly/go-hostpool"
 	//imaging "github.com/disintegration/imaging"
-	tiff "golang.org/x/image/tiff"
 	"image"
+
+	tiff "golang.org/x/image/tiff"
 )
 
 func usage() {
