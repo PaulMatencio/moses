@@ -74,3 +74,19 @@ func DoRequest(hspool hostpool.HostPool, client *http.Client, req *http.Request,
 exit:
 	return resp, err
 }
+
+func DoRequestTest(hspool hostpool.HostPool, client *http.Client, req *http.Request, object []byte) (*http.Response, error) {
+	var hpool hostpool.HostPoolResponse
+	u := req.URL
+	goLog.Trace.Println(req.Method, req.Header, u.Host, u.Path, len(object))
+	// hpool = HP.Get()
+	hpool = hspool.Get()
+	host := hpool.Host()
+	u1, _ := url.Parse(host)
+	req.URL.Host = u1.Host
+	req.Host = u1.Host
+	req.URL.Path = u1.Path + u.Path
+	goLog.Trace.Println(host, u1.Host, req.URL)
+	hpool.Mark(nil)
+	return nil, nil
+}

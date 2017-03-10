@@ -25,10 +25,10 @@ import (
 )
 
 var (
-	action, config, env, logPath, outDir, application, testname, hostname, pn, page, trace, meta, image, media string
-	Trace, Meta, Image, CopyObject                                                                             bool
-	pid                                                                                                        int
-	timeout                                                                                                    time.Duration
+	action, config, env, logPath, outDir, application, testname, hostname, pn, page, trace, test, meta, image, media string
+	Trace, Meta, Image, CopyObject, Test                                                                             bool
+	pid                                                                                                              int
+	timeout                                                                                                          time.Duration
 )
 
 func usage() {
@@ -103,62 +103,46 @@ func checkOutdir(outDir string) (err error) {
 	return err
 }
 
-func copyObject(bnsResponses *[]bns.BnsImages, urls []string) {
+func copyObject(hspool hostpool.HostPool, client *http.Client, url string, buf []byte, header map[string]string) {
 
-	// do not forget to write the document metadata
-	// urls must be changed to use the target hostpool
-	dim := len(*bnsResponses)
-	headera := make([]map[string]string, dim, dim)
-	bufera := make([][]byte, dim, dim)
+	result := bns.AsyncHttpCopy(sproxyd.TargetHP, client, url, buf, header)
 
-	for i, bnsImage := range *bnsResponses {
-		usermd := bnsImage.Usermd
-		headera[i] = map[string]string{
-			"Usermd": usermd,
-		}
-		bufera[i] = bnsImage.Image
-		fmt.Println(i, headera[i], usermd, len(bufera[i]))
+	if result.Err != nil {
+		goLog.Trace.Printf("%s %d %s status: %s\n", hostname, pid, result.Url, result.Err)
+		return
 	}
 
-	results := bns.AsyncHttpPuts(sproxyd.TargetHP, urls, bufera, headera)
+	resp := result.Response
 
-	ok := 0
-	req := len(urls)
+	if resp != nil {
+		goLog.Trace.Printf("%s %d %s status: %s\n", hostname, pid, url,
+			result.Response.Status)
+	} else {
+		goLog.Error.Printf("%s %d %s %s %s", hostname, pid, url, action, "failed")
 
-	for _, result := range results {
-
-		if result.Err != nil {
-			goLog.Trace.Printf("%s %d %s status: %s\n", hostname, pid, result.Url, result.Err)
-			continue
-		}
-
-		resp := result.Response
-		url := result.Url
-		if resp != nil {
-			goLog.Trace.Printf("%s %d %s status: %s\n", hostname, pid, url,
-				result.Response.Status)
-		} else {
-			goLog.Error.Printf("%s %d %s %s %s", hostname, pid, url, action, "failed")
-			continue
-		}
-
-		switch resp.StatusCode {
-		case 200:
-			goLog.Trace.Println(hostname, pid, url, resp.Status, resp.Header["X-Scal-Ring-Key"])
-			ok += 1
-		case 412:
-			goLog.Warning.Println(hostname, pid, url, resp.Status, "key=", resp.Header["X-Scal-Ring-Key"], "already exist")
-
-		case 422:
-			goLog.Error.Println(hostname, pid, url, resp.Status, resp.Header["X-Scal-Ring-Status"])
-		default:
-			goLog.Warning.Println(hostname, pid, url, resp.Status)
-		}
-		resp.Body.Close()
 	}
-	if ok < req {
-		goLog.Warning.Println(hostname, pid, ok, req, "#ok < #req => Check Warning or Error log")
+
+	switch resp.StatusCode {
+	case 200:
+		goLog.Trace.Println(hostname, pid, url, resp.Status, resp.Header["X-Scal-Ring-Key"])
+
+	case 412:
+		goLog.Warning.Println(hostname, pid, url, resp.Status, "key=", resp.Header["X-Scal-Ring-Key"], "already exist")
+
+	case 422:
+		goLog.Error.Println(hostname, pid, url, resp.Status, resp.Header["X-Scal-Ring-Status"])
+	default:
+		goLog.Warning.Println(hostname, pid, url, resp.Status)
 	}
+	resp.Body.Close()
+
+}
+
+func copyObjectTest(hspool hostpool.HostPool, client *http.Client, url string, buf []byte, header map[string]string) {
+
+	result := bns.AsyncHttpCopyTest(sproxyd.TargetHP, client, url, buf, header)
+	goLog.Trace.Printf("URL => %s \n", result.Url)
+
 }
 
 func main() {
@@ -175,14 +159,17 @@ func main() {
 	flag.StringVar(&page, "page", "1", "page number")
 	flag.StringVar(&media, "media", "tiff", "media type: tiff/png/pdf")
 	flag.StringVar(&outDir, "outDir", "", "output directory")
+	flag.StringVar(&test, "test", "1", "Run copy in test mode")
 	flag.Parse()
 	Trace, _ = strconv.ParseBool(trace)
 	Meta, _ = strconv.ParseBool(meta)
 	Image, _ = strconv.ParseBool(image)
+	Test, _ = strconv.ParseBool(test)
 
 	if action == "copyObject" {
 		action = "getObject"
 		CopyObject = true
+
 	}
 
 	if CopyObject {
@@ -275,6 +262,7 @@ func main() {
 	if action == "copyObject" {
 		action = "getObject"
 		CopyObject = true
+
 	}
 
 	switch action {
@@ -365,7 +353,7 @@ func main() {
 			encoded_docmd string
 			docmd         []byte
 		)
-
+		media = "binary"
 		if encoded_docmd, err = bns.GetEncodedMetadata(client, pathname); err == nil {
 			docmd, err = base64.Decode64(encoded_docmd)
 		}
@@ -380,19 +368,31 @@ func main() {
 				os.Exit(2)
 			} else {
 				writeMeta(outDir, "", docmd)
+				if CopyObject {
+					header := map[string]string{
+						"Usermd": encoded_docmd,
+					}
+					buf0 := make([]byte, 0)
+					if !Test {
+						copyObject(sproxyd.TargetHP, client, pathname, buf0, header)
+					} else {
+						copyObjectTest(sproxyd.TargetHP, client, pathname, buf0, header)
+					}
+				}
 			}
 
 		} else {
 			goLog.Error.Println(err)
 			os.Exit(2)
 		}
+
 		// build []urls of pages  of the document to be fecthed
 		len := docmeta.TotalPage
 		urls := make([]string, len, len)
 
 		getHeader := map[string]string{}
-		ct := "application/binary"
-		getHeader["Content-Type"] = ct
+
+		getHeader["Content-Type"] = "application/binary"
 
 		for i := 0; i < len; i++ {
 			urls[i] = pathname + "/p" + strconv.Itoa(i+1)
@@ -403,16 +403,19 @@ func main() {
 		// AsyncHttpGetPageType should already  close [defer resp.Body.Clsoe()] all open connections
 		bnsResponses := make([]bns.BnsImages, len, len)
 		var pagemd []byte
+
+		clientc := &http.Client{}
+
 		for i, v := range sproxyResponses {
 			if err := v.Err; err == nil { //
 				resp := v.Response
 				body := *v.Body
 				usermd := resp.Header["X-Scal-Usermd"][0]
-				bnsImage := buildBnsResponse(resp, ct, &body)
+				bnsImage := buildBnsResponse(resp, getHeader["Content-Type"], &body) // bnsImage is a Go structure
 
 				page = "p" + strconv.Itoa(i+1)
 				if Image {
-					writeImage(outDir, page, ct, &bnsImage.Image)
+					writeImage(outDir, page, media, &bnsImage.Image)
 				}
 				if Meta {
 					if pagemd, err = base64.Decode64(usermd); err == nil {
@@ -421,11 +424,15 @@ func main() {
 					}
 				}
 				bnsResponses[i] = bnsImage
-			}
-		}
+				header := map[string]string{
+					"Usermd": usermd,
+				}
 
-		if CopyObject {
-			copyObject(&bnsResponses, urls)
+				if CopyObject {
+					copyObjectTest(sproxyd.TargetHP, clientc, urls[i], bnsImage.Image, header)
+				}
+
+			}
 		}
 
 	case "getPage":

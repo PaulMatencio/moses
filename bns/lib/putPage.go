@@ -121,3 +121,53 @@ func AsyncHttpPut2s(hspool hostpool.HostPool, urls []string, bufa [][]byte, bufb
 	}
 	return responses
 }
+
+func AsyncHttpCopy(hspool hostpool.HostPool, client *http.Client, url string, buf []byte, header map[string]string) *sproxyd.HttpResponse {
+
+	ch := make(chan *sproxyd.HttpResponse)
+	response := &sproxyd.HttpResponse{}
+
+	go func(url string) {
+		var err error
+		var resp *http.Response
+		// clientw := &http.Client{}
+		resp, err = sproxyd.PutObject(hspool, client, url, buf, header)
+		if resp != nil {
+			resp.Body.Close()
+		}
+		ch <- &sproxyd.HttpResponse{url, resp, nil, err}
+	}(url)
+
+	for {
+		select {
+		case r := <-ch:
+			return r
+		case <-time.After(sproxyd.Timeout * time.Millisecond):
+			fmt.Printf(".")
+		}
+	}
+
+	return response
+}
+
+func AsyncHttpCopyTest(hspool hostpool.HostPool, client *http.Client, url string, buf []byte, header map[string]string) *sproxyd.HttpResponse {
+
+	ch := make(chan *sproxyd.HttpResponse)
+	response := &sproxyd.HttpResponse{}
+
+	go func(url string) {
+		_, _ = sproxyd.PutObjectTest(hspool, client, url, buf, header)
+		ch <- &sproxyd.HttpResponse{url, nil, nil, nil}
+	}(url)
+
+	for {
+		select {
+		case r := <-ch:
+			return r
+		case <-time.After(sproxyd.Timeout * time.Millisecond):
+			fmt.Printf(".")
+		}
+	}
+
+	return response
+}
