@@ -103,9 +103,12 @@ func checkOutdir(outDir string) (err error) {
 	return err
 }
 
-func copyObject(hspool hostpool.HostPool, client *http.Client, url string, buf []byte, header map[string]string) {
+// func copyObject(hspool hostpool.HostPool, client *http.Client, url string, buf []byte, header map[string]string) {
+func copyBlob(bnsRequest *bns.HttpRequest, buf []byte, header map[string]string) {
 
-	result := bns.AsyncHttpCopy(sproxyd.TargetHP, client, url, buf, header)
+	// result := bns.AsyncHttpCopy(sproxyd.TargetHP, client, url, buf, header)
+	url := bnsRequest.Path
+	result := bns.AsyncHttpCopyBlob(bnsRequest, buf, header)
 
 	if result.Err != nil {
 		goLog.Trace.Printf("%s %d %s status: %s\n", hostname, pid, result.Url, result.Err)
@@ -138,10 +141,50 @@ func copyObject(hspool hostpool.HostPool, client *http.Client, url string, buf [
 
 }
 
-func copyObjectTest(hspool hostpool.HostPool, client *http.Client, url string, buf []byte, header map[string]string) {
+func copyBlobTest(bnsRequest *bns.HttpRequest, buf []byte, header map[string]string) {
 
-	result := bns.AsyncHttpCopyTest(sproxyd.TargetHP, client, url, buf, header)
+	result := bns.AsyncHttpCopyBlobTest(bnsRequest, buf, header)
 	goLog.Trace.Printf("URL => %s \n", result.Url)
+
+}
+
+func deleteBlobTest(bnsRequest *bns.HttpRequest) {
+	result := bns.AsyncHttpDeletePagesTest(bnsRequest)
+	goLog.Trace.Printf("URL => %s \n", result.Url)
+
+}
+
+func deleteBlob(bnsRequest *bns.HttpRequest) {
+	url := bnsRequest.Path
+	result := bns.AsyncHttpDeletePages(bnsRequest)
+	if result.Err != nil {
+		goLog.Trace.Printf("%s %d %s status: %s\n", hostname, pid, result.Url, result.Err)
+		return
+	}
+
+	resp := result.Response
+
+	if resp != nil {
+		goLog.Trace.Printf("%s %d %s status: %s\n", hostname, pid, url,
+			result.Response.Status)
+	} else {
+		goLog.Error.Printf("%s %d %s %s %s", hostname, pid, bnsRequest.Path, action, "failed")
+
+	}
+
+	switch resp.StatusCode {
+	case 200:
+		goLog.Trace.Println(hostname, pid, url, resp.Status, resp.Header["X-Scal-Ring-Key"])
+
+	case 412:
+		goLog.Warning.Println(hostname, pid, url, resp.Status, "key=", resp.Header["X-Scal-Ring-Key"], "already exist")
+
+	case 422:
+		goLog.Error.Println(hostname, pid, url, resp.Status, resp.Header["X-Scal-Ring-Status"])
+	default:
+		goLog.Warning.Println(hostname, pid, url, resp.Status)
+	}
+	resp.Body.Close()
 
 }
 
@@ -262,26 +305,30 @@ func main() {
 	if action == "copyObject" {
 		action = "getObject"
 		CopyObject = true
+	}
 
+	bnsRequest := bns.HttpRequest{
+		Hspool: sproxyd.HP,
+		Client: client,
+		Media:  media,
 	}
 
 	switch action {
 	case "getPageMeta":
 		pathname = pathname + "/" + page
-		pagemd, err := bns.GetPageMetadata(client, pathname)
-		if err == nil {
-			// goLog.Info.Println(string(pagemd))
+		bnsRequest.Path = pathname
+		if pagemd, err := bns.GetPageMetadata(&bnsRequest); err == nil {
 			writeMeta(outDir, page, pagemd)
 		} else {
 			goLog.Error.Println(err)
 		}
+
 	case "getDocumentMeta":
 		// the document's  metatadata is the metadata the object given <pathname>
-		docmd, err := bns.GetDocMetadata(client, pathname)
-		docmeta := bns.DocumentMetadata{}
-
-		if err == nil {
+		bnsRequest.Path = pathname
+		if docmd, err := bns.GetDocMetadata(&bnsRequest); err == nil {
 			goLog.Info.Println(string(docmd))
+			docmeta := bns.DocumentMetadata{}
 			if err := json.Unmarshal(docmd, &docmeta); err != nil {
 				goLog.Error.Println(err)
 			} else {
@@ -292,12 +339,8 @@ func main() {
 		}
 
 	case "getDocumentType":
-		// the document metatadata is the metadata the <pathname>
-		// all the Document's pages will be retrieved concurrently
-		docmd, err := bns.GetDocMetadata(client, pathname)
 		docmeta := bns.DocumentMetadata{}
-
-		if err == nil {
+		if docmd, err := bns.GetDocMetadata(&bnsRequest); err == nil {
 			// goLog.Info.Println(string(usermd))
 			if err := json.Unmarshal(docmd, &docmeta); err != nil {
 				goLog.Error.Println(docmeta)
@@ -322,8 +365,12 @@ func main() {
 			urls[i] = pathname + "/p" + strconv.Itoa(i+1)
 		}
 
-		// sproxyResponses := bns.AsyncHttpGetPageType(urls, getHeader)
-		sproxyResponses := bns.AsyncHttpGetPageType(urls, media)
+		// bnsRequest := bns.HttpRequest{}
+		//bnsRequest.Hspool=sproxyd.HP
+		bnsRequest.Urls = urls
+		//bnsRequest.Media=  media
+
+		sproxyResponses := bns.AsyncHttpGetpageType(&bnsRequest)
 
 		// AsyncHttpGetPageType should already  close [defer resp.Body.Clsoe()] all open connections
 		bnsResponses := make([]bns.BnsImages, len, len)
@@ -345,67 +392,67 @@ func main() {
 				}
 			}
 		}
+
 	case "getObject":
-		// the document metatadata is the metadata the <pathname>
-		// all the Document's pages will be retrieved concurrently
 		var (
 			err           error
 			encoded_docmd string
 			docmd         []byte
 		)
 		media = "binary"
-		if encoded_docmd, err = bns.GetEncodedMetadata(client, pathname); err == nil {
-			docmd, err = base64.Decode64(encoded_docmd)
-		}
+		// bnsRequest.Path = pathname
+		bnsRequest.Media = media
 
-		docmeta := bns.DocumentMetadata{}
-
-		if err == nil {
-			// goLog.Info.Println(string(usermd))
-			if err := json.Unmarshal(docmd, &docmeta); err != nil {
-				goLog.Error.Println(docmeta)
+		if encoded_docmd, err = bns.GetEncodedMetadata(&bnsRequest); err == nil {
+			if docmd, err = base64.Decode64(encoded_docmd); err != nil {
 				goLog.Error.Println(err)
 				os.Exit(2)
-			} else {
-				writeMeta(outDir, "", docmd)
-				if CopyObject {
-					header := map[string]string{
-						"Usermd": encoded_docmd,
-					}
-					buf0 := make([]byte, 0)
-					if !Test {
-						copyObject(sproxyd.TargetHP, client, pathname, buf0, header)
-					} else {
-						copyObjectTest(sproxyd.TargetHP, client, pathname, buf0, header)
-					}
-				}
 			}
-
 		} else {
 			goLog.Error.Println(err)
 			os.Exit(2)
 		}
 
-		// build []urls of pages  of the document to be fecthed
+		docmeta := bns.DocumentMetadata{}
+
+		// goLog.Info.Println(string(usermd))
+		if err := json.Unmarshal(docmd, &docmeta); err != nil {
+			goLog.Error.Println(docmeta)
+			goLog.Error.Println(err)
+			os.Exit(2)
+		} else {
+			writeMeta(outDir, "", docmd)
+			if CopyObject {
+				header := map[string]string{
+					"Usermd": encoded_docmd,
+				}
+				buf0 := make([]byte, 0)
+				if !Test {
+					// copyObject(sproxyd.TargetHP, client, pathname, buf0, header)
+					copyBlob(&bnsRequest, buf0, header)
+				} else {
+					copyBlobTest(&bnsRequest, buf0, header)
+				}
+			}
+		}
+
 		len := docmeta.TotalPage
 		urls := make([]string, len, len)
-
 		getHeader := map[string]string{}
-
 		getHeader["Content-Type"] = "application/binary"
 
 		for i := 0; i < len; i++ {
 			urls[i] = pathname + "/p" + strconv.Itoa(i+1)
 		}
-
-		sproxyResponses := bns.AsyncHttpGetPage(urls, getHeader)
+		bnsRequest.Urls = urls
+		bnsRequest.Hspool = sproxyd.HP
+		sproxyResponses := bns.AsyncHttpGetPage(&bnsRequest, getHeader)
 
 		// AsyncHttpGetPageType should already  close [defer resp.Body.Clsoe()] all open connections
 		bnsResponses := make([]bns.BnsImages, len, len)
 		var pagemd []byte
 
-		clientc := &http.Client{}
-
+		bnsRequest.Client = &http.Client{}
 		for i, v := range sproxyResponses {
 			if err := v.Err; err == nil { //
 				resp := v.Response
@@ -428,24 +475,38 @@ func main() {
 					"Usermd": usermd,
 				}
 
+				// bnsRequest := bns.HttpRequest{}
+
+				bnsRequest.Path = urls[i]
+
 				if CopyObject {
-					copyObjectTest(sproxyd.TargetHP, clientc, urls[i], bnsImage.Image, header)
+					if !Test {
+						// copyObject(sproxyd.TargetHP, clientc, urls[i], bnsImage.Image, header)
+						copyBlob(&bnsRequest, bnsImage.Image, header)
+					} else {
+						copyBlobTest(&bnsRequest, bnsImage.Image, header)
+					}
 				}
 
 			}
 		}
 
 	case "getPage":
-		// get a specific page of a document
-		// if -page is missing p1 is the default
-		pathname = pathname + "/" + page
 
+		pathname = pathname + "/" + page
 		getHeader := map[string]string{}
 		getHeader["Content-Type"] = "image/" + strings.ToLower(media)
-
 		var pagemd []byte
-		// if resp, err := bns.GetPageType(client, pathname, getHeader); err == nil {
-		if resp, err := bns.GetPageType(client, pathname, media); err == nil {
+
+		// bnsRequest := bns.HttpRequest{}
+		/*
+			bnsRequest.Hspool = sproxyd.HP
+			bnsRequest.Client = client
+		*/
+		bnsRequest.Path = pathname
+		bnsRequest.Media = media
+
+		if resp, err := bns.GetPageType(&bnsRequest); err == nil {
 			defer resp.Body.Close()
 			body, _ := ioutil.ReadAll(resp.Body)
 			bnsImage := buildBnsResponse(resp, getHeader["Content-Type"], &body)

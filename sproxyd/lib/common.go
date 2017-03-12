@@ -30,6 +30,16 @@ var (
 	// sproxyd.HP = hostpool.NewEpsilonGreedy(hlist, 0, &hostpool.LinearEpsilonValueCalculator{})
 )
 
+// sproxyd htp request structure
+type HttpRequest struct {
+	Hspool    hostpool.HostPool
+	Client    *http.Client
+	Path      string
+	ReqHeader map[string]string
+	// Buffer    []byte
+}
+
+// sproxyd http response structure
 type HttpResponse struct {
 	Url      string
 	Response *http.Response

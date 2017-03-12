@@ -6,19 +6,19 @@ import (
 	"errors"
 	"io/ioutil"
 	goLog "moses/user/goLog"
-	"net/http"
+	// "net/http"
 	// "strconv"
 	"strings"
+
+	// hostpool "github.com/bitly/go-hostpool"
 )
 
-func GetPageMetadata(client *http.Client, path string) ([]byte, error) {
-	return GetMetadata(client, path)
+func GetPageMetadata(bnsRequest *HttpRequest) ([]byte, error) {
+	return GetMetadata(bnsRequest)
 }
 
-func GetDocMetadata(client *http.Client, path string) ([]byte, error) {
-	// the metadata of the document is the metadata of the p0 object
-	// path = path + "/p0"
-	return GetMetadata(client, path)
+func GetDocMetadata(bnsRequest *HttpRequest) ([]byte, error) {
+	return GetMetadata(bnsRequest)
 }
 
 // Get total number of pages of a document

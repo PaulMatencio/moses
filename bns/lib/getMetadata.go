@@ -7,16 +7,27 @@ import (
 	goLog "moses/user/goLog"
 	"net/http"
 	"time"
+
+	// hostpool "github.com/bitly/go-hostpool"
 )
 
-func GetMetadata(client *http.Client, path string) ([]byte, error) {
+// new function
+func GetMetadata(bnsRequest *HttpRequest) ([]byte, error) {
 	// client := &http.Client{}
-	getHeader := map[string]string{}
+	// getHeader := map[string]string{}
+
 	var usermd []byte
 	var resp *http.Response
 	err := error(nil)
 
-	if resp, err = sproxyd.GetMetadata(client, path, getHeader); err == nil {
+	sproxydRequest := sproxyd.HttpRequest{
+		Hspool:    bnsRequest.Hspool,
+		Client:    bnsRequest.Client,
+		Path:      bnsRequest.Path,
+		ReqHeader: map[string]string{},
+	}
+
+	if resp, err = sproxyd.GetMetadata(&sproxydRequest); err == nil {
 		switch resp.StatusCode {
 		case 200:
 			encoded_usermd := resp.Header["X-Scal-Usermd"]
@@ -35,17 +46,22 @@ func GetMetadata(client *http.Client, path string) ([]byte, error) {
 	return usermd, err
 }
 
-func GetEncodedMetadata(client *http.Client, path string) (string, error) {
-	// client := &http.Client{}
+//new  function
+func GetEncodedMetadata(bnsRequest *HttpRequest) (string, error) {
+
 	getHeader := map[string]string{}
 	var (
-		// usermd         []byte
 		encoded_usermd string
 		resp           *http.Response
 	)
 	err := error(nil)
+	sproxydRequest := sproxyd.HttpRequest{
+		Hspool:    bnsRequest.Hspool,
+		Path:      bnsRequest.Path,
+		ReqHeader: getHeader,
+	}
 
-	if resp, err = sproxyd.GetMetadata(client, path, getHeader); err == nil {
+	if resp, err = sproxyd.GetMetadata(&sproxydRequest); err == nil {
 		switch resp.StatusCode {
 		case 200:
 			encoded_usermd = resp.Header["X-Scal-Usermd"][0]
@@ -63,29 +79,30 @@ func GetEncodedMetadata(client *http.Client, path string) (string, error) {
 	return encoded_usermd, err
 }
 
-func AsyncHttpGetMetadatas(urls []string, getHeader map[string]string) []*sproxyd.HttpResponse {
-
+// func AsyncHttpGetMetadatas(hspool hostpool.HostPool, urls []string, getHeader map[string]string) []*sproxyd.HttpResponse {
+func AsyncHttpGetMetadatas(bnsRequest *HttpRequest, getHeader map[string]string) []*sproxyd.HttpResponse {
 	ch := make(chan *sproxyd.HttpResponse)
-	responses := []*sproxyd.HttpResponse{}
+	sproxydResponses := []*sproxyd.HttpResponse{}
+	sproxydRequest := sproxyd.HttpRequest{
+		Hspool:    bnsRequest.Hspool,
+		ReqHeader: getHeader,
+	}
 
 	treq := 0
 	fmt.Printf("\n")
-	client := &http.Client{}
-	for _, url := range urls {
-		/* just in case, the requested page number is beyond the max number of pages */
+	// client := &http.Client{}
+	sproxydRequest.Client = &http.Client{}
+	for _, url := range bnsRequest.Urls {
+
 		if len(url) == 0 {
 			break
 		} else {
 			treq += 1
 		}
+		sproxydRequest.Path = url
 		go func(url string) {
-			// fmt.Printf("Fetching %s \n", url)
 
-			// client := &http.Client{}
-
-			//start := time.Now()
-			//var elapse time.Duration
-			resp, err := sproxyd.GetMetadata(client, url, getHeader)
+			resp, err := sproxyd.GetMetadata(&sproxydRequest)
 			if err != nil {
 				resp.Body.Close()
 			}
@@ -98,13 +115,13 @@ func AsyncHttpGetMetadatas(urls []string, getHeader map[string]string) []*sproxy
 		select {
 		case r := <-ch:
 			// fmt.Printf("%s was fetched\n", r.url)
-			responses = append(responses, r)
-			if len(responses) == treq /*len(urls)*/ {
-				return responses
+			sproxydResponses = append(sproxydResponses, r)
+			if len(sproxydResponses) == treq {
+				return sproxydResponses
 			}
 		case <-time.After(100 * time.Millisecond):
 			fmt.Printf(".")
 		}
 	}
-	return responses
+	return sproxydResponses
 }

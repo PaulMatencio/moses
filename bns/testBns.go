@@ -287,7 +287,7 @@ func main() {
 				}
 
 				buf0 := new(bytes.Buffer)
-				results := bns.AsyncHttpPut(pathx, buf0.Bytes(), putheader)
+				results := bns.AsyncHttpPut(sproxyd.HP, pathx, buf0.Bytes(), putheader)
 				elapse = time.Since(time1)
 
 				for _, result := range results {
@@ -336,7 +336,7 @@ func main() {
 					goLog.Trace.Println(string(c), string(d))
 				}
 				buf0 := new(bytes.Buffer)
-				results := bns.AsyncHttpUpdate(pathx, buf0.Bytes(), putheader)
+				results := bns.AsyncHttpUpdate(sproxyd.HP, pathx, buf0.Bytes(), putheader)
 				elapse = time.Since(time1)
 
 				for _, result := range results {
@@ -370,7 +370,7 @@ func main() {
 			case "deleteObject":
 
 				deleteheader := map[string]string{}
-				results := bns.AsyncHttpDelete(pathx, deleteheader)
+				results := bns.AsyncHttpDelete(sproxyd.HP, pathx, deleteheader)
 				elapse = time.Since(time1)
 
 				for _, result := range results {
@@ -519,7 +519,7 @@ func main() {
 						goLog.Trace.Println(string(c), string(d))
 					}
 
-					results := bns.AsyncHttpPut(pathy, buf, putheader)
+					results := bns.AsyncHttpPut(sproxyd.HP, pathy, buf, putheader)
 
 					elapse = time.Since(time1)
 
@@ -579,7 +579,7 @@ func main() {
 						d, _ := base64.Decode64(base64.Encode64(c))
 						goLog.Trace.Println(string(c), string(d))
 					}
-					results := bns.AsyncHttpUpdate(pathy, buf, putheader)
+					results := bns.AsyncHttpUpdate(sproxyd.HP, pathy, buf, putheader)
 					elapse = time.Since(time1)
 
 					for _, result := range results {
@@ -620,7 +620,7 @@ func main() {
 				case "deleteObject":
 					time1 = time.Now()
 					deleteheader := map[string]string{}
-					results := bns.AsyncHttpDelete(pathy, deleteheader)
+					results := bns.AsyncHttpDelete(sproxyd.HP, pathy, deleteheader)
 					elapse = time.Since(time1)
 
 					for _, result := range results {

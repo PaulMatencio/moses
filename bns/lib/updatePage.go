@@ -7,10 +7,12 @@ import (
 	goLog "moses/user/goLog"
 	"net/http"
 	"time"
+
+	hostpool "github.com/bitly/go-hostpool"
 )
 
 //func UpdatePage(client *http.Client, path string, img *bytes.Buffer, usermd []byte) (error, time.Duration) {
-func UpdatePage(client *http.Client, path string, img *bytes.Buffer, putheader map[string]string) (error, time.Duration) {
+func UpdatePage(hspool hostpool.HostPool, client *http.Client, path string, img *bytes.Buffer, putheader map[string]string) (error, time.Duration) {
 	/*
 		putheader := map[string]string{
 			"Usermd":       encoded_usermd := base64.Encode64(usermd),
@@ -23,7 +25,7 @@ func UpdatePage(client *http.Client, path string, img *bytes.Buffer, putheader m
 	start := time.Now()
 	var elapse time.Duration
 	// defer resp.Body.Close()
-	if resp, err = sproxyd.UpdObject(client, path, img.Bytes(), putheader); err != nil {
+	if resp, err = sproxyd.UpdObject(hspool, client, path, img.Bytes(), putheader); err != nil {
 		goLog.Error.Println(err)
 	} else {
 		elapse = time.Since(start)
@@ -44,12 +46,12 @@ func UpdatePage(client *http.Client, path string, img *bytes.Buffer, putheader m
 	return err, elapse
 
 }
-func AsyncHttpUpdates(urls []string, bufa [][]byte, headera []map[string]string) []*sproxyd.HttpResponse {
+func AsyncHttpUpdates(hspool hostpool.HostPool, urls []string, bufa [][]byte, headera []map[string]string) []*sproxyd.HttpResponse {
 
 	ch := make(chan *sproxyd.HttpResponse)
 	responses := []*sproxyd.HttpResponse{}
 	treq := 0
-	clientw := &http.Client{}
+	client := &http.Client{}
 	for k, url := range urls {
 
 		if len(url) == 0 {
@@ -61,7 +63,7 @@ func AsyncHttpUpdates(urls []string, bufa [][]byte, headera []map[string]string)
 			var err error
 			var resp *http.Response
 			// clientw := &http.Client{}
-			resp, err = sproxyd.UpdObject(clientw, url, bufa[k], headera[k])
+			resp, err = sproxyd.UpdObject(hspool, client, url, bufa[k], headera[k])
 			if resp != nil {
 				resp.Body.Close()
 			}

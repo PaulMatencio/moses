@@ -14,26 +14,30 @@ import (
 // Used ONLY by test.go to valide the performance of the  Ring performance
 // Use utilities.go for asynchronous operations with different objects
 
-func AsyncHttpGet(urls []string) []*sproxyd.HttpResponse {
+// func AsyncHttpGet(hspool hostpool.HostPool, urls []string) []*sproxyd.HttpResponse {
+func AsyncHttpGet(bnsRequest *HttpRequest) []*sproxyd.HttpResponse {
 
 	ch := make(chan *sproxyd.HttpResponse)
 	responses := []*sproxyd.HttpResponse{}
+	sproxydRequest := sproxyd.HttpRequest{}
+	sproxydRequest.Hspool = bnsRequest.Hspool
 
 	treq := 0
 	fmt.Printf("\n")
-	for _, url := range urls {
+	for _, url := range bnsRequest.Urls {
 		/* just in case, the requested page number is beyond the max number of pages */
 		if len(url) == 0 {
 			break
 		} else {
 			treq += 1
 		}
+		// client := &http.Client{}
+		sproxydRequest.Client = &http.Client{}
+		sproxydRequest.Path = url
 		go func(url string) {
 			// fmt.Printf("Fetching %s \n", url)
-			client := &http.Client{}
-			//start := time.Now()
-			//var elapse time.Duration
-			resp, err := GetPage(client, url)
+
+			resp, err := GetPage(&sproxydRequest)
 			var body []byte
 			if err == nil {
 				body, _ = ioutil.ReadAll(resp.Body)
@@ -61,7 +65,7 @@ func AsyncHttpGet(urls []string) []*sproxyd.HttpResponse {
 	return responses
 }
 
-func AsyncHttpUpdate(urls []string, buf []byte, header map[string]string) []*sproxyd.HttpResponse {
+func AsyncHttpUpdate(hspool hostpool.HostPool, urls []string, buf []byte, header map[string]string) []*sproxyd.HttpResponse {
 
 	ch := make(chan *sproxyd.HttpResponse)
 	responses := []*sproxyd.HttpResponse{}
@@ -74,11 +78,12 @@ func AsyncHttpUpdate(urls []string, buf []byte, header map[string]string) []*spr
 		} else {
 			treq += 1
 		}
+		client := &http.Client{}
 		go func(url string) {
 			var err error
 			var resp *http.Response
-			clientw := &http.Client{}
-			resp, err = sproxyd.UpdObject(clientw, url, buf, header)
+
+			resp, err = sproxyd.UpdObject(hspool, client, url, buf, header)
 			if resp != nil {
 				resp.Body.Close()
 			}
@@ -139,7 +144,7 @@ func AsyncHttpPut(hspool hostpool.HostPool, urls []string, buf []byte, header ma
 	return responses
 }
 
-func AsyncHttpDelete(urls []string, deleteheader map[string]string) []*sproxyd.HttpResponse {
+func AsyncHttpDeletet(hspool hostpool.HostPool, urls []string, deleteheader map[string]string) []*sproxyd.HttpResponse {
 
 	ch := make(chan *sproxyd.HttpResponse)
 	responses := []*sproxyd.HttpResponse{}
@@ -151,11 +156,12 @@ func AsyncHttpDelete(urls []string, deleteheader map[string]string) []*sproxyd.H
 		} else {
 			treq += 1
 		}
+		client := &http.Client{}
 		go func(url string) {
 			var err error
 			var resp *http.Response
-			clientw := &http.Client{}
-			resp, err = sproxyd.DeleteObject(clientw, url)
+
+			resp, err = sproxyd.DeleteObject(hspool, client, url)
 
 			if resp != nil {
 				resp.Body.Close()

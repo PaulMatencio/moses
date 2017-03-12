@@ -2,7 +2,10 @@ package bns
 
 import (
 	"encoding/json"
+	"net/http"
 	"os"
+
+	hostpool "github.com/bitly/go-hostpool"
 )
 
 type DocumentMetadata struct {
@@ -217,4 +220,13 @@ type BnsImages struct {
 type Date struct {
 	Year       int16
 	Month, Day byte
+}
+
+// bns Http request structure
+type HttpRequest struct {
+	Hspool hostpool.HostPool
+	Urls   []string
+	Path   string
+	Client *http.Client
+	Media  string
 }

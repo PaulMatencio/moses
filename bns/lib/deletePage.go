@@ -6,9 +6,12 @@ import (
 	goLog "moses/user/goLog"
 	"net/http"
 	"time"
+
+	// hostpool "github.com/bitly/go-hostpool"
 )
 
-func DeletePage(client *http.Client, path string) (error, time.Duration) {
+// new delete page function
+func DeletePage(bnsRequest *HttpRequest) (error, time.Duration) {
 
 	// deleteHeader := map[string]string{}
 	err := error(nil)
@@ -16,7 +19,14 @@ func DeletePage(client *http.Client, path string) (error, time.Duration) {
 	start := time.Now()
 	var elapse time.Duration
 	// defer resp.Body.Close()
-	if resp, err = sproxyd.DeleteObject(client, path); err != nil {
+	sproxydRequest := sproxyd.HttpRequest{
+		Hspool: bnsRequest.Hspool,
+		Client: bnsRequest.Client,
+		Path:   bnsRequest.Path,
+	}
+
+	// if resp, err = sproxyd.DeleteObject(hspool, client, path); err != nil {
+	if resp, err = sproxyd.Deleteobject(&sproxydRequest); err != nil {
 		goLog.Error.Println(err)
 	} else {
 		elapse = time.Since(start)
@@ -37,41 +47,65 @@ func DeletePage(client *http.Client, path string) (error, time.Duration) {
 	return err, elapse
 }
 
-func AsyncHttpDeletes(urls []string) []*sproxyd.HttpResponse {
+func AsyncHttpDeletePages(bnsRequest *HttpRequest) *sproxyd.HttpResponse {
+
 	ch := make(chan *sproxyd.HttpResponse)
-	responses := []*sproxyd.HttpResponse{}
-	treq := 0
-	clientw := &http.Client{}
-	for _, url := range urls {
-
-		if len(url) == 0 {
-			break
-		} else {
-			treq += 1
-		}
-		go func(url string) {
-			var err error
-			var resp *http.Response
-			// clientw := &http.Client{}
-			resp, err = sproxyd.DeleteObject(clientw, url)
-			if resp != nil {
-				resp.Body.Close()
-			}
-
-			ch <- &sproxyd.HttpResponse{url, resp, nil, err}
-		}(url)
+	sproxydResponse := &sproxyd.HttpResponse{}
+	sproxydRequest := sproxyd.HttpRequest{
+		Hspool: bnsRequest.Hspool,
+		Client: &http.Client{},
+		Path:   bnsRequest.Path,
 	}
+	url := sproxydRequest.Path
+	if len(url) == 0 {
+		return sproxydResponse
+	}
+
+	go func(url string) {
+		var err error
+		var resp *http.Response
+		resp, err = sproxyd.Deleteobject(&sproxydRequest)
+		if resp != nil {
+			resp.Body.Close()
+		}
+
+		ch <- &sproxyd.HttpResponse{url, resp, nil, err}
+	}(url)
+
 	for {
 		select {
 		case r := <-ch:
-			responses = append(responses, r)
-			if len(responses) == treq {
-				return responses
-			}
+			sproxydResponse = r
 		case <-time.After(sproxyd.Timeout * time.Millisecond):
 			fmt.Printf(".")
 		}
 	}
-	return responses
+	return sproxydResponse
+}
+
+func AsyncHttpDeletePagesTest(bnsRequest *HttpRequest) *sproxyd.HttpResponse {
+	ch := make(chan *sproxyd.HttpResponse)
+	sproxydResponse := &sproxyd.HttpResponse{}
+	url := bnsRequest.Path
+
+	if len(url) == 0 {
+		return sproxydResponse
+	}
+
+	go func(url string) {
+
+		_, _ = sproxyd.DeleteObject(bnsRequest.Hspool, &http.Client{}, url)
+		ch <- &sproxyd.HttpResponse{url, nil, nil, nil}
+	}(url)
+
+	for {
+		select {
+		case r := <-ch:
+			sproxydResponse = r
+		case <-time.After(sproxyd.Timeout * time.Millisecond):
+			fmt.Printf(".")
+		}
+	}
+	return sproxydResponse
 
 }

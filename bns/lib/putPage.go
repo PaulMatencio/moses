@@ -141,13 +141,47 @@ func AsyncHttpCopy(hspool hostpool.HostPool, client *http.Client, url string, bu
 	for {
 		select {
 		case r := <-ch:
-			return r
+			response = r
 		case <-time.After(sproxyd.Timeout * time.Millisecond):
 			fmt.Printf(".")
 		}
 	}
 
 	return response
+}
+
+func AsyncHttpCopyBlob(bnsRequest *HttpRequest, buf []byte, header map[string]string) *sproxyd.HttpResponse {
+
+	ch := make(chan *sproxyd.HttpResponse)
+	spoxydResponse := &sproxyd.HttpResponse{}
+	sproxydRequest := sproxyd.HttpRequest{
+		Hspool:    bnsRequest.Hspool,
+		Client:    bnsRequest.Client,
+		Path:      bnsRequest.Path,
+		ReqHeader: header,
+	}
+	url := bnsRequest.Path
+	go func(url string) {
+		var err error
+		var resp *http.Response
+		// clientw := &http.Client{}
+		resp, err = sproxyd.Putobject(&sproxydRequest, buf)
+		if resp != nil {
+			resp.Body.Close()
+		}
+		ch <- &sproxyd.HttpResponse{url, resp, nil, err}
+	}(url)
+
+	for {
+		select {
+		case r := <-ch:
+			spoxydResponse = r
+		case <-time.After(sproxyd.Timeout * time.Millisecond):
+			fmt.Printf(".")
+		}
+	}
+
+	return spoxydResponse
 }
 
 func AsyncHttpCopyTest(hspool hostpool.HostPool, client *http.Client, url string, buf []byte, header map[string]string) *sproxyd.HttpResponse {
@@ -163,11 +197,40 @@ func AsyncHttpCopyTest(hspool hostpool.HostPool, client *http.Client, url string
 	for {
 		select {
 		case r := <-ch:
-			return r
+			response = r
 		case <-time.After(sproxyd.Timeout * time.Millisecond):
 			fmt.Printf(".")
 		}
 	}
 
 	return response
+}
+
+func AsyncHttpCopyBlobTest(bnsRequest *HttpRequest, buf []byte, header map[string]string) *sproxyd.HttpResponse {
+
+	ch := make(chan *sproxyd.HttpResponse)
+	spoxydResponse := &sproxyd.HttpResponse{}
+	sproxydRequest := sproxyd.HttpRequest{
+		Hspool:    bnsRequest.Hspool,
+		Path:      bnsRequest.Path,
+		ReqHeader: header,
+	}
+	url := sproxydRequest.Path
+
+	go func(url string) {
+		// _, _ = sproxyd.PutObjectTest(hspool, client, url, buf, header)
+		_, _ = sproxyd.PutobjectTest(&sproxydRequest, buf)
+		ch <- &sproxyd.HttpResponse{url, nil, nil, nil}
+	}(url)
+
+	for {
+		select {
+		case r := <-ch:
+			spoxydResponse = r
+		case <-time.After(sproxyd.Timeout * time.Millisecond):
+			fmt.Printf(".")
+		}
+	}
+
+	return spoxydResponse
 }

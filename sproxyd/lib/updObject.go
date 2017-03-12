@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"net/http"
 	"strconv"
+
+	hostpool "github.com/bitly/go-hostpool"
 )
 
-func UpdObject(client *http.Client, path string, object []byte, putHeader map[string]string) (*http.Response, error) {
+func UpdObject(hspool hostpool.HostPool, client *http.Client, path string, object []byte, putHeader map[string]string) (*http.Response, error) {
 
 	url := DummyHost + path
 	req, _ := http.NewRequest("PUT", url, bytes.NewBuffer(object))
@@ -25,5 +27,5 @@ func UpdObject(client *http.Client, path string, object []byte, putHeader map[st
 
 	//resp, err := client.Do(req)
 
-	return DoRequest(HP, client, req, object)
+	return DoRequest(hspool, client, req, object)
 }
