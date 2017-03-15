@@ -19,63 +19,12 @@ import (
 )
 
 // new function
-func GetPage(sproxydRequest *sproxyd.HttpRequest) (*http.Response, error) {
-	sproxydRequest.ReqHeader = map[string]string{}
-	return sproxyd.Getobject(sproxydRequest)
-}
 
-// new function
+/*
 func AsyncHttpGetPage(bnsRequest *HttpRequest, getHeader map[string]string) []*sproxyd.HttpResponse {
-
-	ch := make(chan *sproxyd.HttpResponse)
-	responses := []*sproxyd.HttpResponse{}
-	sproxydRequest := sproxyd.HttpRequest{
-		Hspool:    bnsRequest.Hspool,
-		ReqHeader: getHeader,
-	}
-
-	treq := 0
-	fmt.Printf("\n")
-	for _, url := range bnsRequest.Urls {
-		/* just in case, the requested page number is beyond the max number of pages */
-		if len(url) == 0 {
-			break
-		} else {
-			treq += 1
-		}
-
-		// client := &http.Client{} // one connection for all requests
-		sproxydRequest.Client = &http.Client{}
-		// sproxydRequest.Path = url
-		go func(url string) {
-			sproxydRequest.Path = url
-			resp, err := sproxyd.Getobject(&sproxydRequest)
-			var body []byte
-			if err == nil {
-				body, _ = ioutil.ReadAll(resp.Body)
-			} else {
-
-				resp.Body.Close()
-			}
-			ch <- &sproxyd.HttpResponse{url, resp, &body, err}
-
-		}(url)
-	}
-	// wait for http response  message
-	for {
-		select {
-		case r := <-ch:
-			// fmt.Printf("%s was fetched\n", r.url)
-			responses = append(responses, r)
-			if len(responses) == treq /*len(urls)*/ {
-				return responses
-			}
-		case <-time.After(100 * time.Millisecond):
-			fmt.Printf(".")
-		}
-	}
-	return responses
+	return AsyncHttpGetBlob(bnsRequest, getHeader)
 }
+*/
 
 func GetPageType(bnsRequest *HttpRequest, url string) (*http.Response, error) {
 	/*
@@ -157,7 +106,7 @@ func GetPageType(bnsRequest *HttpRequest, url string) (*http.Response, error) {
 func AsyncHttpGetpageType(bnsRequest *HttpRequest) []*sproxyd.HttpResponse {
 
 	ch := make(chan *sproxyd.HttpResponse)
-	responses := []*sproxyd.HttpResponse{}
+	sproxydResponses := []*sproxyd.HttpResponse{}
 	treq := 0
 	// fmt.Printf("\n")
 	bnsRequest.Client = &http.Client{} // one http connection for all requests
@@ -186,15 +135,15 @@ func AsyncHttpGetpageType(bnsRequest *HttpRequest) []*sproxyd.HttpResponse {
 		select {
 		case r := <-ch:
 			// fmt.Printf("%s was fetched\n", r.Url)
-			responses = append(responses, r)
-			if len(responses) == treq /*len(urls)*/ {
+			sproxydResponses = append(sproxydResponses, r)
+			if len(sproxydResponses) == treq /*len(urls)*/ {
 				// fmt.Println(responses)
-				return responses
+				return sproxydResponses
 			}
 		case <-time.After(100 * time.Millisecond):
 			fmt.Printf("r")
 		}
 	}
 
-	return responses
+	return sproxydResponses
 }

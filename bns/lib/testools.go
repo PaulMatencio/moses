@@ -37,7 +37,7 @@ func AsyncHttpGet(bnsRequest *HttpRequest) []*sproxyd.HttpResponse {
 		go func(url string) {
 			// fmt.Printf("Fetching %s \n", url)
 
-			resp, err := GetPage(&sproxydRequest)
+			resp, err := GetBlob(&sproxydRequest)
 			var body []byte
 			if err == nil {
 				body, _ = ioutil.ReadAll(resp.Body)
