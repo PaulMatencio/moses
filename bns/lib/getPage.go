@@ -1,5 +1,8 @@
 package bns
 
+//  Get full object
+//  Get range of byte ( subpart of an object)
+
 import (
 	"encoding/json"
 	"errors"
@@ -43,8 +46,9 @@ func AsyncHttpGetPage(bnsRequest *HttpRequest, getHeader map[string]string) []*s
 
 		// client := &http.Client{} // one connection for all requests
 		sproxydRequest.Client = &http.Client{}
-		sproxydRequest.Path = url
+		// sproxydRequest.Path = url
 		go func(url string) {
+			sproxydRequest.Path = url
 			resp, err := sproxyd.Getobject(&sproxydRequest)
 			var body []byte
 			if err == nil {
@@ -73,13 +77,11 @@ func AsyncHttpGetPage(bnsRequest *HttpRequest, getHeader map[string]string) []*s
 	return responses
 }
 
-// new  function
-func GetPageType(bnsRequest *HttpRequest) (*http.Response, error) {
+func GetPageType(bnsRequest *HttpRequest, url string) (*http.Response, error) {
 	/*
 		bnsRequest structure
 			Hspool hostpool.HostPool
 			Urls   []string
-			Path		string
 			Client *http.Client
 			Media  string
 	*/
@@ -88,8 +90,8 @@ func GetPageType(bnsRequest *HttpRequest) (*http.Response, error) {
 		err    error
 		resp   *http.Response
 	)
-	// sproxydRequest := &sproxyd.HttpRequest{}
-	usermd, err = GetMetadata(bnsRequest)
+
+	usermd, err = GetMetadata(bnsRequest, url)
 	if err != nil {
 		return nil, errors.New("Page metadata is missing or invalid")
 	} else {
@@ -102,9 +104,9 @@ func GetPageType(bnsRequest *HttpRequest) (*http.Response, error) {
 		if err := json.Unmarshal(usermd, &pagemeta); err != nil {
 			return nil, err
 		}
-
+		// create a sproxyd request structure
 		sproxydRequest := &sproxyd.HttpRequest{
-			Path:      bnsRequest.Path,
+			Path:      url,
 			Hspool:    bnsRequest.Hspool,
 			Client:    bnsRequest.Client,
 			ReqHeader: map[string]string{},
@@ -167,10 +169,9 @@ func AsyncHttpGetpageType(bnsRequest *HttpRequest) []*sproxyd.HttpResponse {
 		} else {
 			treq += 1
 		}
-		bnsRequest.Path = url
-		//sproxydRequest.Path = url
+
 		go func(url string) {
-			resp, err := GetPageType(bnsRequest)
+			resp, err := GetPageType(bnsRequest, url)
 			defer resp.Body.Close()
 			var body []byte
 			if err == nil {
@@ -191,7 +192,7 @@ func AsyncHttpGetpageType(bnsRequest *HttpRequest) []*sproxyd.HttpResponse {
 				return responses
 			}
 		case <-time.After(100 * time.Millisecond):
-			fmt.Printf(".")
+			fmt.Printf("r")
 		}
 	}
 

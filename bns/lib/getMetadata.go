@@ -12,7 +12,7 @@ import (
 )
 
 // new function
-func GetMetadata(bnsRequest *HttpRequest) ([]byte, error) {
+func GetMetadata(bnsRequest *HttpRequest, url string) ([]byte, error) {
 	// client := &http.Client{}
 	// getHeader := map[string]string{}
 
@@ -23,7 +23,7 @@ func GetMetadata(bnsRequest *HttpRequest) ([]byte, error) {
 	sproxydRequest := sproxyd.HttpRequest{
 		Hspool:    bnsRequest.Hspool,
 		Client:    bnsRequest.Client,
-		Path:      bnsRequest.Path,
+		Path:      url,
 		ReqHeader: map[string]string{},
 	}
 
@@ -47,7 +47,7 @@ func GetMetadata(bnsRequest *HttpRequest) ([]byte, error) {
 }
 
 //new  function
-func GetEncodedMetadata(bnsRequest *HttpRequest) (string, error) {
+func GetEncodedMetadata(bnsRequest *HttpRequest, url string) (string, error) {
 
 	getHeader := map[string]string{}
 	var (
@@ -57,7 +57,8 @@ func GetEncodedMetadata(bnsRequest *HttpRequest) (string, error) {
 	err := error(nil)
 	sproxydRequest := sproxyd.HttpRequest{
 		Hspool:    bnsRequest.Hspool,
-		Path:      bnsRequest.Path,
+		Client:    bnsRequest.Client,
+		Path:      url,
 		ReqHeader: getHeader,
 	}
 
@@ -79,7 +80,6 @@ func GetEncodedMetadata(bnsRequest *HttpRequest) (string, error) {
 	return encoded_usermd, err
 }
 
-// func AsyncHttpGetMetadatas(hspool hostpool.HostPool, urls []string, getHeader map[string]string) []*sproxyd.HttpResponse {
 func AsyncHttpGetMetadatas(bnsRequest *HttpRequest, getHeader map[string]string) []*sproxyd.HttpResponse {
 	ch := make(chan *sproxyd.HttpResponse)
 	sproxydResponses := []*sproxyd.HttpResponse{}
@@ -87,10 +87,8 @@ func AsyncHttpGetMetadatas(bnsRequest *HttpRequest, getHeader map[string]string)
 		Hspool:    bnsRequest.Hspool,
 		ReqHeader: getHeader,
 	}
-
 	treq := 0
 	fmt.Printf("\n")
-	// client := &http.Client{}
 	sproxydRequest.Client = &http.Client{}
 	for _, url := range bnsRequest.Urls {
 
@@ -99,9 +97,9 @@ func AsyncHttpGetMetadatas(bnsRequest *HttpRequest, getHeader map[string]string)
 		} else {
 			treq += 1
 		}
-		sproxydRequest.Path = url
-		go func(url string) {
 
+		go func(url string) {
+			sproxydRequest.Path = url
 			resp, err := sproxyd.GetMetadata(&sproxydRequest)
 			if err != nil {
 				resp.Body.Close()

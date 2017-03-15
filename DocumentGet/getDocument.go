@@ -83,11 +83,17 @@ func writeImage(outDir string, page string, media string, body *[]byte) {
 func buildBnsResponse(resp *http.Response, contentType string, body *[]byte) (bsnImage bns.BnsImages) {
 
 	bnsImage := bns.BnsImages{}
-	bnsImage.Usermd = resp.Header["X-Scal-Usermd"][0]
-	if pagemd, err := base64.Decode64(bnsImage.Usermd); err == nil {
-		bnsImage.Pagemd = string(pagemd)
-		goLog.Trace.Println(bnsImage.Pagemd)
+
+	if _, ok := resp.Header["X-Scal-Usermd"]; ok {
+		bnsImage.Usermd = resp.Header["X-Scal-Usermd"][0]
+		if pagemd, err := base64.Decode64(bnsImage.Usermd); err == nil {
+			bnsImage.Pagemd = string(pagemd)
+			goLog.Trace.Println(bnsImage.Pagemd)
+		}
+	} else {
+		goLog.Warning.Println("X-Scal-Usermd is missing the resp header", resp.Status, resp.Header)
 	}
+
 	bnsImage.Image = *body
 	bnsImage.ContentType = contentType
 	return bnsImage
@@ -103,12 +109,9 @@ func checkOutdir(outDir string) (err error) {
 	return err
 }
 
-// func copyObject(hspool hostpool.HostPool, client *http.Client, url string, buf []byte, header map[string]string) {
-func copyBlob(bnsRequest *bns.HttpRequest, buf []byte, header map[string]string) {
+func copyBlob(bnsRequest *bns.HttpRequest, url string, buf []byte, header map[string]string) {
 
-	// result := bns.AsyncHttpCopy(sproxyd.TargetHP, client, url, buf, header)
-	url := bnsRequest.Path
-	result := bns.AsyncHttpCopyBlob(bnsRequest, buf, header)
+	result := bns.AsyncHttpCopyBlob(bnsRequest, url, buf, header)
 
 	if result.Err != nil {
 		goLog.Trace.Printf("%s %d %s status: %s\n", hostname, pid, result.Url, result.Err)
@@ -122,7 +125,6 @@ func copyBlob(bnsRequest *bns.HttpRequest, buf []byte, header map[string]string)
 			result.Response.Status)
 	} else {
 		goLog.Error.Printf("%s %d %s %s %s", hostname, pid, url, action, "failed")
-
 	}
 
 	switch resp.StatusCode {
@@ -138,38 +140,30 @@ func copyBlob(bnsRequest *bns.HttpRequest, buf []byte, header map[string]string)
 		goLog.Warning.Println(hostname, pid, url, resp.Status)
 	}
 	resp.Body.Close()
-
 }
 
-func copyBlobTest(bnsRequest *bns.HttpRequest, buf []byte, header map[string]string) {
-
-	result := bns.AsyncHttpCopyBlobTest(bnsRequest, buf, header)
+func copyBlobTest(bnsRequest *bns.HttpRequest, url string, buf []byte, header map[string]string) {
+	result := bns.AsyncHttpCopyBlobTest(bnsRequest, url, buf, header)
 	goLog.Trace.Printf("URL => %s \n", result.Url)
-
 }
 
-func deleteBlobTest(bnsRequest *bns.HttpRequest) {
-	result := bns.AsyncHttpDeletePagesTest(bnsRequest)
+func deleteBlobTest(bnsRequest *bns.HttpRequest, url string) {
+	result := bns.AsyncHttpDeletePagesTest(bnsRequest, url)
 	goLog.Trace.Printf("URL => %s \n", result.Url)
-
 }
 
-func deleteBlob(bnsRequest *bns.HttpRequest) {
-	url := bnsRequest.Path
-	result := bns.AsyncHttpDeletePages(bnsRequest)
+func deleteBlob(bnsRequest *bns.HttpRequest, url string) {
+	result := bns.AsyncHttpDeletePages(bnsRequest, url)
 	if result.Err != nil {
 		goLog.Trace.Printf("%s %d %s status: %s\n", hostname, pid, result.Url, result.Err)
 		return
 	}
-
 	resp := result.Response
-
 	if resp != nil {
 		goLog.Trace.Printf("%s %d %s status: %s\n", hostname, pid, url,
 			result.Response.Status)
 	} else {
-		goLog.Error.Printf("%s %d %s %s %s", hostname, pid, bnsRequest.Path, action, "failed")
-
+		goLog.Error.Printf("%s %d %s %s %s", hostname, pid, url, action, "failed")
 	}
 
 	switch resp.StatusCode {
@@ -191,7 +185,7 @@ func deleteBlob(bnsRequest *bns.HttpRequest) {
 func main() {
 
 	flag.Usage = usage
-	flag.StringVar(&action, "action", "", "<getPageMeta> <getDocumentMeta> <getPage> <getDocumentType> <getObjectt> <copyObject> <GetPagerange>")
+	flag.StringVar(&action, "action", "", "<getPageMeta> <getDocumentMeta> <getPage> <getDocumentType> <getObject> <copyObject> <GetPagerange>")
 	flag.StringVar(&config, "config", "storage", "Config file")
 	flag.StringVar(&env, "env", "prod", "Environment")
 	flag.StringVar(&trace, "t", "0", "Trace") // Trace
@@ -212,7 +206,6 @@ func main() {
 	if action == "copyObject" {
 		action = "getObject"
 		CopyObject = true
-
 	}
 
 	if CopyObject {
@@ -263,7 +256,6 @@ func main() {
 		logPath = logPath + string(os.PathSeparator) + testname
 		if !file.Exist(logPath) {
 			_ = os.MkdirAll(logPath, 0755)
-
 		}
 		traceLog := logPath + application + "_trace.log"
 		infoLog := logPath + application + "_info.log"
@@ -316,8 +308,8 @@ func main() {
 	switch action {
 	case "getPageMeta":
 		pathname = pathname + "/" + page
-		bnsRequest.Path = pathname
-		if pagemd, err := bns.GetPageMetadata(&bnsRequest); err == nil {
+		// bnsRequest.Path = pathname
+		if pagemd, err := bns.GetPageMetadata(&bnsRequest, pathname); err == nil {
 			writeMeta(outDir, page, pagemd)
 		} else {
 			goLog.Error.Println(err)
@@ -325,8 +317,8 @@ func main() {
 
 	case "getDocumentMeta":
 		// the document's  metatadata is the metadata the object given <pathname>
-		bnsRequest.Path = pathname
-		if docmd, err := bns.GetDocMetadata(&bnsRequest); err == nil {
+		// bnsRequest.Path = pathname
+		if docmd, err := bns.GetDocMetadata(&bnsRequest, pathname); err == nil {
 			goLog.Info.Println(string(docmd))
 			docmeta := bns.DocumentMetadata{}
 			if err := json.Unmarshal(docmd, &docmeta); err != nil {
@@ -340,7 +332,8 @@ func main() {
 
 	case "getDocumentType":
 		docmeta := bns.DocumentMetadata{}
-		if docmd, err := bns.GetDocMetadata(&bnsRequest); err == nil {
+		// bnsRequest.Path = pathname
+		if docmd, err := bns.GetDocMetadata(&bnsRequest, pathname); err == nil {
 			// goLog.Info.Println(string(usermd))
 			if err := json.Unmarshal(docmd, &docmeta); err != nil {
 				goLog.Error.Println(docmeta)
@@ -365,10 +358,7 @@ func main() {
 			urls[i] = pathname + "/p" + strconv.Itoa(i+1)
 		}
 
-		// bnsRequest := bns.HttpRequest{}
-		//bnsRequest.Hspool=sproxyd.HP
 		bnsRequest.Urls = urls
-		//bnsRequest.Media=  media
 
 		sproxyResponses := bns.AsyncHttpGetpageType(&bnsRequest)
 
@@ -376,7 +366,7 @@ func main() {
 		bnsResponses := make([]bns.BnsImages, len, len)
 		var pagemd []byte
 		for i, v := range sproxyResponses {
-			if err := v.Err; err == nil { //
+			if err := v.Err; err == nil {
 				resp := v.Response
 				body := *v.Body
 				bnsImage := buildBnsResponse(resp, getHeader["Content-Type"], &body)
@@ -400,10 +390,8 @@ func main() {
 			docmd         []byte
 		)
 		media = "binary"
-		// bnsRequest.Path = pathname
-		bnsRequest.Media = media
-
-		if encoded_docmd, err = bns.GetEncodedMetadata(&bnsRequest); err == nil {
+		url := pathname
+		if encoded_docmd, err = bns.GetEncodedMetadata(&bnsRequest, url); err == nil {
 			if docmd, err = base64.Decode64(encoded_docmd); err != nil {
 				goLog.Error.Println(err)
 				os.Exit(2)
@@ -414,8 +402,6 @@ func main() {
 		}
 
 		docmeta := bns.DocumentMetadata{}
-
-		// goLog.Info.Println(string(usermd))
 		if err := json.Unmarshal(docmd, &docmeta); err != nil {
 			goLog.Error.Println(docmeta)
 			goLog.Error.Println(err)
@@ -429,9 +415,9 @@ func main() {
 				buf0 := make([]byte, 0)
 				if !Test {
 					// copyObject(sproxyd.TargetHP, client, pathname, buf0, header)
-					copyBlob(&bnsRequest, buf0, header)
+					copyBlob(&bnsRequest, url, buf0, header)
 				} else {
-					copyBlobTest(&bnsRequest, buf0, header)
+					copyBlobTest(&bnsRequest, url, buf0, header)
 				}
 			}
 		}
@@ -444,15 +430,17 @@ func main() {
 		for i := 0; i < len; i++ {
 			urls[i] = pathname + "/p" + strconv.Itoa(i+1)
 		}
+
 		bnsRequest.Urls = urls
 		bnsRequest.Hspool = sproxyd.HP
+
 		sproxyResponses := bns.AsyncHttpGetPage(&bnsRequest, getHeader)
 
-		// AsyncHttpGetPageType should already  close [defer resp.Body.Clsoe()] all open connections
 		bnsResponses := make([]bns.BnsImages, len, len)
 		var pagemd []byte
 
 		bnsRequest.Client = &http.Client{}
+
 		for i, v := range sproxyResponses {
 			if err := v.Err; err == nil { //
 				resp := v.Response
@@ -474,20 +462,16 @@ func main() {
 				header := map[string]string{
 					"Usermd": usermd,
 				}
-
-				// bnsRequest := bns.HttpRequest{}
-
-				bnsRequest.Path = urls[i]
-
+				url = urls[i]
 				if CopyObject {
+					bnsRequest.Hspool = sproxyd.TargetHP
 					if !Test {
 						// copyObject(sproxyd.TargetHP, clientc, urls[i], bnsImage.Image, header)
-						copyBlob(&bnsRequest, bnsImage.Image, header)
+						copyBlob(&bnsRequest, url, bnsImage.Image, header)
 					} else {
-						copyBlobTest(&bnsRequest, bnsImage.Image, header)
+						copyBlobTest(&bnsRequest, url, bnsImage.Image, header)
 					}
 				}
-
 			}
 		}
 
@@ -498,15 +482,14 @@ func main() {
 		getHeader["Content-Type"] = "image/" + strings.ToLower(media)
 		var pagemd []byte
 
-		// bnsRequest := bns.HttpRequest{}
-		/*
-			bnsRequest.Hspool = sproxyd.HP
-			bnsRequest.Client = client
-		*/
-		bnsRequest.Path = pathname
+		bnsRequest := bns.HttpRequest{
+			Hspool: sproxyd.HP,
+			Client: client,
+		}
+
 		bnsRequest.Media = media
 
-		if resp, err := bns.GetPageType(&bnsRequest); err == nil {
+		if resp, err := bns.GetPageType(&bnsRequest, pathname); err == nil {
 			defer resp.Body.Close()
 			body, _ := ioutil.ReadAll(resp.Body)
 			bnsImage := buildBnsResponse(resp, getHeader["Content-Type"], &body)

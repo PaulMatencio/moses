@@ -98,7 +98,6 @@ func PutobjectTest(sproxydRequest *HttpRequest, object []byte) (*http.Response, 
 		req.Header.Add("X-Scal-Replica-Policy", policy)
 	}
 	req.Header.Add("If-None-Match", "*")
-
 	return DoRequestTest(sproxydRequest.Hspool, sproxydRequest.Client, req, object)
 
 }

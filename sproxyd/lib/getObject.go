@@ -2,8 +2,6 @@ package sproxyd
 
 import (
 	"net/http"
-
-	// hostpool "github.com/bitly/go-hostpool"
 )
 
 /*
@@ -27,8 +25,7 @@ func GetObject(hspool hostpool.HostPool, client *http.Client, path string, getHe
 
 func Getobject(sproxydRequest *HttpRequest) (*http.Response, error) {
 	// hspool hostpool.HostPool, client *http.Client, path string, getHeader map[string]string
-	//url := DummyHost + HttpRequest.Path
-
+	//url := DummyHost + url
 	req, _ := http.NewRequest("GET", DummyHost+sproxydRequest.Path, nil)
 	if Range, ok := sproxydRequest.ReqHeader["Range"]; ok {
 		req.Header.Add("Range", Range)

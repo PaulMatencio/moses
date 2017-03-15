@@ -14,6 +14,14 @@ func DeleteObject(hspool hostpool.HostPool, client *http.Client, path string) (*
 	return DoRequest(hspool, client, req, nil)
 }
 
+func DeleteObjectTest(hspool hostpool.HostPool, client *http.Client, path string) (*http.Response, error) {
+
+	url := DummyHost + path
+	req, _ := http.NewRequest("DELETE", url, nil)
+	// resp, err := client.Do(req)
+	return DoRequestTest(hspool, client, req, nil)
+}
+
 func Deleteobject(sproxyRequest *HttpRequest) (*http.Response, error) {
 
 	url := DummyHost + sproxyRequest.Path
@@ -22,10 +30,10 @@ func Deleteobject(sproxyRequest *HttpRequest) (*http.Response, error) {
 	return DoRequest(sproxyRequest.Hspool, sproxyRequest.Client, req, nil)
 }
 
-func DeleteObjectTest(hspool hostpool.HostPool, client *http.Client, path string) (*http.Response, error) {
+func DeleteobjectTest(sproxyRequest *HttpRequest) (*http.Response, error) {
 
-	url := DummyHost + path
+	url := DummyHost + sproxyRequest.Path
 	req, _ := http.NewRequest("DELETE", url, nil)
 	// resp, err := client.Do(req)
-	return DoRequestTest(hspool, client, req, nil)
+	return DoRequestTest(sproxyRequest.Hspool, sproxyRequest.Client, req, nil)
 }

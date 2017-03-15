@@ -226,7 +226,7 @@ type Date struct {
 type HttpRequest struct {
 	Hspool hostpool.HostPool
 	Urls   []string
-	Path   string
+	// Path   string
 	Client *http.Client
 	Media  string
 }

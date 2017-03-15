@@ -13,12 +13,12 @@ import (
 	// hostpool "github.com/bitly/go-hostpool"
 )
 
-func GetPageMetadata(bnsRequest *HttpRequest) ([]byte, error) {
-	return GetMetadata(bnsRequest)
+func GetPageMetadata(bnsRequest *HttpRequest, url string) ([]byte, error) {
+	return GetMetadata(bnsRequest, url)
 }
 
-func GetDocMetadata(bnsRequest *HttpRequest) ([]byte, error) {
-	return GetMetadata(bnsRequest)
+func GetDocMetadata(bnsRequest *HttpRequest, url string) ([]byte, error) {
+	return GetMetadata(bnsRequest, url)
 }
 
 // Get total number of pages of a document
