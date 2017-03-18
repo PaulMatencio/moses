@@ -120,12 +120,12 @@ func (docmeta *DocumentMetadata) Decode(filename string) error {
 }
 
 type Pagemeta struct {
-	pubId struct {
+	PubId struct {
 		CountryCode string `json:"countryCode"`
 		PubNumber   string `json:"pubNumber`
 		KindCode    string `json:"kindCode"`
 	} `json:"pubId"`
-	bnsId struct {
+	BnsId struct {
 		CountryCode string `json:"countryCode"`
 		PubNumber   string `json:"pubNumber`
 		KindCode    string `json:"kindCode"`
@@ -210,11 +210,13 @@ type Configuration struct {
 	Storage_nodes []string
 }
 
-type BnsImages struct {
-	Pagemd      string `json: "pagemeta,omitempty"`
+type BnsResponse struct {
+	Pagemd      []byte `json: "pagemeta,omitempty"`
 	Usermd      string `json: "usermd,omitempty"`
 	ContentType string `json: "content-type,omitempty"`
 	Image       []byte `json: "images"`
+	BnsId       string `json: "bnsId,omitemty"`
+	PageNumber  string `json: "pageNunber,omitemty"`
 }
 
 type Date struct {

@@ -18,6 +18,8 @@ type Configuration struct {
 	TargetSproxyd []string `json:"targetSproxyd,omitempty"`
 	Driver        string   `json:"driver,omitempty"`
 	TargetDriver  string   `json:"targetDriver,omitempty"`
+	Env           string   `json:"env,omitempty`
+	TargetEnv     string   `json:"targetEnv,omitempty`
 	Log           string   `json:"logpath"`
 	OutDir        string   `json:"outputDir,omitempty"`
 }
@@ -54,6 +56,7 @@ func SetNewProxydHost(Config Configuration) {
 	// fmt.Println(Config.Sproxyd)
 	HP = hostpool.NewEpsilonGreedy(Config.Sproxyd, 0, &hostpool.LinearEpsilonValueCalculator{})
 	Driver = Config.Driver
+	Env = Config.Env
 	Host = Host[:0] // reset
 	Host = Config.GetProxyd()[0:]
 
@@ -63,6 +66,7 @@ func SetNewTargetProxydHost(Config Configuration) {
 	// fmt.Println(Config.Sproxyd)
 	TargetHP = hostpool.NewEpsilonGreedy(Config.TargetSproxyd, 0, &hostpool.LinearEpsilonValueCalculator{})
 	TargetDriver = Config.TargetDriver
+	TargetEnv = Config.TargetEnv
 	TargetHost = TargetHost[:0] // reset
 	TargetHost = Config.GetTargetProxyd()[0:]
 
@@ -90,6 +94,14 @@ func (c Configuration) GetTargetProxyd() (TargetSproxyd []string) {
 
 func (c Configuration) GetProxyd() (Sproxyd []string) {
 	return c.Sproxyd
+}
+
+func (c Configuration) GetEnv() (Env string) {
+	return c.Env
+}
+
+func (c Configuration) GetTargetEnv() (Env string) {
+	return c.TargetEnv
 }
 
 func (c Configuration) GetDriver() (Sproxyd string) {

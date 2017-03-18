@@ -1,38 +1,40 @@
 package main
 
+// delete documents  on  the Target environment
+// update can be used instead of delete + copy again
+
 import (
 	directory "directory/lib"
 	"encoding/json"
-	"errors"
+	// "errors"
 	"flag"
 	"fmt"
 	"io"
 	"io/ioutil"
 	bns "moses/bns/lib"
 	sproxyd "moses/sproxyd/lib"
-	"net/http"
-	"os"
-	"strconv"
-	"time"
-
 	base64 "moses/user/base64j"
 	file "moses/user/files/lib"
 	goLog "moses/user/goLog"
-
-	hostpool "github.com/bitly/go-hostpool"
+	"net/http"
+	"os"
+	"os/user"
+	"path"
+	"strconv"
+	"time"
 )
 
 var (
-	action, config, env, logPath, outDir, application, testname, hostname, pn, page, trace, test, meta, image, media string
-	Trace, Meta, Image, CopyObject, Test                                                                             bool
-	pid                                                                                                              int
-	timeout                                                                                                          time.Duration
+	action, config, env, targetEnv, logPath, application, testname, hostname, pn, page, trace, test string
+	Trace, Meta, Image, CopyObject, Test                                                            bool
+	pid                                                                                             int
+	timeout                                                                                         time.Duration
 )
 
 func usage() {
 
-	usage := "DocumentGet: \n -action <action> -config  <config>, sproxyd configfile;default file is [$HOME/sproxyd/storage]\n" +
-		"-pn pn -page page"
+	usage := "DeleteObject: \n -action <action> -config  <config>, sproxyd configfile;default file is [$HOME/sproxyd/storage]\n" +
+		"-pn <pn>"
 
 	fmt.Println(usage)
 	flag.PrintDefaults()
@@ -43,73 +45,6 @@ func check(e error) {
 	if e != nil {
 		panic(e)
 	}
-}
-
-func buildBnsResponse(resp *http.Response, contentType string, body *[]byte) (bsnImage bns.BnsImages) {
-
-	bnsImage := bns.BnsImages{}
-
-	if _, ok := resp.Header["X-Scal-Usermd"]; ok {
-		bnsImage.Usermd = resp.Header["X-Scal-Usermd"][0]
-		if pagemd, err := base64.Decode64(bnsImage.Usermd); err == nil {
-			bnsImage.Pagemd = string(pagemd)
-			goLog.Trace.Println(bnsImage.Pagemd)
-		}
-	} else {
-		goLog.Warning.Println("X-Scal-Usermd is missing the resp header", resp.Status, resp.Header)
-	}
-
-	bnsImage.Image = *body
-	bnsImage.ContentType = contentType
-	return bnsImage
-}
-
-func checkOutdir(outDir string) (err error) {
-
-	if len(outDir) == 0 {
-		err = errors.New("Please specify an output directory with -outDir argument")
-	} else if !file.Exist(outDir) {
-		err = os.MkdirAll(outDir, 0755)
-	}
-	return err
-}
-
-func copyBlob(bnsRequest *bns.HttpRequest, url string, buf []byte, header map[string]string) {
-
-	result := bns.AsyncHttpPutBlob(bnsRequest, url, buf, header)
-
-	if result.Err != nil {
-		goLog.Trace.Printf("%s %d %s status: %s\n", hostname, pid, result.Url, result.Err)
-		return
-	}
-
-	resp := result.Response
-
-	if resp != nil {
-		goLog.Trace.Printf("%s %d %s status: %s\n", hostname, pid, url,
-			result.Response.Status)
-	} else {
-		goLog.Error.Printf("%s %d %s %s %s", hostname, pid, url, action, "failed")
-	}
-
-	switch resp.StatusCode {
-	case 200:
-		goLog.Trace.Println(hostname, pid, url, resp.Status, resp.Header["X-Scal-Ring-Key"])
-
-	case 412:
-		goLog.Warning.Println(hostname, pid, url, resp.Status, "key=", resp.Header["X-Scal-Ring-Key"], "already exist")
-
-	case 422:
-		goLog.Error.Println(hostname, pid, url, resp.Status, resp.Header["X-Scal-Ring-Status"])
-	default:
-		goLog.Warning.Println(hostname, pid, url, resp.Status)
-	}
-	resp.Body.Close()
-}
-
-func copyBlobTest(bnsRequest *bns.HttpRequest, url string, buf []byte, header map[string]string) {
-	result := bns.AsyncHttpPutBlobTest(bnsRequest, url, buf, header)
-	goLog.Trace.Printf("URL => %s \n", result.Url)
 }
 
 func deleteBlobTest(bnsRequest *bns.HttpRequest, url string) {
@@ -152,39 +87,33 @@ func main() {
 	flag.Usage = usage
 	flag.StringVar(&config, "config", "storage", "Config file")
 	flag.StringVar(&env, "env", "prod", "Environment")
-	flag.StringVar(&trace, "t", "0", "Trace") // Trace
-	flag.StringVar(&meta, "meta", "0", "Save object meta in output Directory")
-	flag.StringVar(&image, "image", "0", "Save object image  type in output Directory")
-	flag.StringVar(&testname, "T", "getDoc", "") // Test name
+	flag.StringVar(&targetEnv, "targetEnv", "moses-prod", "Environment")
+	flag.StringVar(&trace, "t", "0", "Trace")       // Trace
+	flag.StringVar(&testname, "T", "deleteDoc", "") // Test name
 	flag.StringVar(&pn, "pn", "", "Publication number")
-	flag.StringVar(&page, "page", "1", "page number")
-	flag.StringVar(&media, "media", "tiff", "media type: tiff/png/pdf")
-	flag.StringVar(&outDir, "outDir", "", "output directory")
-	flag.StringVar(&test, "test", "1", "Run copy in test mode")
+	flag.StringVar(&test, "test", "0", "Run copy in test mode")
 	flag.Parse()
 	Trace, _ = strconv.ParseBool(trace)
-	Meta, _ = strconv.ParseBool(meta)
-	Image, _ = strconv.ParseBool(image)
 	Test, _ = strconv.ParseBool(test)
-
 	action = "DeleteObject"
+	application = "deleteObject"
 	if len(pn) == 0 {
 		fmt.Println("-pn <DocumentId> is missing")
 	}
 
 	pid := os.Getpid()
 	hostname, _ := os.Hostname()
+
+	usr, _ := user.Current()
+	homeDir := usr.HomeDir
+
 	if testname != "" {
 		testname += string(os.PathSeparator)
 	}
 	if len(config) != 0 {
 
 		if Config, err := sproxyd.GetConfig(config); err == nil {
-
-			logPath = Config.GetLogPath()
-			if len(outDir) == 0 {
-				outDir = Config.GetOutputDir()
-			}
+			logPath = path.Join(homeDir, Config.GetLogPath())
 			sproxyd.SetNewProxydHost(Config)
 			sproxyd.Driver = Config.GetDriver()
 			sproxyd.SetNewTargetProxydHost(Config)
@@ -192,8 +121,9 @@ func main() {
 			fmt.Println("INFO: Using config Hosts", sproxyd.Host, sproxyd.Driver, logPath)
 			fmt.Println("INFO: Using config target Hosts", sproxyd.TargetHost, sproxyd.TargetDriver, logPath)
 		} else {
-			sproxyd.HP = hostpool.NewEpsilonGreedy(sproxyd.Host, 0, &hostpool.LinearEpsilonValueCalculator{})
-			fmt.Println(err, "WARNING: Using default Hosts:", sproxyd.Host)
+			fmt.Println(err, "WARNING: Using defaults :", "\nHosts=>", sproxyd.Host, sproxyd.TargetHost, "\nEnv", sproxyd.Env, sproxyd.TargetEnv)
+			fmt.Println("$HOME/sproxyd/config/" + config + " must exist and well formed")
+			os.Exit(100)
 		}
 	}
 	// init logging
@@ -238,24 +168,21 @@ func main() {
 		}
 	}
 	directory.SetCPU("100%")
-	// client := &http.Client{}
 	start := time.Now()
 	bnsRequest := bns.HttpRequest{
 		Hspool: sproxyd.HP,
 		Client: &http.Client{},
-		Media:  media,
 	}
 	var (
 		err           error
 		encoded_docmd string
 		docmd         []byte
 	)
-	media = "binary"
-	page = "p" + page
+	// READ THE DOCUMENT FROM THE SOURCE ENV to GET ITS METADATA
+	// SOURCE AND TARGET COULD BE THE SAME . CHECK the config file
+
 	pathname := env + "/" + pn
-	url := pathname
-	doc := url
-	if encoded_docmd, err = bns.GetEncodedMetadata(&bnsRequest, url); err == nil {
+	if encoded_docmd, err = bns.GetEncodedMetadata(&bnsRequest, pathname); err == nil {
 		if docmd, err = base64.Decode64(encoded_docmd); err != nil {
 			goLog.Error.Println(err)
 			os.Exit(2)
@@ -271,38 +198,28 @@ func main() {
 		os.Exit(2)
 	}
 
+	//  DELETE THE DOCUMENT ON THE TARGET ENVIRONMENT
 	len := docmeta.TotalPage
-	urls := make([]string, len, len)
-	getHeader := map[string]string{}
-	getHeader["Content-Type"] = "application/binary"
-	for i := 0; i < len; i++ {
-		urls[i] = pathname + "/p" + strconv.Itoa(i+1)
-	}
-	bnsRequest.Urls = urls
-	bnsRequest.Hspool = sproxyd.HP
-	sproxyResponses := bns.AsyncHttpGetBlob(&bnsRequest, getHeader)
-	// bnsResponses := make([]bns.BnsImages, len, len)
+	fmt.Println("len => ", len)
+	bnsRequest.Urls = make([]string, len, len)
+	pathname = targetEnv + "/" + pn
+
+	doc := pathname
+
+	bnsRequest.Hspool = sproxyd.TargetHP // set target sproxyd servers
 	bnsRequest.Client = &http.Client{}
-	for i, v := range sproxyResponses {
-		if err := v.Err; err == nil { //
-			// resp := v.Response
-			// body := *v.Body
-			// usermd := resp.Header["X-Scal-Usermd"][0]
-			// bnsImage := buildBnsResponse(resp, getHeader["Content-Type"], &body) // bnsImage is a Go structure
-			page = "p" + strconv.Itoa(i+1)
-			// bnsResponses[i] = bnsImage
-			url = urls[i]
-			bnsRequest.Hspool = sproxyd.TargetHP
-			if !Test {
-				deleteBlob(&bnsRequest, url)
-			} else {
-				deleteBlobTest(&bnsRequest, url)
-			}
+	//  DELETE ALL THE PAGES FIRST
+	for i := 0; i < len; i++ {
+		bnsRequest.Urls[i] = pathname + "/p" + strconv.Itoa(i+1)
+		url := bnsRequest.Urls[i]
+		if !Test {
+			deleteBlob(&bnsRequest, url)
+		} else {
+			deleteBlobTest(&bnsRequest, url)
 		}
 	}
 
-	// delete the document metadata
-
+	// DELETE THE DOC METADATA AFTER DELING ALL THE PAGES
 	if !Test {
 		deleteBlob(&bnsRequest, doc)
 	} else {

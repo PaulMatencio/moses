@@ -68,7 +68,7 @@ func AsyncHttpGetBlob(bnsRequest *HttpRequest, getHeader map[string]string) []*s
 				return responses
 			}
 		case <-time.After(100 * time.Millisecond):
-			fmt.Printf(".")
+			fmt.Printf("r")
 		}
 	}
 	return responses

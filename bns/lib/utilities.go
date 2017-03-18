@@ -4,6 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	base64 "moses/user/base64j"
+	goLog "moses/user/goLog"
+	"net/http"
 	"os"
 	"os/exec"
 	"strconv"
@@ -169,4 +172,119 @@ func RemoveSlash(input string) string {
 		output = output + word
 	}
 	return output
+}
+
+//  Used to PUT BLOB
+
+func CopyBlob(bnsRequest *HttpRequest, url string, buf []byte, header map[string]string) {
+
+	pid := os.Getpid()
+	hostname, _ := os.Hostname()
+	action := "CopyBlob"
+	result := AsyncHttpPutBlob(bnsRequest, url, buf, header)
+
+	if result.Err != nil {
+		goLog.Trace.Printf("%s %d %s status: %s\n", hostname, pid, result.Url, result.Err)
+		return
+	}
+
+	resp := result.Response
+
+	if resp != nil {
+		goLog.Trace.Printf("%s %d %s status: %s\n", hostname, pid, url,
+			result.Response.Status)
+	} else {
+		goLog.Error.Printf("%s %d %s %s %s", hostname, pid, url, action, "failed")
+	}
+
+	switch resp.StatusCode {
+	case 200:
+		goLog.Trace.Println(hostname, pid, url, resp.Status, resp.Header["X-Scal-Ring-Key"])
+
+	case 412:
+		goLog.Warning.Println(hostname, pid, url, resp.Status, "key=", resp.Header["X-Scal-Ring-Key"], "already exist")
+
+	case 422:
+		goLog.Error.Println(hostname, pid, url, resp.Status, resp.Header["X-Scal-Ring-Status"])
+	default:
+		goLog.Warning.Println(hostname, pid, url, resp.Status)
+	}
+	resp.Body.Close()
+}
+
+func CopyBlobTest(bnsRequest *HttpRequest, url string, buf []byte, header map[string]string) {
+
+	result := AsyncHttpPutBlobTest(bnsRequest, url, buf, header)
+	goLog.Trace.Printf("URL => %s \n", result.Url)
+}
+
+// UPdate blob
+
+func UpdateBlob(bnsRequest *HttpRequest, url string, buf []byte, header map[string]string) {
+
+	pid := os.Getpid()
+	hostname, _ := os.Hostname()
+	action := "UpdateBlob"
+	result := AsyncHttpUpdateBlob(bnsRequest, url, buf, header)
+	if result.Err != nil {
+		goLog.Trace.Printf("%s %d %s status: %s\n", hostname, pid, result.Url, result.Err)
+		return
+	}
+
+	resp := result.Response
+
+	if resp != nil {
+		goLog.Trace.Printf("%s %d %s status: %s\n", hostname, pid, url,
+			result.Response.Status)
+	} else {
+		goLog.Error.Printf("%s %d %s %s %s", hostname, pid, url, action, "failed")
+	}
+
+	switch resp.StatusCode {
+	case 200:
+		goLog.Trace.Println(hostname, pid, url, resp.Status, resp.Header["X-Scal-Ring-Key"])
+
+	case 412:
+		goLog.Warning.Println(hostname, pid, url, resp.Status, "key=", resp.Header["X-Scal-Ring-Key"], "already exist")
+
+	case 422:
+		goLog.Error.Println(hostname, pid, url, resp.Status, resp.Header["X-Scal-Ring-Status"])
+	default:
+		goLog.Warning.Println(hostname, pid, url, resp.Status)
+	}
+	resp.Body.Close()
+}
+
+func UpdateBlobTest(bnsRequest *HttpRequest, url string, buf []byte, header map[string]string) {
+	result := AsyncHttpUpdateBlobTest(bnsRequest, url, buf, header)
+	goLog.Trace.Printf("URL => %s \n", result.Url)
+}
+
+func BuildBnsResponse(resp *http.Response, contentType string, body *[]byte) BnsResponse {
+
+	bnsResponse := BnsResponse{}
+
+	if _, ok := resp.Header["X-Scal-Usermd"]; ok {
+		bnsResponse.Usermd = resp.Header["X-Scal-Usermd"][0]
+		if pagemd, err := base64.Decode64(bnsResponse.Usermd); err == nil {
+			bnsResponse.Pagemd = pagemd
+			goLog.Trace.Println("page meata=>", string(pagemd))
+		}
+	} else {
+		goLog.Warning.Println("X-Scal-Usermd is missing the resp header", resp.Status, resp.Header)
+	}
+
+	bnsResponse.Image = *body
+	bnsResponse.ContentType = contentType
+
+	pagemeta := Pagemeta{}
+	pagemd := bnsResponse.Pagemd
+	if err := json.Unmarshal(pagemd, &pagemeta); err != nil {
+		goLog.Error.Println(err, string(pagemd))
+	} else {
+		bnsResponse.BnsId = pagemeta.BnsId.CountryCode + "/" + pagemeta.BnsId.PubNumber + "/" + pagemeta.BnsId.KindCode
+		bnsResponse.PageNumber = "p" + strconv.Itoa(pagemeta.PageNumber)
+	}
+
+	return bnsResponse
 }

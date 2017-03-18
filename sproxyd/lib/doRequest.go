@@ -25,7 +25,7 @@ func DoRequest(hspool hostpool.HostPool, client *http.Client, req *http.Request,
 	)
 	u := req.URL
 	waittime = 50 * time.Millisecond
-	//goLog.Trace.Println(req.Method, req.Header, u.Host, u.Path, len(object))
+	// goLog.Trace.Println(req.Method, req.Header, u.Host, u.Path, len(object))
 	for r = 1; r <= 3; r++ {
 		// hpool = HP.Get()
 		hpool = hspool.Get()
@@ -34,7 +34,7 @@ func DoRequest(hspool hostpool.HostPool, client *http.Client, req *http.Request,
 		req.URL.Host = u1.Host
 		req.Host = u1.Host
 		req.URL.Path = u1.Path + u.Path
-		goLog.Trace.Println(host, u1.Host, u1.Path, req.URL.Path)
+		// goLog.Trace.Println(r, host, req.URL.Path)
 		if r > 1 && req.ContentLength > 0 && len(object) > 0 {
 			var body io.Reader
 			body = bytes.NewBuffer(object)
@@ -45,6 +45,7 @@ func DoRequest(hspool hostpool.HostPool, client *http.Client, req *http.Request,
 			}
 		}
 		goLog.Trace.Println(req.URL)
+		start := time.Now()
 		if resp, err = client.Do(req); err != nil {
 			goLog.Error.Printf("Retry=%d, Url=%s Error=%s", r, req.URL, err.Error())
 			if strings.Index(err.Error(), "dial tcp") >= 0 {
@@ -53,7 +54,7 @@ func DoRequest(hspool hostpool.HostPool, client *http.Client, req *http.Request,
 				hpool.Mark(nil)
 			}
 		} else {
-			goLog.Trace.Println(host, Proxy, u.Path, resp.Status)
+			goLog.Trace.Println(host, u.Path, resp.Status, time.Since(start))
 			switch resp.StatusCode {
 			case 500, 503:
 				hpool.Mark(errors.New(resp.Status))

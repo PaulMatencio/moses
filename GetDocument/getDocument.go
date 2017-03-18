@@ -13,6 +13,8 @@ import (
 	sproxyd "moses/sproxyd/lib"
 	"net/http"
 	"os"
+	"os/user"
+	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -148,8 +150,8 @@ func main() {
 
 	flag.Usage = usage
 	flag.StringVar(&action, "action", "", "<getPageMeta> <getPageType> <getDocumentMeta> <getDocumentType> <GetPageRange>")
-	flag.StringVar(&config, "config", "storage", "Config file")
-	flag.StringVar(&env, "env", "prod", "Environment")
+	flag.StringVar(&config, "config", "moses-dev", "Config file")
+	flag.StringVar(&env, "env", "", "Environment")
 	flag.StringVar(&trace, "t", "0", "Trace") // Trace
 	flag.StringVar(&meta, "meta", "0", "Save object meta in output Directory")
 	flag.StringVar(&image, "image", "0", "Save object image  type in output Directory")
@@ -173,24 +175,29 @@ func main() {
 	application = "DocumentGet"
 	pid := os.Getpid()
 	hostname, _ := os.Hostname()
+	usr, _ := user.Current()
+	homeDir := usr.HomeDir
+
 	if testname != "" {
 		testname += string(os.PathSeparator)
 	}
 
 	if len(config) != 0 {
-
 		if Config, err := sproxyd.GetConfig(config); err == nil {
-
-			logPath = Config.GetLogPath()
+			logPath = path.Join(homeDir, Config.GetLogPath())
 			if len(outDir) == 0 {
-				outDir = Config.GetOutputDir()
+				outDir = path.Join(homeDir, Config.GetOutputDir())
 			}
+
 			sproxyd.SetNewProxydHost(Config)
 			sproxyd.Driver = Config.GetDriver()
+			sproxyd.Env = Config.GetEnv()
 			sproxyd.SetNewTargetProxydHost(Config)
 			sproxyd.TargetDriver = Config.GetTargetDriver()
-			fmt.Println("INFO: Using config Hosts", sproxyd.Host, sproxyd.Driver, logPath)
-			fmt.Println("INFO: Using config target Hosts", sproxyd.TargetHost, sproxyd.TargetDriver, logPath)
+			sproxyd.TargetEnv = Config.GetTargetEnv()
+
+			fmt.Println("INFO: Using config Hosts", sproxyd.Host, sproxyd.Driver, sproxyd.Env, logPath)
+			fmt.Println("INFO: Using config target Hosts", sproxyd.TargetHost, sproxyd.TargetDriver, sproxyd.TargetEnv, logPath)
 		} else {
 			sproxyd.HP = hostpool.NewEpsilonGreedy(sproxyd.Host, 0, &hostpool.LinearEpsilonValueCalculator{})
 			fmt.Println(err, "WARNING: Using default Hosts:", sproxyd.Host)
@@ -243,6 +250,9 @@ func main() {
 	client := &http.Client{}
 	start := time.Now()
 	page = "p" + page
+	if len(env) == 0 {
+		env = sproxyd.Env
+	}
 	pathname := env + "/" + pn
 
 	if action == "copyObject" {
@@ -258,6 +268,7 @@ func main() {
 
 	switch action {
 	case "getPageMeta":
+		Meta = true
 		pathname = pathname + "/" + page
 		// bnsRequest.Path = pathname
 		if pagemd, err := bns.GetPageMetadata(&bnsRequest, pathname); err == nil {
@@ -269,13 +280,18 @@ func main() {
 	case "getDocumentMeta":
 		// the document's  metatadata is the metadata the object given <pathname>
 		// bnsRequest.Path = pathname
+		Meta = true
 		if docmd, err := bns.GetDocMetadata(&bnsRequest, pathname); err == nil {
-			goLog.Info.Println(string(docmd))
-			docmeta := bns.DocumentMetadata{}
-			if err := json.Unmarshal(docmd, &docmeta); err != nil {
-				goLog.Error.Println(err)
+			goLog.Info.Println("Document Metadata=>\n", string(docmd))
+			if len(docmd) != 0 {
+				docmeta := bns.DocumentMetadata{}
+				if err := json.Unmarshal(docmd, &docmeta); err != nil {
+					goLog.Error.Println(err)
+				} else {
+					writeMeta(outDir, "", docmd)
+				}
 			} else {
-				writeMeta(outDir, "", docmd)
+				goLog.Error.Println(pathname, "Document Metadata is missing")
 			}
 		} else {
 			goLog.Error.Println(err)
@@ -284,15 +300,19 @@ func main() {
 	case "getDocumentType":
 		docmeta := bns.DocumentMetadata{}
 		if docmd, err := bns.GetDocMetadata(&bnsRequest, pathname); err == nil {
-			// goLog.Info.Println(string(usermd))
-			if err := json.Unmarshal(docmd, &docmeta); err != nil {
-				goLog.Error.Println(docmeta)
-				goLog.Error.Println(err)
-				os.Exit(2)
-			} else {
-				writeMeta(outDir, "", docmd)
-			}
+			goLog.Trace.Println("Document Metadata=>", string(docmd))
+			if len(docmd) != 0 {
 
+				if err := json.Unmarshal(docmd, &docmeta); err != nil {
+					goLog.Error.Println(docmeta)
+					goLog.Error.Println(err)
+					os.Exit(2)
+				} else {
+					writeMeta(outDir, "", docmd)
+				}
+			} else {
+				goLog.Error.Println(pathname, "Document Metadata is missing")
+			}
 		} else {
 			goLog.Error.Println(err)
 			os.Exit(2)
@@ -341,6 +361,7 @@ func main() {
 		)
 		media = "binary"
 		url := pathname
+
 		if encoded_docmd, err = bns.GetEncodedMetadata(&bnsRequest, url); err == nil {
 			if docmd, err = base64.Decode64(encoded_docmd); err != nil {
 				goLog.Error.Println(err)

@@ -1,5 +1,18 @@
 package main
 
+//  Copy  all the objects (pages + document metatdata) of a document  from one Ring  ( moses-dev) to another Ring (Moses-Prod)
+//
+//   GET he document metatada from the source  Ring
+//   PUT  the document metadata  to the destination Ring
+//     For every object ( header+ tiff+ png + pdf) of the document
+//         GET The Object  from the source Ring
+//         PUT the object  to the source Ring
+//
+//
+//  Check the config file sproxyd/conf/<default config file> moses-dev for more detail before running this program
+//  The <default config file>  can be changed via the -config parm
+//
+
 import (
 	directory "directory/lib"
 	"encoding/json"
@@ -12,6 +25,8 @@ import (
 	sproxyd "moses/sproxyd/lib"
 	"net/http"
 	"os"
+	"os/user"
+	"path"
 	"strconv"
 	"time"
 
@@ -19,22 +34,32 @@ import (
 	file "moses/user/files/lib"
 	goLog "moses/user/goLog"
 
-	hostpool "github.com/bitly/go-hostpool"
+	// hostpool "github.com/bitly/go-hostpool"
 )
 
 var (
-	action, config, env, logPath, outDir, application, testname, hostname, pn, page, trace, test, meta, image, media string
-	Trace, Meta, Image, CopyObject, Test                                                                             bool
-	pid                                                                                                              int
-	timeout                                                                                                          time.Duration
+	action, config, env, targetEnv, logPath, outDir, application, testname, hostname, pn, page, trace, test, meta, image, media, doconly string
+	Trace, Meta, Image, CopyObject, Test, Doconly                                                                                        bool
+	pid                                                                                                                                  int
+	timeout                                                                                                                              time.Duration
 )
 
 func usage() {
+	default_config := "moses-dev"
+	usage := "\n\nUsage:\n\nCopyObject  -config  <config>, sproxyd configfile;default file is [$HOME/sproxyd/storage]" +
+		"\n -pn <Patent number>  \n -env <Source environment> \n -targEnv <Target environment> \n -t <trace 0/1>  \n -test <test mode 0/1>"
 
-	usage := "CopyObject: \n  -config  <config>, sproxyd configfile;default file is [$HOME/sproxyd/storage]\n" +
-		"-pn pn -page page"
+	what := "\nFunction:\n\n Copy  all the objects (pages + document metatdata) of a document  from one Ring  (Ex:moses-dev) to another Ring (Ex:moses-Prod)" +
+		"\n GET he document metatada from the source  Ring " +
+		"\n PUT  the document metadata  to the destination Ring" +
+		"\n For every object ( header+ tiff+ png + pdf) of the document" +
+		"\n      GET The Object  from the source Ring" +
+		"\n      PUT the object  to the source Ring" +
+		"\n\nCheck the config file $HOME/sproxyd/conf/<default config file name> moses-dev for more detail regarding source and destination Rings before running this program" +
+		"\nThe <default config file name>:<" + default_config + "> can be changed via the -config parm  "
 
-	fmt.Println(usage)
+	fmt.Println(what, usage)
+
 	flag.PrintDefaults()
 	os.Exit(2)
 }
@@ -43,25 +68,6 @@ func check(e error) {
 	if e != nil {
 		panic(e)
 	}
-}
-
-func buildBnsResponse(resp *http.Response, contentType string, body *[]byte) (bsnImage bns.BnsImages) {
-
-	bnsImage := bns.BnsImages{}
-
-	if _, ok := resp.Header["X-Scal-Usermd"]; ok {
-		bnsImage.Usermd = resp.Header["X-Scal-Usermd"][0]
-		if pagemd, err := base64.Decode64(bnsImage.Usermd); err == nil {
-			bnsImage.Pagemd = string(pagemd)
-			goLog.Trace.Println(bnsImage.Pagemd)
-		}
-	} else {
-		goLog.Warning.Println("X-Scal-Usermd is missing the resp header", resp.Status, resp.Header)
-	}
-
-	bnsImage.Image = *body
-	bnsImage.ContentType = contentType
-	return bnsImage
 }
 
 func checkOutdir(outDir string) (err error) {
@@ -74,137 +80,68 @@ func checkOutdir(outDir string) (err error) {
 	return err
 }
 
-func copyBlob(bnsRequest *bns.HttpRequest, url string, buf []byte, header map[string]string) {
-
-	result := bns.AsyncHttpPutBlob(bnsRequest, url, buf, header)
-
-	if result.Err != nil {
-		goLog.Trace.Printf("%s %d %s status: %s\n", hostname, pid, result.Url, result.Err)
-		return
-	}
-
-	resp := result.Response
-
-	if resp != nil {
-		goLog.Trace.Printf("%s %d %s status: %s\n", hostname, pid, url,
-			result.Response.Status)
-	} else {
-		goLog.Error.Printf("%s %d %s %s %s", hostname, pid, url, action, "failed")
-	}
-
-	switch resp.StatusCode {
-	case 200:
-		goLog.Trace.Println(hostname, pid, url, resp.Status, resp.Header["X-Scal-Ring-Key"])
-
-	case 412:
-		goLog.Warning.Println(hostname, pid, url, resp.Status, "key=", resp.Header["X-Scal-Ring-Key"], "already exist")
-
-	case 422:
-		goLog.Error.Println(hostname, pid, url, resp.Status, resp.Header["X-Scal-Ring-Status"])
-	default:
-		goLog.Warning.Println(hostname, pid, url, resp.Status)
-	}
-	resp.Body.Close()
-}
-
-func copyBlobTest(bnsRequest *bns.HttpRequest, url string, buf []byte, header map[string]string) {
-	result := bns.AsyncHttpPutBlobTest(bnsRequest, url, buf, header)
-	goLog.Trace.Printf("URL => %s \n", result.Url)
-}
-
-func deleteBlobTest(bnsRequest *bns.HttpRequest, url string) {
-	result := bns.AsyncHttpDeleteBlobTest(bnsRequest, url)
-	goLog.Trace.Printf("URL => %s \n", result.Url)
-}
-
-func deleteBlob(bnsRequest *bns.HttpRequest, url string) {
-	result := bns.AsyncHttpDeleteBlob(bnsRequest, url)
-	if result.Err != nil {
-		goLog.Trace.Printf("%s %d %s status: %s\n", hostname, pid, result.Url, result.Err)
-		return
-	}
-	resp := result.Response
-	if resp != nil {
-		goLog.Trace.Printf("%s %d %s status: %s\n", hostname, pid, url,
-			result.Response.Status)
-	} else {
-		goLog.Error.Printf("%s %d %s %s %s", hostname, pid, url, action, "failed")
-	}
-
-	switch resp.StatusCode {
-	case 200:
-		goLog.Trace.Println(hostname, pid, url, resp.Status, resp.Header["X-Scal-Ring-Key"])
-
-	case 412:
-		goLog.Warning.Println(hostname, pid, url, resp.Status, "key=", resp.Header["X-Scal-Ring-Key"], "already exist")
-
-	case 422:
-		goLog.Error.Println(hostname, pid, url, resp.Status, resp.Header["X-Scal-Ring-Status"])
-	default:
-		goLog.Warning.Println(hostname, pid, url, resp.Status)
-	}
-	resp.Body.Close()
-
-}
-
 func main() {
-
+	defaultConfig := "moses-dev"
 	flag.Usage = usage
-	flag.StringVar(&config, "config", "storage", "Config file")
-	flag.StringVar(&env, "env", "prod", "Environment")
-	flag.StringVar(&trace, "t", "0", "Trace") // Trace
-	flag.StringVar(&meta, "meta", "0", "Save object meta in output Directory")
-	flag.StringVar(&image, "image", "0", "Save object image  type in output Directory")
-	flag.StringVar(&testname, "T", "getDoc", "") // Test name
+	flag.StringVar(&config, "config", defaultConfig, "Config file")
+	flag.StringVar(&env, "env", "", "Environment")
+	flag.StringVar(&targetEnv, "targetEnv", "", "Target Environment")
+	flag.StringVar(&trace, "t", "0", "Trace")     // Trace
+	flag.StringVar(&testname, "T", "copyDoc", "") // Test name
 	flag.StringVar(&pn, "pn", "", "Publication number")
-	flag.StringVar(&page, "page", "1", "page number")
-	flag.StringVar(&media, "media", "tiff", "media type: tiff/png/pdf")
-	flag.StringVar(&outDir, "outDir", "", "output directory")
-	flag.StringVar(&test, "test", "1", "Run copy in test mode")
+	flag.StringVar(&test, "test", "0", "Run copy in test mode")
+	flag.StringVar(&doconly, "doconly", "0", "Only update the document meta")
 	flag.Parse()
 	Trace, _ = strconv.ParseBool(trace)
 	Meta, _ = strconv.ParseBool(meta)
 	Image, _ = strconv.ParseBool(image)
 	Test, _ = strconv.ParseBool(test)
+	Doconly, _ = strconv.ParseBool(doconly)
 
 	action = "CopyObject"
+	application = "copyObject"
 	if len(pn) == 0 {
-		fmt.Println("-pn <DocumentId> is missing")
+		fmt.Println("Error:\n-pn <DocumentId> is missing, what Document objects do you want to copy ?")
+		usage()
 	}
-	// application = "DocumentGet"
 	pid := os.Getpid()
 	hostname, _ := os.Hostname()
+	usr, _ := user.Current()
+	homeDir := usr.HomeDir
 	if testname != "" {
 		testname += string(os.PathSeparator)
 	}
 
-	if len(config) != 0 {
+	if Config, err := sproxyd.GetConfig(config); err == nil {
 
-		if Config, err := sproxyd.GetConfig(config); err == nil {
-
-			logPath = Config.GetLogPath()
-			if len(outDir) == 0 {
-				outDir = Config.GetOutputDir()
-			}
-			sproxyd.SetNewProxydHost(Config)
-			sproxyd.Driver = Config.GetDriver()
-			sproxyd.SetNewTargetProxydHost(Config)
-			sproxyd.TargetDriver = Config.GetTargetDriver()
-			fmt.Println("INFO: Using config Hosts", sproxyd.Host, sproxyd.Driver, logPath)
-			fmt.Println("INFO: Using config target Hosts", sproxyd.TargetHost, sproxyd.TargetDriver, logPath)
-		} else {
-			sproxyd.HP = hostpool.NewEpsilonGreedy(sproxyd.Host, 0, &hostpool.LinearEpsilonValueCalculator{})
-			fmt.Println(err, "WARNING: Using default Hosts:", sproxyd.Host)
+		logPath = path.Join(homeDir, Config.GetLogPath())
+		if len(outDir) == 0 {
+			outDir = path.Join(homeDir, Config.GetOutputDir())
 		}
+
+		sproxyd.SetNewProxydHost(Config)
+		sproxyd.Driver = Config.GetDriver()
+		sproxyd.Env = Config.GetEnv()
+		sproxyd.SetNewTargetProxydHost(Config)
+		sproxyd.TargetDriver = Config.GetTargetDriver()
+		sproxyd.TargetEnv = Config.GetTargetEnv()
+
+		fmt.Println("INFO: Using config Hosts=>", sproxyd.Host, sproxyd.Driver, sproxyd.Env)
+		fmt.Println("INFO: Using config target Hosts=>", sproxyd.TargetHost, sproxyd.TargetDriver, sproxyd.TargetEnv)
+		fmt.Println("INFO: Logs Path=>", logPath)
+	} else {
+		// sproxyd.HP = hostpool.NewEpsilonGreedy(sproxyd.Host, 0, &hostpool.LinearEpsilonValueCalculator{})
+		fmt.Println(err, "WARNING: Using defaults :", "\nHosts=>", sproxyd.Host, sproxyd.TargetHost, "\nEnv", sproxyd.Env, sproxyd.TargetEnv)
+		fmt.Println("$HOME/sproxyd/config/" + config + " must exist and well formed")
+		os.Exit(100)
 	}
+
 	// init logging
 
 	if logPath == "" {
 		fmt.Println("WARNING: Using default logging")
 		goLog.Init(ioutil.Discard, os.Stdout, os.Stdout, os.Stderr)
 	} else {
-
-		// mkAll dir
 		logPath = logPath + string(os.PathSeparator) + testname
 		if !file.Exist(logPath) {
 			_ = os.MkdirAll(logPath, 0755)
@@ -238,23 +175,31 @@ func main() {
 			}
 		}
 	}
-	directory.SetCPU("100%")
-	// client := &http.Client{}
-	start := time.Now()
-	bnsRequest := bns.HttpRequest{
-		Hspool: sproxyd.HP,
-		Client: &http.Client{},
-		Media:  media,
-	}
 	var (
 		err           error
 		encoded_docmd string
 		docmd         []byte
 	)
+	directory.SetCPU("100%")
+	start := time.Now()
+	bnsRequest := bns.HttpRequest{
+		Hspool: sproxyd.HP, // source sproxyd servers IP address and ports
+		Client: &http.Client{},
+		Media:  media,
+	}
+
 	media = "binary"
-	page = "p" + page
+	if len(env) == 0 {
+		env = sproxyd.Env
+	}
+	if len(targetEnv) == 0 {
+		targetEnv = sproxyd.TargetEnv
+	}
 	pathname := env + "/" + pn
+	targetPath := targetEnv + "/" + pn
 	url := pathname
+	targetUrl := targetPath
+
 	if encoded_docmd, err = bns.GetEncodedMetadata(&bnsRequest, url); err == nil {
 		if docmd, err = base64.Decode64(encoded_docmd); err != nil {
 			goLog.Error.Println(err)
@@ -274,43 +219,49 @@ func main() {
 			"Usermd": encoded_docmd,
 		}
 		buf0 := make([]byte, 0)
+		bnsRequest.Hspool = sproxyd.TargetHP // Set Target sproxyd servers
 		if !Test {
-			// copyObject(sproxyd.TargetHP, client, pathname, buf0, header)
-			copyBlob(&bnsRequest, url, buf0, header)
+			bns.CopyBlob(&bnsRequest, targetUrl, buf0, header)
 		} else {
-			copyBlobTest(&bnsRequest, url, buf0, header)
+			bns.CopyBlobTest(&bnsRequest, targetUrl, buf0, header)
 		}
 	}
-	len := docmeta.TotalPage
-	urls := make([]string, len, len)
-	getHeader := map[string]string{}
-	getHeader["Content-Type"] = "application/binary"
-	for i := 0; i < len; i++ {
-		urls[i] = pathname + "/p" + strconv.Itoa(i+1)
-	}
-	bnsRequest.Urls = urls
-	bnsRequest.Hspool = sproxyd.HP
-	sproxyResponses := bns.AsyncHttpGetBlob(&bnsRequest, getHeader)
-	bnsResponses := make([]bns.BnsImages, len, len)
-	bnsRequest.Client = &http.Client{}
-	for i, v := range sproxyResponses {
-		if err := v.Err; err == nil { //
-			resp := v.Response
-			body := *v.Body
-			usermd := resp.Header["X-Scal-Usermd"][0]
-			bnsImage := buildBnsResponse(resp, getHeader["Content-Type"], &body) // bnsImage is a Go structure
-			page = "p" + strconv.Itoa(i+1)
-			bnsResponses[i] = bnsImage
-			header := map[string]string{
-				"Usermd": usermd,
-			}
-			url = urls[i]
-			bnsRequest.Hspool = sproxyd.TargetHP
-			if !Test {
-				// copyObject(sproxyd.TargetHP, clientc, urls[i], bnsImage.Image, header)
-				copyBlob(&bnsRequest, url, bnsImage.Image, header)
-			} else {
-				copyBlobTest(&bnsRequest, url, bnsImage.Image, header)
+
+	if !Doconly {
+
+		len := docmeta.TotalPage
+		urls := make([]string, len, len)
+		targetUrls := make([]string, len, len)
+		getHeader := map[string]string{}
+		getHeader["Content-Type"] = "application/binary"
+		for i := 0; i < len; i++ {
+			urls[i] = pathname + "/p" + strconv.Itoa(i+1)
+			targetUrls[i] = targetPath + "/p" + strconv.Itoa(i+1)
+		}
+		bnsRequest.Urls = urls
+		bnsRequest.Hspool = sproxyd.HP // Set source sproxyd servers
+		sproxyResponses := bns.AsyncHttpGetBlob(&bnsRequest, getHeader)
+		bnsResponses := make([]bns.BnsImages, len, len)
+		bnsRequest.Client = &http.Client{}
+		for i, v := range sproxyResponses {
+			if err := v.Err; err == nil { //
+				resp := v.Response
+				body := *v.Body
+				usermd := resp.Header["X-Scal-Usermd"][0]
+				bnsImage := bns.BuildBnsResponse(resp, getHeader["Content-Type"], &body) // bnsImage is a Go structure
+				page = "p" + strconv.Itoa(i+1)
+				bnsResponses[i] = bnsImage
+				header := map[string]string{
+					"Usermd": usermd,
+				}
+				url = urls[i]
+				targetUrl = targetUrls[i]
+				bnsRequest.Hspool = sproxyd.TargetHP // set target sproxyd servers
+				if !Test {
+					bns.CopyBlob(&bnsRequest, targetUrl, bnsImage.Image, header)
+				} else {
+					bns.CopyBlobTest(&bnsRequest, targetUrl, bnsImage.Image, header)
+				}
 			}
 		}
 	}

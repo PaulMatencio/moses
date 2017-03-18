@@ -14,17 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	// hostpool "github.com/bitly/go-hostpool"
 )
-
-// new function
-
-/*
-func AsyncHttpGetPage(bnsRequest *HttpRequest, getHeader map[string]string) []*sproxyd.HttpResponse {
-	return AsyncHttpGetBlob(bnsRequest, getHeader)
-}
-*/
 
 func GetPageType(bnsRequest *HttpRequest, url string) (*http.Response, error) {
 	/*
