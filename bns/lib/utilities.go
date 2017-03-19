@@ -287,6 +287,7 @@ func BuildBnsResponse(resp *http.Response, contentType string, body *[]byte) Bns
 		bnsResponse.BnsId = pagemeta.BnsId.CountryCode + "/" + pagemeta.BnsId.PubNumber + "/" + pagemeta.BnsId.KindCode
 		bnsResponse.PageNumber = "p" + strconv.Itoa(pagemeta.PageNumber)
 	}
+
 	defer resp.Body.Close()
 	return bnsResponse
 }

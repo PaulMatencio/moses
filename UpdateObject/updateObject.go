@@ -247,11 +247,13 @@ func main() {
 		bnsResponses := make([]bns.BnsResponse, num, num)
 		bnsRequest.Client = &http.Client{}
 		for i, v := range sproxyResponses {
+
 			if err := v.Err; err == nil { //
 				resp := v.Response
 				body := *v.Body
 				// BuildBnsResponse will clode the Body
 				bnsResponse := bns.BuildBnsResponse(resp, getHeader["Content-Type"], &body) // bnsResponse is a Go structure
+
 				bnsResponses[i] = bnsResponse
 			}
 		}
@@ -265,24 +267,25 @@ func main() {
 		sproxydResponses := bns.AsyncHttpUpdateBlobs(bnsResponses)
 
 		num200 := 0
-		for _, sproxydResponse := range sproxydResponses {
-			resp := sproxydResponse.Response
-			goLog.Trace.Println(sproxydResponse.Url, resp.StatusCode)
-			if resp.StatusCode == 200 {
-				num200++
-			} else {
-				goLog.Error.Println(sproxydResponse.Url, sproxydResponse.Err, resp.StatusCode)
+		if !sproxyd.Test {
+			for _, sproxydResponse := range sproxydResponses {
+				resp := sproxydResponse.Response
+				goLog.Trace.Println(sproxydResponse.Url, resp.StatusCode)
+				if resp.StatusCode == 200 {
+					num200++
+				} else {
+					goLog.Error.Println(sproxydResponse.Url, sproxydResponse.Err, resp.StatusCode)
+				}
+				// close all the connection
+				resp.Body.Close()
 			}
-			// close all the connection
-			resp.Body.Close()
-		}
 
-		if num200 < num {
-			fmt.Println("Some pages of ", pn, " are not updated, Check the error log for more details")
-		} else {
-			fmt.Println("All the pages of ", pn, " are updated")
+			if num200 < num {
+				fmt.Println("Some pages of ", pn, " are not updated, Check the error log for more details", num, num200)
+			} else {
+				fmt.Println("All the pages of ", pn, " are updated:", num, num200)
+			}
 		}
-
 	}
 	duration = time.Since(startw)
 	fmt.Println("Time to Update", duration)

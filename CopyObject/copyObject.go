@@ -284,9 +284,9 @@ func main() {
 		}
 
 		if num200 < num {
-			fmt.Println("Some pages of ", pn, " could not be copied, Check the error log for more details")
+			fmt.Println("Some pages of ", pn, " could not be copied, Check the error log for more details", num, num200)
 		} else {
-			fmt.Println("All the pages of ", pn, " are copied")
+			fmt.Println("All the pages of ", pn, " are copied", num, num200)
 		}
 	}
 	duration = time.Since(start)

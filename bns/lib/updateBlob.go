@@ -58,22 +58,25 @@ func AsyncHttpUpdateBlobs(bnsResponses []BnsResponse) []*sproxyd.HttpResponse {
 	sproxydResponses := []*sproxyd.HttpResponse{}
 	client := &http.Client{}
 	treq := 0
-	for _, bnsResponse := range bnsResponses {
+	for k, bnsResponse := range bnsResponses {
 
 		treq += 1
-		go func(bnsResponse *BnsResponse) {
+		// fmt.Println("go=>", bnsResponse.BnsId, bnsResponse.PageNumber, len(bnsResponse.Usermd))
+		url := sproxyd.TargetEnv + "/" + bnsResponse.BnsId + "/" + bnsResponse.PageNumber
+		go func(url string) {
 			var err error
 			var resp *http.Response
 
 			sproxydRequest := sproxyd.HttpRequest{}
-			header := map[string]string{
-				"Usermd": bnsResponse.Usermd,
+			sproxydRequest.ReqHeader = map[string]string{
+				"Usermd": bnsResponses[k].Usermd,
 			}
+
 			sproxydRequest.Hspool = sproxyd.TargetHP
 			sproxydRequest.Client = client
-			sproxydRequest.Path = sproxyd.TargetEnv + "/" + bnsResponse.BnsId + "/" + bnsResponse.PageNumber
-			sproxydRequest.ReqHeader = header
-			resp, err = sproxyd.Updobject(&sproxydRequest, bnsResponse.Image)
+			sproxydRequest.Path = url
+			// sproxydRequest.ReqHeader = header
+			resp, err = sproxyd.Updobject(&sproxydRequest, bnsResponses[k].Image)
 			if resp != nil {
 				resp.Body.Close()
 			}
@@ -83,7 +86,7 @@ func AsyncHttpUpdateBlobs(bnsResponses []BnsResponse) []*sproxyd.HttpResponse {
 				time.Sleep(1 * time.Millisecond)
 			}
 			ch <- &sproxyd.HttpResponse{sproxydRequest.Path, resp, nil, err}
-		}(&bnsResponse)
+		}(url)
 	}
 	for {
 		select {

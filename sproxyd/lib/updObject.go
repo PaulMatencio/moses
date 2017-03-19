@@ -2,6 +2,7 @@ package sproxyd
 
 import (
 	"bytes"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -30,6 +31,7 @@ func UpdObject(hspool hostpool.HostPool, client *http.Client, path string, objec
 func Updobject(sproxydRequest *HttpRequest, object []byte) (*http.Response, error) {
 
 	url := DummyHost + sproxydRequest.Path
+	fmt.Println("update Object", url, sproxydRequest.ReqHeader)
 	req, _ := http.NewRequest("PUT", url, bytes.NewBuffer(object))
 	if usermd, ok := sproxydRequest.ReqHeader["Usermd"]; ok {
 		req.Header.Add("X-Scal-Usermd", usermd)

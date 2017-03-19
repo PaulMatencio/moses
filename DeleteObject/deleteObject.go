@@ -95,7 +95,8 @@ func main() {
 	flag.StringVar(&test, "test", "0", "Run copy in test mode")
 	flag.Parse()
 	Trace, _ = strconv.ParseBool(trace)
-	Test, _ = strconv.ParseBool(test)
+	sproxyd.Test, _ = strconv.ParseBool(test)
+
 	action = "DeleteObject"
 	application = "deleteObject"
 	if len(pn) == 0 {
