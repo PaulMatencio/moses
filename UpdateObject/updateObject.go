@@ -82,7 +82,8 @@ func main() {
 	Trace, _ = strconv.ParseBool(trace)
 	Meta, _ = strconv.ParseBool(meta)
 	Image, _ = strconv.ParseBool(image)
-	Test, _ = strconv.ParseBool(test)
+	sproxyd.Test, _ = strconv.ParseBool(test)
+
 	Doconly, _ = strconv.ParseBool(doconly)
 	action = "UpdateObject"
 	application = "updateObject"
@@ -188,6 +189,8 @@ func main() {
 	targetPath := targetEnv + "/" + pn
 	url := pathname
 	targetUrl := targetPath
+	// Get the emcoded meta data
+	// decode it into docmd
 	if encoded_docmd, err = bns.GetEncodedMetadata(&bnsRequest, url); err == nil {
 		if docmd, err = base64.Decode64(encoded_docmd); err != nil {
 			goLog.Error.Println(err)
@@ -198,64 +201,93 @@ func main() {
 		os.Exit(2)
 	}
 	docmeta := bns.DocumentMetadata{}
+
+	// convert the document metadata into go structure : docmeta
 	if err := json.Unmarshal(docmd, &docmeta); err != nil {
 		goLog.Error.Println(docmeta)
 		goLog.Error.Println(err)
 		os.Exit(2)
 	} else {
-
-		// Update the metadata of the  document
-
+		// Update the metadata of the  document with its source content
 		header := map[string]string{
 			"Usermd": encoded_docmd,
 		}
 		buf0 := make([]byte, 0)
 		bnsRequest.Hspool = sproxyd.TargetHP // set the destination sproxyd servers
-		if !Test {
-			bns.UpdateBlob(&bnsRequest, targetUrl, buf0, header)
-		} else {
-			bns.UpdateBlobTest(&bnsRequest, targetUrl, buf0, header)
-		}
-	}
+		// Update the Document metadat first  on the destination sproxyd servers
+		bns.UpdateBlob(&bnsRequest, targetUrl, buf0, header)
 
+	}
+	var (
+		duration time.Duration
+		startw   time.Time
+	)
+
+	//  if not update only the document metadata
 	if !Doconly {
 		// update all the objects (pages) of the document
-		len := docmeta.TotalPage
-		urls := make([]string, len, len)
-		// targetUrls := make([]string, len, len)
+		// Get all the document pages 's content
+		num := docmeta.TotalPage
+		urls := make([]string, num, num)
 		getHeader := map[string]string{}
 		getHeader["Content-Type"] = "application/binary"
 
-		for i := 0; i < len; i++ {
+		for i := 0; i < num; i++ {
 			urls[i] = pathname + "/p" + strconv.Itoa(i+1)
 		}
 		bnsRequest.Urls = urls
 		bnsRequest.Hspool = sproxyd.HP // set the source  sproxyd servers
-		sproxyResponses := bns.AsyncHttpGetBlob(&bnsRequest, getHeader)
-		bnsResponses := make([]bns.BnsResponse, len, len)
+		bnsRequest.Client = &http.Client{}
+		sproxyResponses := bns.AsyncHttpGetBlobs(&bnsRequest, getHeader)
+		duration = time.Since(start)
+		fmt.Println("Time to Get:", duration)
+		goLog.Info.Println("Time to Get:", duration)
+
+		// Build a response array of BnsResponse array to be used to update the pages  of  destination sproxyd servers
+		bnsResponses := make([]bns.BnsResponse, num, num)
 		bnsRequest.Client = &http.Client{}
 		for i, v := range sproxyResponses {
 			if err := v.Err; err == nil { //
 				resp := v.Response
 				body := *v.Body
-				usermd := resp.Header["X-Scal-Usermd"][0]
-				bnsResponse := bns.BuildBnsResponse(resp, getHeader["Content-Type"], &body) // bnsImage is a Go structure
+				// BuildBnsResponse will clode the Body
+				bnsResponse := bns.BuildBnsResponse(resp, getHeader["Content-Type"], &body) // bnsResponse is a Go structure
 				bnsResponses[i] = bnsResponse
-				header := map[string]string{
-					"Usermd": usermd,
-				}
-				targetUrl = targetEnv + "/" + bnsResponse.BnsId + "/" + bnsResponse.PageNumber
-				bnsRequest.Hspool = sproxyd.TargetHP // set the destination sproxyd servers
-				if !Test {
-					bns.UpdateBlob(&bnsRequest, targetUrl, bnsResponse.Image, header)
-				} else {
-					bns.UpdateBlobTest(&bnsRequest, targetUrl, bnsResponse.Image, header)
-				}
 			}
 		}
-	}
 
-	duration := time.Since(start)
-	fmt.Println("total elapsed time:", duration)
-	goLog.Info.Println(duration)
+		startw = time.Now()
+
+		// update the destination pages using the bnsResponses structure array
+		// return an array of sproxyResponse structure
+		//   new &http.Client{}  and hosts pool are set to the target by the AsyncHttpCopyBlobs
+		//  			sproxyd.TargetHP
+		sproxydResponses := bns.AsyncHttpUpdateBlobs(bnsResponses)
+
+		num200 := 0
+		for _, sproxydResponse := range sproxydResponses {
+			resp := sproxydResponse.Response
+			goLog.Trace.Println(sproxydResponse.Url, resp.StatusCode)
+			if resp.StatusCode == 200 {
+				num200++
+			} else {
+				goLog.Error.Println(sproxydResponse.Url, sproxydResponse.Err, resp.StatusCode)
+			}
+			// close all the connection
+			resp.Body.Close()
+		}
+
+		if num200 < num {
+			fmt.Println("Some pages of ", pn, " are not updated, Check the error log for more details")
+		} else {
+			fmt.Println("All the pages of ", pn, " are updated")
+		}
+
+	}
+	duration = time.Since(startw)
+	fmt.Println("Time to Update", duration)
+	goLog.Info.Println("Time to Update", duration)
+	duration = time.Since(start)
+	fmt.Println("Total update elapsed time:", duration)
+	goLog.Info.Println("Total update elapsed time:", duration)
 }

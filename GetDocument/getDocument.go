@@ -82,25 +82,6 @@ func writeImage(outDir string, page string, media string, body *[]byte) {
 	check(err)
 }
 
-func buildBnsResponse(resp *http.Response, contentType string, body *[]byte) (bsnImage bns.BnsImages) {
-
-	bnsImage := bns.BnsImages{}
-
-	if _, ok := resp.Header["X-Scal-Usermd"]; ok {
-		bnsImage.Usermd = resp.Header["X-Scal-Usermd"][0]
-		if pagemd, err := base64.Decode64(bnsImage.Usermd); err == nil {
-			bnsImage.Pagemd = string(pagemd)
-			goLog.Trace.Println(bnsImage.Pagemd)
-		}
-	} else {
-		goLog.Warning.Println("X-Scal-Usermd is missing the resp header", resp.Status, resp.Header)
-	}
-
-	bnsImage.Image = *body
-	bnsImage.ContentType = contentType
-	return bnsImage
-}
-
 func checkOutdir(outDir string) (err error) {
 
 	if len(outDir) == 0 {
@@ -111,48 +92,14 @@ func checkOutdir(outDir string) (err error) {
 	return err
 }
 
-func deleteBlobTest(bnsRequest *bns.HttpRequest, url string) {
-	result := bns.AsyncHttpDeleteBlobTest(bnsRequest, url)
-	goLog.Trace.Printf("URL => %s \n", result.Url)
-}
-
-func deleteBlob(bnsRequest *bns.HttpRequest, url string) {
-	result := bns.AsyncHttpDeleteBlob(bnsRequest, url)
-	if result.Err != nil {
-		goLog.Trace.Printf("%s %d %s status: %s\n", hostname, pid, result.Url, result.Err)
-		return
-	}
-	resp := result.Response
-	if resp != nil {
-		goLog.Trace.Printf("%s %d %s status: %s\n", hostname, pid, url,
-			result.Response.Status)
-	} else {
-		goLog.Error.Printf("%s %d %s %s %s", hostname, pid, url, action, "failed")
-	}
-
-	switch resp.StatusCode {
-	case 200:
-		goLog.Trace.Println(hostname, pid, url, resp.Status, resp.Header["X-Scal-Ring-Key"])
-
-	case 412:
-		goLog.Warning.Println(hostname, pid, url, resp.Status, "key=", resp.Header["X-Scal-Ring-Key"], "already exist")
-
-	case 422:
-		goLog.Error.Println(hostname, pid, url, resp.Status, resp.Header["X-Scal-Ring-Status"])
-	default:
-		goLog.Warning.Println(hostname, pid, url, resp.Status)
-	}
-	resp.Body.Close()
-
-}
-
 func main() {
 
 	flag.Usage = usage
 	flag.StringVar(&action, "action", "", "<getPageMeta> <getPageType> <getDocumentMeta> <getDocumentType> <GetPageRange>")
 	flag.StringVar(&config, "config", "moses-dev", "Config file")
 	flag.StringVar(&env, "env", "", "Environment")
-	flag.StringVar(&trace, "t", "0", "Trace") // Trace
+	flag.StringVar(&trace, "t", "0", "Trace")       // Trace
+	flag.StringVar(&test, "test", "0", "Test mode") // Test mode
 	flag.StringVar(&meta, "meta", "0", "Save object meta in output Directory")
 	flag.StringVar(&image, "image", "0", "Save object image  type in output Directory")
 	flag.StringVar(&testname, "T", "getDoc", "") // Test name
@@ -165,6 +112,8 @@ func main() {
 	Trace, _ = strconv.ParseBool(trace)
 	Meta, _ = strconv.ParseBool(meta)
 	Image, _ = strconv.ParseBool(image)
+	Test, _ = strconv.ParseBool(test)
+	sproxyd.Test = Test
 
 	if len(action) == 0 {
 		usage()
@@ -333,17 +282,17 @@ func main() {
 		sproxyResponses := bns.AsyncHttpGetpageType(&bnsRequest)
 
 		// AsyncHttpGetPageType should already  close [defer resp.Body.Clsoe()] all open connections
-		bnsResponses := make([]bns.BnsImages, len, len)
+		bnsResponses := make([]bns.BnsResponse, len, len)
 		var pagemd []byte
 		for i, v := range sproxyResponses {
 			if err := v.Err; err == nil {
 				resp := v.Response
 				body := *v.Body
-				bnsImage := buildBnsResponse(resp, getHeader["Content-Type"], &body)
-				bnsResponses[i] = bnsImage
+				bnsResponse := bns.BuildBnsResponse(resp, getHeader["Content-Type"], &body)
+				bnsResponses[i] = bnsResponse
 				page = "p" + strconv.Itoa(i+1)
 				if Image {
-					writeImage(outDir, page, media, &bnsImage.Image)
+					writeImage(outDir, page, media, &bnsResponse.Image)
 				}
 				if Meta {
 					if pagemd, err = base64.Decode64(resp.Header["X-Scal-Usermd"][0]); err == nil {
@@ -380,7 +329,6 @@ func main() {
 		} else {
 			writeMeta(outDir, "", docmd)
 		}
-
 		len := docmeta.TotalPage
 		urls := make([]string, len, len)
 		getHeader := map[string]string{}
@@ -389,35 +337,29 @@ func main() {
 		for i := 0; i < len; i++ {
 			urls[i] = pathname + "/p" + strconv.Itoa(i+1)
 		}
-
 		bnsRequest.Urls = urls
 		bnsRequest.Hspool = sproxyd.HP
-
-		sproxyResponses := bns.AsyncHttpGetBlob(&bnsRequest, getHeader)
-
-		bnsResponses := make([]bns.BnsImages, len, len)
+		sproxyResponses := bns.AsyncHttpGetBlobs(&bnsRequest, getHeader)
+		bnsResponses := make([]bns.BnsResponse, len, len)
 		var pagemd []byte
-
 		bnsRequest.Client = &http.Client{}
-
 		for i, v := range sproxyResponses {
 			if err := v.Err; err == nil { //
 				resp := v.Response
 				body := *v.Body
 				usermd := resp.Header["X-Scal-Usermd"][0]
-				bnsImage := buildBnsResponse(resp, getHeader["Content-Type"], &body) // bnsImage is a Go structure
-
+				bnsResponse := bns.BuildBnsResponse(resp, getHeader["Content-Type"], &body) // bnsImage is a Go structure
 				page = "p" + strconv.Itoa(i+1)
 				if Image {
-					writeImage(outDir, page, media, &bnsImage.Image)
+					writeImage(outDir, page, media, &bnsResponse.Image)
 				}
 				if Meta {
 					if pagemd, err = base64.Decode64(usermd); err == nil {
 						writeMeta(outDir, page, pagemd)
-						bnsImage.Pagemd = string(pagemd)
+						bnsResponse.Pagemd = pagemd
 					}
 				}
-				bnsResponses[i] = bnsImage
+				bnsResponses[i] = bnsResponse
 			}
 		}
 
@@ -438,8 +380,8 @@ func main() {
 		if resp, err := bns.GetPageType(&bnsRequest, pathname); err == nil {
 			defer resp.Body.Close()
 			body, _ := ioutil.ReadAll(resp.Body)
-			bnsImage := buildBnsResponse(resp, getHeader["Content-Type"], &body)
-			writeImage(outDir, page, media, &bnsImage.Image)
+			bnsResponse := bns.BuildBnsResponse(resp, getHeader["Content-Type"], &body)
+			writeImage(outDir, page, media, &bnsResponse.Image)
 			if pagemd, err = base64.Decode64(resp.Header["X-Scal-Usermd"][0]); err == nil {
 				writeMeta(outDir, page, pagemd)
 			}

@@ -30,7 +30,6 @@ func AsyncHttpPuts(hspool hostpool.HostPool, urls []string, bufa [][]byte, heade
 		go func(url string) {
 			var err error
 			var resp *http.Response
-			// clientw := &http.Client{}
 			resp, err = sproxyd.PutObject(hspool, client, url, bufa[k], headera[k])
 			if resp != nil {
 				resp.Body.Close()

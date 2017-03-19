@@ -46,9 +46,15 @@ func Updobject(sproxydRequest *HttpRequest, object []byte) (*http.Response, erro
 		req.Header.Add("X-Scal-Replica-Policy", policy)
 	}
 	req.Header.Add("If-Match", "*")
-	return DoRequest(sproxydRequest.Hspool, sproxydRequest.Client, req, object)
+	// Test is a global sproxyd variable
+	if !Test {
+		return DoRequest(sproxydRequest.Hspool, sproxydRequest.Client, req, object)
+	} else {
+		return DoRequestTest(sproxydRequest.Hspool, sproxydRequest.Client, req, object)
+	}
 }
 
+/*
 func UpdobjectTest(sproxydRequest *HttpRequest, object []byte) (*http.Response, error) {
 
 	url := DummyHost + sproxydRequest.Path
@@ -70,3 +76,5 @@ func UpdobjectTest(sproxydRequest *HttpRequest, object []byte) (*http.Response, 
 	req.Header.Add("If-Match", "*")
 	return DoRequestTest(sproxydRequest.Hspool, sproxydRequest.Client, req, object)
 }
+
+*/

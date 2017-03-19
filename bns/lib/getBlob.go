@@ -22,10 +22,10 @@ func GetBlob(sproxydRequest *sproxyd.HttpRequest) (*http.Response, error) {
 
 // new function
 
-func AsyncHttpGetBlob(bnsRequest *HttpRequest, getHeader map[string]string) []*sproxyd.HttpResponse {
+func AsyncHttpGetBlobs(bnsRequest *HttpRequest, getHeader map[string]string) []*sproxyd.HttpResponse {
 
 	ch := make(chan *sproxyd.HttpResponse)
-	responses := []*sproxyd.HttpResponse{}
+	sproxydResponses := []*sproxyd.HttpResponse{}
 	sproxydRequest := sproxyd.HttpRequest{
 		Hspool:    bnsRequest.Hspool,
 		ReqHeader: getHeader,
@@ -41,21 +41,20 @@ func AsyncHttpGetBlob(bnsRequest *HttpRequest, getHeader map[string]string) []*s
 			treq += 1
 		}
 
-		// client := &http.Client{} // one connection for all requests
 		sproxydRequest.Client = &http.Client{}
-		// sproxydRequest.Path = url
+
 		go func(url string) {
 			sproxydRequest.Path = url
 			resp, err := sproxyd.Getobject(&sproxydRequest)
+			defer resp.Body.Close()
 			var body []byte
 			if err == nil {
 				body, _ = ioutil.ReadAll(resp.Body)
 			} else {
-
 				resp.Body.Close()
 			}
+			// WARNING The caller must close the Body after it is consumed
 			ch <- &sproxyd.HttpResponse{url, resp, &body, err}
-
 		}(url)
 	}
 	// wait for http response  message
@@ -63,13 +62,13 @@ func AsyncHttpGetBlob(bnsRequest *HttpRequest, getHeader map[string]string) []*s
 		select {
 		case r := <-ch:
 			// fmt.Printf("%s was fetched\n", r.url)
-			responses = append(responses, r)
-			if len(responses) == treq /*len(urls)*/ {
-				return responses
+			sproxydResponses = append(sproxydResponses, r)
+			if len(sproxydResponses) == treq /*len(urls)*/ {
+				return sproxydResponses
 			}
 		case <-time.After(100 * time.Millisecond):
 			fmt.Printf("r")
 		}
 	}
-	return responses
+	return sproxydResponses
 }

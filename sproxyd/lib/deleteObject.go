@@ -3,9 +3,10 @@ package sproxyd
 import (
 	"net/http"
 
-	hostpool "github.com/bitly/go-hostpool"
+	// hostpool "github.com/bitly/go-hostpool"
 )
 
+/*
 func DeleteObject(hspool hostpool.HostPool, client *http.Client, path string) (*http.Response, error) {
 
 	url := DummyHost + path
@@ -14,6 +15,7 @@ func DeleteObject(hspool hostpool.HostPool, client *http.Client, path string) (*
 	return DoRequest(hspool, client, req, nil)
 }
 
+
 func DeleteObjectTest(hspool hostpool.HostPool, client *http.Client, path string) (*http.Response, error) {
 
 	url := DummyHost + path
@@ -21,19 +23,16 @@ func DeleteObjectTest(hspool hostpool.HostPool, client *http.Client, path string
 	// resp, err := client.Do(req)
 	return DoRequestTest(hspool, client, req, nil)
 }
+*/
 
 func Deleteobject(sproxyRequest *HttpRequest) (*http.Response, error) {
 
 	url := DummyHost + sproxyRequest.Path
 	req, _ := http.NewRequest("DELETE", url, nil)
-	// resp, err := client.Do(req)
-	return DoRequest(sproxyRequest.Hspool, sproxyRequest.Client, req, nil)
-}
-
-func DeleteobjectTest(sproxyRequest *HttpRequest) (*http.Response, error) {
-
-	url := DummyHost + sproxyRequest.Path
-	req, _ := http.NewRequest("DELETE", url, nil)
-	// resp, err := client.Do(req)
-	return DoRequestTest(sproxyRequest.Hspool, sproxyRequest.Client, req, nil)
+	/* Test is a sproxyd global variable */
+	if !Test {
+		return DoRequest(sproxyRequest.Hspool, sproxyRequest.Client, req, nil)
+	} else {
+		return DoRequestTest(sproxyRequest.Hspool, sproxyRequest.Client, req, nil)
+	}
 }

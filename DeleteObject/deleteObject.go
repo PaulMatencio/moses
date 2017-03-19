@@ -47,13 +47,14 @@ func check(e error) {
 	}
 }
 
-func deleteBlobTest(bnsRequest *bns.HttpRequest, url string) {
-	result := bns.AsyncHttpDeleteBlobTest(bnsRequest, url)
-	goLog.Trace.Printf("URL => %s \n", result.Url)
-}
-
 func deleteBlob(bnsRequest *bns.HttpRequest, url string) {
+
 	result := bns.AsyncHttpDeleteBlob(bnsRequest, url)
+	// if Test mode return
+	if sproxyd.Test {
+		goLog.Trace.Printf("Deleting URL => %s \n", result.Url)
+		return
+	}
 	if result.Err != nil {
 		goLog.Trace.Printf("%s %d %s status: %s\n", hostname, pid, result.Url, result.Err)
 		return
@@ -212,21 +213,14 @@ func main() {
 	for i := 0; i < len; i++ {
 		bnsRequest.Urls[i] = pathname + "/p" + strconv.Itoa(i+1)
 		url := bnsRequest.Urls[i]
-		if !Test {
-			deleteBlob(&bnsRequest, url)
-		} else {
-			deleteBlobTest(&bnsRequest, url)
-		}
+		deleteBlob(&bnsRequest, url)
 	}
 
 	// DELETE THE DOC METADATA AFTER DELING ALL THE PAGES
-	if !Test {
-		deleteBlob(&bnsRequest, doc)
-	} else {
-		deleteBlobTest(&bnsRequest, doc)
-	}
+
+	deleteBlob(&bnsRequest, doc)
 
 	duration := time.Since(start)
-	fmt.Println("total elapsed time:", duration)
-	goLog.Info.Println(duration)
+	fmt.Println("total detelete elapsed time:", duration)
+	goLog.Info.Println("total detelete elapsed time:", duration)
 }

@@ -13,13 +13,6 @@ import (
 
 //func UpdatePage(client *http.Client, path string, img *bytes.Buffer, usermd []byte) (error, time.Duration) {
 func UpdatePage(hspool hostpool.HostPool, client *http.Client, path string, img *bytes.Buffer, putheader map[string]string) (error, time.Duration) {
-	/*
-		putheader := map[string]string{
-			"Usermd":       encoded_usermd := base64.Encode64(usermd),
-			"Content-Type": "image/tiff",
-		}
-	*/
-	// url:= base_url+string(pub)+docid+string(kc)+"_"+string(pagenum)
 	err := error(nil)
 	var resp *http.Response
 	start := time.Now()

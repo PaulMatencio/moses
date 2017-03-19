@@ -15,7 +15,6 @@ func DeleteBlob(bnsRequest *HttpRequest, url string) (error, time.Duration) {
 	var resp *http.Response
 	start := time.Now()
 	var elapse time.Duration
-	// defer resp.Body.Close()
 	sproxydRequest := sproxyd.HttpRequest{
 		Hspool: bnsRequest.Hspool,
 		Client: bnsRequest.Client,
@@ -65,41 +64,10 @@ func AsyncHttpDeleteBlob(bnsRequest *HttpRequest, url string) *sproxyd.HttpRespo
 		if resp != nil {
 			resp.Body.Close()
 		}
-
-		ch <- &sproxyd.HttpResponse{url, resp, nil, err}
-	}(url)
-
-	for {
-		select {
-		case sproxydResponse = <-ch:
-			return sproxydResponse
-		case <-time.After(sproxyd.Timeout * time.Millisecond):
-			fmt.Printf("d")
-		}
-	}
-	return sproxydResponse
-}
-
-func AsyncHttpDeleteBlobTest(bnsRequest *HttpRequest, url string) *sproxyd.HttpResponse {
-
-	ch := make(chan *sproxyd.HttpResponse)
-	sproxydResponse := &sproxyd.HttpResponse{}
-	sproxydRequest := sproxyd.HttpRequest{
-		Hspool: bnsRequest.Hspool,
-		Client: &http.Client{},
-		Path:   url,
-	}
-
-	if len(url) == 0 {
-		return sproxydResponse
-	}
-
-	go func(url string) {
-		var err error
-		var resp *http.Response
-		resp, err = sproxyd.DeleteobjectTest(&sproxydRequest)
-		if resp != nil {
-			resp.Body.Close()
+		if !sproxyd.Test {
+			defer resp.Body.Close()
+		} else {
+			time.Sleep(1 * time.Millisecond) // simuate a asynchronous response time
 		}
 
 		ch <- &sproxyd.HttpResponse{url, resp, nil, err}
@@ -134,7 +102,6 @@ func AsyncHttpDeleteBlobs(bnsRequest *HttpRequest) []*sproxyd.HttpResponse {
 		go func(url string) {
 			err, _ := DeleteBlob(bnsRequest, url)
 			ch <- &sproxyd.HttpResponse{url, nil, nil, err}
-
 		}(url)
 	}
 	// wait for http response  message

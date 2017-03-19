@@ -7,6 +7,8 @@ import (
 	sproxyd "moses/sproxyd/lib"
 	"net/http"
 	"time"
+
+	// hostpool "github.com/bitly/go-hostpool"
 )
 
 func AsyncHttpUpdateBlob(bnsRequest *HttpRequest, url string, buf []byte, header map[string]string) *sproxyd.HttpResponse {
@@ -27,11 +29,12 @@ func AsyncHttpUpdateBlob(bnsRequest *HttpRequest, url string, buf []byte, header
 	go func(url string) {
 		var err error
 		var resp *http.Response
-
 		resp, err = sproxyd.Updobject(&sproxydRequest, buf)
 		if resp != nil {
 			resp.Body.Close()
 		}
+		// the caller bns must issue resp.Body.Close()
+		//
 		ch <- &sproxyd.HttpResponse{url, resp, nil, err}
 	}(url)
 
@@ -47,32 +50,96 @@ func AsyncHttpUpdateBlob(bnsRequest *HttpRequest, url string, buf []byte, header
 	return sproxydResponse
 }
 
-func AsyncHttpUpdateBlobTest(bnsRequest *HttpRequest, url string, buf []byte, header map[string]string) *sproxyd.HttpResponse {
+// func AsyncHttpUpdateBlobs(hspool hostpool.HostPool, urls []string, bufa [][]byte, headera []map[string]string) []*sproxyd.HttpResponse {
+
+func AsyncHttpUpdateBlobs(bnsResponses []BnsResponse) []*sproxyd.HttpResponse {
 
 	ch := make(chan *sproxyd.HttpResponse)
-	sproxydResponse := &sproxyd.HttpResponse{}
-	sproxydRequest := sproxyd.HttpRequest{
-		Hspool:    bnsRequest.Hspool,
-		Client:    bnsRequest.Client,
-		Path:      url,
-		ReqHeader: header,
+	sproxydResponses := []*sproxyd.HttpResponse{}
+	client := &http.Client{}
+	treq := 0
+	for _, bnsResponse := range bnsResponses {
+
+		treq += 1
+		go func(bnsResponse *BnsResponse) {
+			var err error
+			var resp *http.Response
+
+			sproxydRequest := sproxyd.HttpRequest{}
+			header := map[string]string{
+				"Usermd": bnsResponse.Usermd,
+			}
+			sproxydRequest.Hspool = sproxyd.TargetHP
+			sproxydRequest.Client = client
+			sproxydRequest.Path = sproxyd.TargetEnv + "/" + bnsResponse.BnsId + "/" + bnsResponse.PageNumber
+			sproxydRequest.ReqHeader = header
+			resp, err = sproxyd.Updobject(&sproxydRequest, bnsResponse.Image)
+			if resp != nil {
+				resp.Body.Close()
+			}
+			if !sproxyd.Test {
+				defer resp.Body.Close()
+			} else {
+				time.Sleep(1 * time.Millisecond)
+			}
+			ch <- &sproxyd.HttpResponse{sproxydRequest.Path, resp, nil, err}
+		}(&bnsResponse)
 	}
-
-	go func(url string) {
-		resp, err := sproxyd.UpdobjectTest(&sproxydRequest, buf)
-		time.Sleep(1 * time.Millisecond)
-		ch <- &sproxyd.HttpResponse{url, resp, nil, err}
-
-	}(url)
-
 	for {
 		select {
-		case sproxydResponse = <-ch:
-			return sproxydResponse
+		case r := <-ch:
+			sproxydResponses = append(sproxydResponses, r)
+			if len(sproxydResponses) == treq {
+				return sproxydResponses
+			}
 		case <-time.After(sproxyd.Timeout * time.Millisecond):
-			fmt.Printf(".")
+			fmt.Printf("w")
 		}
 	}
-
-	return sproxydResponse
+	return sproxydResponses
 }
+
+/*
+func AsyncHttpUpdateBlobsTest(bnsResponses []BnsResponse) []*sproxyd.HttpResponse {
+
+	ch := make(chan *sproxyd.HttpResponse)
+	sproxydResponses := []*sproxyd.HttpResponse{}
+	client := &http.Client{}
+	treq := 0
+	for _, bnsResponse := range bnsResponses {
+
+		treq += 1
+		go func(bnsResponse *BnsResponse) {
+			var err error
+			var resp *http.Response
+
+			sproxydRequest := sproxyd.HttpRequest{}
+			header := map[string]string{
+				"Usermd": bnsResponse.Usermd,
+			}
+			sproxydRequest.Hspool = sproxyd.TargetHP
+			sproxydRequest.Client = client
+			sproxydRequest.Path = sproxyd.TargetEnv + "/" + bnsResponse.BnsId + "/" + bnsResponse.PageNumber
+			sproxydRequest.ReqHeader = header
+			resp, err = sproxyd.Updobject(&sproxydRequest, bnsResponse.Image,test)
+			if resp != nil {
+				resp.Body.Close()
+			}
+			ch <- &sproxyd.HttpResponse{sproxydRequest.Path, resp, nil, err}
+		}(&bnsResponse)
+	}
+	for {
+		select {
+		case r := <-ch:
+			sproxydResponses = append(sproxydResponses, r)
+			if len(sproxydResponses) == treq {
+				return sproxydResponses
+			}
+		case <-time.After(sproxyd.Timeout * time.Millisecond):
+			fmt.Printf("w")
+		}
+	}
+	return sproxydResponses
+}
+
+*/

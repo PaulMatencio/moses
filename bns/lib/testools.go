@@ -144,6 +144,7 @@ func AsyncHttpPut(hspool hostpool.HostPool, urls []string, buf []byte, header ma
 	return responses
 }
 
+/*
 func AsyncHttpDeletet(hspool hostpool.HostPool, urls []string, deleteheader map[string]string) []*sproxyd.HttpResponse {
 
 	ch := make(chan *sproxyd.HttpResponse)
@@ -183,3 +184,4 @@ func AsyncHttpDeletet(hspool hostpool.HostPool, urls []string, deleteheader map[
 	}
 	return responses
 }
+*/

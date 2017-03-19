@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	sproxyd "moses/sproxyd/lib"
 	base64 "moses/user/base64j"
 	goLog "moses/user/goLog"
 	"net/http"
@@ -176,13 +177,16 @@ func RemoveSlash(input string) string {
 
 //  Used to PUT BLOB
 
-func CopyBlob(bnsRequest *HttpRequest, url string, buf []byte, header map[string]string) {
+func CopyBlob(bnsRequest *HttpRequest, url string, buf []byte, header map[string]string, test bool) {
 
 	pid := os.Getpid()
 	hostname, _ := os.Hostname()
 	action := "CopyBlob"
 	result := AsyncHttpPutBlob(bnsRequest, url, buf, header)
-
+	if test {
+		goLog.Trace.Printf("URL => %s \n", result.Url)
+		return
+	}
 	if result.Err != nil {
 		goLog.Trace.Printf("%s %d %s status: %s\n", hostname, pid, result.Url, result.Err)
 		return
@@ -212,11 +216,13 @@ func CopyBlob(bnsRequest *HttpRequest, url string, buf []byte, header map[string
 	resp.Body.Close()
 }
 
+/*
 func CopyBlobTest(bnsRequest *HttpRequest, url string, buf []byte, header map[string]string) {
 
 	result := AsyncHttpPutBlobTest(bnsRequest, url, buf, header)
 	goLog.Trace.Printf("URL => %s \n", result.Url)
 }
+*/
 
 // UPdate blob
 
@@ -226,13 +232,15 @@ func UpdateBlob(bnsRequest *HttpRequest, url string, buf []byte, header map[stri
 	hostname, _ := os.Hostname()
 	action := "UpdateBlob"
 	result := AsyncHttpUpdateBlob(bnsRequest, url, buf, header)
+	if sproxyd.Test {
+		goLog.Trace.Printf("URL => %s \n", result.Url)
+		return
+	}
 	if result.Err != nil {
 		goLog.Trace.Printf("%s %d %s status: %s\n", hostname, pid, result.Url, result.Err)
 		return
 	}
-
 	resp := result.Response
-
 	if resp != nil {
 		goLog.Trace.Printf("%s %d %s status: %s\n", hostname, pid, url,
 			result.Response.Status)
@@ -255,15 +263,9 @@ func UpdateBlob(bnsRequest *HttpRequest, url string, buf []byte, header map[stri
 	resp.Body.Close()
 }
 
-func UpdateBlobTest(bnsRequest *HttpRequest, url string, buf []byte, header map[string]string) {
-	result := AsyncHttpUpdateBlobTest(bnsRequest, url, buf, header)
-	goLog.Trace.Printf("URL => %s \n", result.Url)
-}
-
 func BuildBnsResponse(resp *http.Response, contentType string, body *[]byte) BnsResponse {
 
 	bnsResponse := BnsResponse{}
-
 	if _, ok := resp.Header["X-Scal-Usermd"]; ok {
 		bnsResponse.Usermd = resp.Header["X-Scal-Usermd"][0]
 		if pagemd, err := base64.Decode64(bnsResponse.Usermd); err == nil {
@@ -276,7 +278,7 @@ func BuildBnsResponse(resp *http.Response, contentType string, body *[]byte) Bns
 
 	bnsResponse.Image = *body
 	bnsResponse.ContentType = contentType
-
+	bnsResponse.HttpStatusCode = resp.StatusCode
 	pagemeta := Pagemeta{}
 	pagemd := bnsResponse.Pagemd
 	if err := json.Unmarshal(pagemd, &pagemeta); err != nil {
@@ -285,6 +287,6 @@ func BuildBnsResponse(resp *http.Response, contentType string, body *[]byte) Bns
 		bnsResponse.BnsId = pagemeta.BnsId.CountryCode + "/" + pagemeta.BnsId.PubNumber + "/" + pagemeta.BnsId.KindCode
 		bnsResponse.PageNumber = "p" + strconv.Itoa(pagemeta.PageNumber)
 	}
-
+	defer resp.Body.Close()
 	return bnsResponse
 }

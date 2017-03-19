@@ -89,13 +89,14 @@ func main() {
 	flag.StringVar(&trace, "t", "0", "Trace")     // Trace
 	flag.StringVar(&testname, "T", "copyDoc", "") // Test name
 	flag.StringVar(&pn, "pn", "", "Publication number")
-	flag.StringVar(&test, "test", "0", "Run copy in test mode")
+	flag.StringVar(&test, "test", "1", "Run copy in test mode")
 	flag.StringVar(&doconly, "doconly", "0", "Only update the document meta")
 	flag.Parse()
 	Trace, _ = strconv.ParseBool(trace)
 	Meta, _ = strconv.ParseBool(meta)
 	Image, _ = strconv.ParseBool(image)
 	Test, _ = strconv.ParseBool(test)
+	sproxyd.Test = Test
 	Doconly, _ = strconv.ParseBool(doconly)
 
 	action = "CopyObject"
@@ -200,6 +201,7 @@ func main() {
 	url := pathname
 	targetUrl := targetPath
 
+	// Get the document metadata
 	if encoded_docmd, err = bns.GetEncodedMetadata(&bnsRequest, url); err == nil {
 		if docmd, err = base64.Decode64(encoded_docmd); err != nil {
 			goLog.Error.Println(err)
@@ -209,6 +211,8 @@ func main() {
 		goLog.Error.Println(err)
 		os.Exit(2)
 	}
+
+	// convert the json metadata into a go structure
 	docmeta := bns.DocumentMetadata{}
 	if err := json.Unmarshal(docmd, &docmeta); err != nil {
 		goLog.Error.Println(docmeta)
@@ -220,52 +224,72 @@ func main() {
 		}
 		buf0 := make([]byte, 0)
 		bnsRequest.Hspool = sproxyd.TargetHP // Set Target sproxyd servers
-		if !Test {
-			bns.CopyBlob(&bnsRequest, targetUrl, buf0, header)
-		} else {
-			bns.CopyBlobTest(&bnsRequest, targetUrl, buf0, header)
-		}
-	}
+		// Write the document metadata to the destination with no buffer
+		// we could only update the meta data : TODO
+		bns.CopyBlob(&bnsRequest, targetUrl, buf0, header, Test)
 
+	}
+	var duration time.Duration
+
+	// update all the pages if requested
 	if !Doconly {
 
-		len := docmeta.TotalPage
-		urls := make([]string, len, len)
-		targetUrls := make([]string, len, len)
+		num := docmeta.TotalPage
+		urls := make([]string, num, num)
+		targetUrls := make([]string, num, num)
 		getHeader := map[string]string{}
 		getHeader["Content-Type"] = "application/binary"
-		for i := 0; i < len; i++ {
+		for i := 0; i < num; i++ {
 			urls[i] = pathname + "/p" + strconv.Itoa(i+1)
 			targetUrls[i] = targetPath + "/p" + strconv.Itoa(i+1)
 		}
 		bnsRequest.Urls = urls
 		bnsRequest.Hspool = sproxyd.HP // Set source sproxyd servers
-		sproxyResponses := bns.AsyncHttpGetBlob(&bnsRequest, getHeader)
-		bnsResponses := make([]bns.BnsImages, len, len)
 		bnsRequest.Client = &http.Client{}
-		for i, v := range sproxyResponses {
-			if err := v.Err; err == nil { //
-				resp := v.Response
-				body := *v.Body
-				usermd := resp.Header["X-Scal-Usermd"][0]
-				bnsImage := bns.BuildBnsResponse(resp, getHeader["Content-Type"], &body) // bnsImage is a Go structure
-				page = "p" + strconv.Itoa(i+1)
-				bnsResponses[i] = bnsImage
-				header := map[string]string{
-					"Usermd": usermd,
-				}
-				url = urls[i]
-				targetUrl = targetUrls[i]
-				bnsRequest.Hspool = sproxyd.TargetHP // set target sproxyd servers
-				if !Test {
-					bns.CopyBlob(&bnsRequest, targetUrl, bnsImage.Image, header)
-				} else {
-					bns.CopyBlobTest(&bnsRequest, targetUrl, bnsImage.Image, header)
-				}
+		// Get all the pages from the source Ring
+		sproxyResponses := bns.AsyncHttpGetBlobs(&bnsRequest, getHeader)
+		// Build a response array of BnsResponse array to be used to update the pages  of  destination sproxyd servers
+		bnsResponses := make([]bns.BnsResponse, num, num)
+
+		// bnsRequest.Client = &http.Client{}
+		for i, sproxydResponse := range sproxyResponses {
+			if err := sproxydResponse.Err; err == nil { //
+				resp := sproxydResponse.Response                                            /* http response */ // http response
+				body := *sproxydResponse.Body                                               // http response                                                          /* copy of the body */ // http body response
+				bnsResponse := bns.BuildBnsResponse(resp, getHeader["Content-Type"], &body) // bnsResponse is a Go structure
+				bnsResponses[i] = bnsResponse
+				resp.Body.Close()
 			}
 		}
+		duration = time.Since(start)
+		fmt.Println("Get elapsed time:", duration)
+		goLog.Info.Println("Get elapsed time:", duration)
+
+		// var sproxydResponses []*sproxyd.HttpResponse
+		//   new &http.Client{}  and hosts pool are set to the target by the AsyncHttpCopyBlobs
+		//  			sproxyd.TargetHP
+		sproxydResponses := bns.AsyncHttpCopyBlobs(bnsResponses)
+
+		num200 := 0
+		for _, sproxydResponse := range sproxydResponses {
+			resp := sproxydResponse.Response
+			resp.Body.Close()
+			goLog.Trace.Println(sproxydResponse.Url, resp.StatusCode)
+			if resp.StatusCode == 200 {
+				num200++
+			} else {
+				goLog.Error.Println(sproxydResponse.Url, sproxydResponse.Err, resp.StatusCode)
+			}
+			resp.Body.Close()
+		}
+
+		if num200 < num {
+			fmt.Println("Some pages of ", pn, " could not be copied, Check the error log for more details")
+		} else {
+			fmt.Println("All the pages of ", pn, " are copied")
+		}
 	}
-	duration := time.Since(start)
-	fmt.Println("total elapsed time:", duration)
-	goLog.Info.Println(duration)
+	duration = time.Since(start)
+	fmt.Println("Total copy elapsed time:", duration)
+	goLog.Info.Println("Total copy elapsed time:", duration)
 }

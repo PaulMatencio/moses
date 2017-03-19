@@ -211,12 +211,13 @@ type Configuration struct {
 }
 
 type BnsResponse struct {
-	Pagemd      []byte `json: "pagemeta,omitempty"`
-	Usermd      string `json: "usermd,omitempty"`
-	ContentType string `json: "content-type,omitempty"`
-	Image       []byte `json: "images"`
-	BnsId       string `json: "bnsId,omitemty"`
-	PageNumber  string `json: "pageNunber,omitemty"`
+	HttpStatusCode int    `json: "httpstatuscode,omitempty"`
+	Pagemd         []byte `json: "pagemeta,omitempty"` // decoded user meta data
+	Usermd         string `json: "usermd,omitempty"`   // encoded user meta data
+	ContentType    string `json: "content-type,omitempty"`
+	Image          []byte `json: "images"`
+	BnsId          string `json: "bnsId,omitemty"`
+	PageNumber     string `json: "pageNunber,omitemty"`
 }
 
 type Date struct {
