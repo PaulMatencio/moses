@@ -218,6 +218,7 @@ type BnsResponse struct {
 	Image          []byte `json: "images"`
 	BnsId          string `json: "bnsId,omitemty"`
 	PageNumber     string `json: "pageNunber,omitemty"`
+	Err            error  `json: "errorCode"`
 }
 
 type Date struct {

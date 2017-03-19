@@ -276,17 +276,33 @@ func BuildBnsResponse(resp *http.Response, contentType string, body *[]byte) Bns
 		goLog.Warning.Println("X-Scal-Usermd is missing the resp header", resp.Status, resp.Header)
 	}
 
+	patha := strings.Split(resp.Request.URL.Path, "/")
+	bnsResponse.PageNumber = patha[len(patha)-1]
+
+	// bnsida := patha[len(patha)-4 : len(patha)-1]
+	bnsResponse.BnsId = strings.Join(patha[len(patha)-4:len(patha)-1], "/")
 	bnsResponse.Image = *body
 	bnsResponse.ContentType = contentType
 	bnsResponse.HttpStatusCode = resp.StatusCode
+
+	/*  Check page number consistency
 	pagemeta := Pagemeta{}
 	pagemd := bnsResponse.Pagemd
+
 	if err := json.Unmarshal(pagemd, &pagemeta); err != nil {
 		goLog.Error.Println(err, string(pagemd))
+		bnsResponse.Err = err
 	} else {
-		bnsResponse.BnsId = pagemeta.BnsId.CountryCode + "/" + pagemeta.BnsId.PubNumber + "/" + pagemeta.BnsId.KindCode
-		bnsResponse.PageNumber = "p" + strconv.Itoa(pagemeta.PageNumber)
+		pageN := "p" + strconv.Itoa(pagemeta.PageNumber)
+		if pageN != pageNumber {
+			pn := bnsid + "/" + pageNumber
+			bnsResponse.Err = errors.New("page number in meta is different")
+		} else {
+			bnsResponse.BnsId = pagemeta.BnsId.CountryCode + "/" + pagemeta.BnsId.PubNumber + "/" + pagemeta.BnsId.KindCod
+			bnsResponse.PageNumber = pageN
+		}
 	}
+	*/
 
 	defer resp.Body.Close()
 	return bnsResponse

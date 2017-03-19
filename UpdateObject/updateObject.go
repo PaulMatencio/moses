@@ -249,12 +249,12 @@ func main() {
 		for i, v := range sproxyResponses {
 
 			if err := v.Err; err == nil { //
-				resp := v.Response
-				body := *v.Body
+				// resp := v.Response
+				// body := *v.Body
 				// BuildBnsResponse will clode the Body
-				bnsResponse := bns.BuildBnsResponse(resp, getHeader["Content-Type"], &body) // bnsResponse is a Go structure
-
-				bnsResponses[i] = bnsResponse
+				// bnsResponse := bns.BuildBnsResponse(resp, getHeader["Content-Type"], &body)
+				// bnsResponse := bns.BuildBnsResponse(v.Response, getHeader["Content-Type"], v.Body)
+				bnsResponses[i] = bns.BuildBnsResponse(v.Response, getHeader["Content-Type"], v.Body)
 			}
 		}
 
@@ -268,13 +268,13 @@ func main() {
 
 		num200 := 0
 		if !sproxyd.Test {
-			for _, sproxydResponse := range sproxydResponses {
-				resp := sproxydResponse.Response
-				goLog.Trace.Println(sproxydResponse.Url, resp.StatusCode)
+			for k, v := range sproxydResponses {
+				resp := v.Response
+				goLog.Trace.Println(k, v.Url, resp.StatusCode)
 				if resp.StatusCode == 200 {
 					num200++
 				} else {
-					goLog.Error.Println(sproxydResponse.Url, sproxydResponse.Err, resp.StatusCode)
+					goLog.Error.Println(k, v.Url, v.Err, resp.StatusCode)
 				}
 				// close all the connection
 				resp.Body.Close()

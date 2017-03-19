@@ -88,29 +88,31 @@ func AsyncHttpCopyBlobs(bnsResponses []BnsResponse) []*sproxyd.HttpResponse {
 	sproxydResponses := []*sproxyd.HttpResponse{}
 	client := &http.Client{}
 	treq := 0
-	for _, bnsResponse := range bnsResponses {
-
+	for k, _ := range bnsResponses {
 		treq += 1
-		go func(bnsResponse *BnsResponse) {
+		url := sproxyd.TargetEnv + "/" + bnsResponses[k].BnsId + "/" + bnsResponses[k].PageNumber
+		go func(url string) {
 			var err error
 			var resp *http.Response
 
 			sproxydRequest := sproxyd.HttpRequest{}
-			header := map[string]string{
-				"Usermd": bnsResponse.Usermd,
+			sproxydRequest.ReqHeader = map[string]string{
+				"Usermd": bnsResponses[k].Usermd,
 			}
 			sproxydRequest.Hspool = sproxyd.TargetHP
 			sproxydRequest.Client = client
-			sproxydRequest.Path = sproxyd.TargetEnv + "/" + bnsResponse.BnsId + "/" + bnsResponse.PageNumber
-			sproxydRequest.ReqHeader = header
-			resp, err = sproxyd.Putobject(&sproxydRequest, bnsResponse.Image)
-
+			sproxydRequest.Path = url
+			resp, err = sproxyd.Putobject(&sproxydRequest, bnsResponses[k].Image)
 			if resp != nil {
 				resp.Body.Close()
 			}
-			// the caller bns must close the Body after having consumed it
+			if !sproxyd.Test {
+				defer resp.Body.Close()
+			} else {
+				time.Sleep(1 * time.Millisecond)
+			}
 			ch <- &sproxyd.HttpResponse{sproxydRequest.Path, resp, nil, err}
-		}(&bnsResponse)
+		}(url)
 	}
 	for {
 		select {

@@ -267,13 +267,13 @@ func main() {
 			os.Exit(2)
 		}
 		// build []urls of pages  of the document to be fecthed
-		len := docmeta.TotalPage
-		urls := make([]string, len, len)
+		num := docmeta.TotalPage
+		urls := make([]string, num, num)
 
 		getHeader := map[string]string{}
 		getHeader["Content-Type"] = "image/" + strings.ToLower(media)
 
-		for i := 0; i < len; i++ {
+		for i := 0; i < num; i++ {
 			urls[i] = pathname + "/p" + strconv.Itoa(i+1)
 		}
 
@@ -282,22 +282,27 @@ func main() {
 		sproxyResponses := bns.AsyncHttpGetpageType(&bnsRequest)
 
 		// AsyncHttpGetPageType should already  close [defer resp.Body.Clsoe()] all open connections
-		bnsResponses := make([]bns.BnsResponse, len, len)
-		var pagemd []byte
+
+		bnsResponses := make([]bns.BnsResponse, num, num)
+		// var pagemd []byte
+
 		for i, v := range sproxyResponses {
 			if err := v.Err; err == nil {
 				resp := v.Response
 				body := *v.Body
+				/*
+					patha := strings.Split(resp.Request.URL.Path, "/")
+					page = patha[len(patha)-1]
+				*/
 				bnsResponse := bns.BuildBnsResponse(resp, getHeader["Content-Type"], &body)
 				bnsResponses[i] = bnsResponse
-				page = "p" + strconv.Itoa(i+1)
+				page := bnsResponse.PageNumber
+
 				if Image {
 					writeImage(outDir, page, media, &bnsResponse.Image)
 				}
 				if Meta {
-					if pagemd, err = base64.Decode64(resp.Header["X-Scal-Usermd"][0]); err == nil {
-						writeMeta(outDir, page, pagemd)
-					}
+					writeMeta(outDir, page, bnsResponse.Pagemd)
 				}
 			}
 		}
@@ -329,35 +334,36 @@ func main() {
 		} else {
 			writeMeta(outDir, "", docmd)
 		}
-		len := docmeta.TotalPage
-		urls := make([]string, len, len)
+		num := docmeta.TotalPage
+		urls := make([]string, num, num)
 		getHeader := map[string]string{}
 		getHeader["Content-Type"] = "application/binary"
 
-		for i := 0; i < len; i++ {
+		for i := 0; i < num; i++ {
 			urls[i] = pathname + "/p" + strconv.Itoa(i+1)
 		}
 		bnsRequest.Urls = urls
 		bnsRequest.Hspool = sproxyd.HP
 		sproxyResponses := bns.AsyncHttpGetBlobs(&bnsRequest, getHeader)
-		bnsResponses := make([]bns.BnsResponse, len, len)
-		var pagemd []byte
+		bnsResponses := make([]bns.BnsResponse, num, num)
 		bnsRequest.Client = &http.Client{}
 		for i, v := range sproxyResponses {
 			if err := v.Err; err == nil { //
 				resp := v.Response
 				body := *v.Body
-				usermd := resp.Header["X-Scal-Usermd"][0]
+				/*
+					patha := strings.Split(resp.Request.URL.Path, "/")
+					page = patha[len(patha)-1]
+					usermd := resp.Header["X-Scal-Usermd"][0]
+				*/
 				bnsResponse := bns.BuildBnsResponse(resp, getHeader["Content-Type"], &body) // bnsImage is a Go structure
-				page = "p" + strconv.Itoa(i+1)
+				page := bnsResponse.PageNumber
+
 				if Image {
 					writeImage(outDir, page, media, &bnsResponse.Image)
 				}
 				if Meta {
-					if pagemd, err = base64.Decode64(usermd); err == nil {
-						writeMeta(outDir, page, pagemd)
-						bnsResponse.Pagemd = pagemd
-					}
+					writeMeta(outDir, page, bnsResponse.Pagemd)
 				}
 				bnsResponses[i] = bnsResponse
 			}
@@ -368,23 +374,19 @@ func main() {
 		pathname = pathname + "/" + page
 		getHeader := map[string]string{}
 		getHeader["Content-Type"] = "image/" + strings.ToLower(media)
-		var pagemd []byte
-
 		bnsRequest := bns.HttpRequest{
 			Hspool: sproxyd.HP,
 			Client: client,
 		}
-
 		bnsRequest.Media = media
-
 		if resp, err := bns.GetPageType(&bnsRequest, pathname); err == nil {
 			defer resp.Body.Close()
 			body, _ := ioutil.ReadAll(resp.Body)
 			bnsResponse := bns.BuildBnsResponse(resp, getHeader["Content-Type"], &body)
+			page = bnsResponse.PageNumber
 			writeImage(outDir, page, media, &bnsResponse.Image)
-			if pagemd, err = base64.Decode64(resp.Header["X-Scal-Usermd"][0]); err == nil {
-				writeMeta(outDir, page, pagemd)
-			}
+			writeMeta(outDir, page, bnsResponse.Pagemd)
+
 		} else {
 			goLog.Error.Println(action, pathname, err)
 		}

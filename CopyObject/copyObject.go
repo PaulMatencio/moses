@@ -271,14 +271,13 @@ func main() {
 		sproxydResponses := bns.AsyncHttpCopyBlobs(bnsResponses)
 
 		num200 := 0
-		for _, sproxydResponse := range sproxydResponses {
-			resp := sproxydResponse.Response
-			resp.Body.Close()
-			goLog.Trace.Println(sproxydResponse.Url, resp.StatusCode)
+		for k, v := range sproxydResponses {
+			resp := v.Response
+			goLog.Trace.Println(k, v.Url, resp.StatusCode)
 			if resp.StatusCode == 200 {
 				num200++
 			} else {
-				goLog.Error.Println(sproxydResponse.Url, sproxydResponse.Err, resp.StatusCode)
+				goLog.Error.Println(k, v.Url, v.Err, resp.StatusCode)
 			}
 			resp.Body.Close()
 		}
