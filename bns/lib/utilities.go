@@ -253,7 +253,7 @@ func UpdateBlob(bnsRequest *HttpRequest, url string, buf []byte, header map[stri
 		goLog.Trace.Println(hostname, pid, url, resp.Status, resp.Header["X-Scal-Ring-Key"])
 
 	case 412:
-		goLog.Warning.Println(hostname, pid, url, resp.Status, "key=", resp.Header["X-Scal-Ring-Key"], "already exist")
+		goLog.Warning.Println(hostname, pid, url, resp.Status, "key=", resp.Header["X-Scal-Ring-Key"], "does not exist")
 
 	case 422:
 		goLog.Error.Println(hostname, pid, url, resp.Status, resp.Header["X-Scal-Ring-Status"])
@@ -284,25 +284,6 @@ func BuildBnsResponse(resp *http.Response, contentType string, body *[]byte) Bns
 	bnsResponse.Image = *body
 	bnsResponse.ContentType = contentType
 	bnsResponse.HttpStatusCode = resp.StatusCode
-
-	/*  Check page number consistency
-	pagemeta := Pagemeta{}
-	pagemd := bnsResponse.Pagemd
-
-	if err := json.Unmarshal(pagemd, &pagemeta); err != nil {
-		goLog.Error.Println(err, string(pagemd))
-		bnsResponse.Err = err
-	} else {
-		pageN := "p" + strconv.Itoa(pagemeta.PageNumber)
-		if pageN != pageNumber {
-			pn := bnsid + "/" + pageNumber
-			bnsResponse.Err = errors.New("page number in meta is different")
-		} else {
-			bnsResponse.BnsId = pagemeta.BnsId.CountryCode + "/" + pagemeta.BnsId.PubNumber + "/" + pagemeta.BnsId.KindCod
-			bnsResponse.PageNumber = pageN
-		}
-	}
-	*/
 
 	defer resp.Body.Close()
 	return bnsResponse

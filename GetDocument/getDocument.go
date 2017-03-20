@@ -214,7 +214,7 @@ func main() {
 		Client: client,
 		Media:  media,
 	}
-
+	n := 0
 	switch action {
 	case "getPageMeta":
 		Meta = true
@@ -225,6 +225,7 @@ func main() {
 		} else {
 			goLog.Error.Println(err)
 		}
+		n++
 
 	case "getDocumentMeta":
 		// the document's  metatadata is the metadata the object given <pathname>
@@ -245,9 +246,11 @@ func main() {
 		} else {
 			goLog.Error.Println(err)
 		}
+		n++
 
 	case "getDocumentType":
 		docmeta := bns.DocumentMetadata{}
+
 		if docmd, err := bns.GetDocMetadata(&bnsRequest, pathname); err == nil {
 			goLog.Trace.Println("Document Metadata=>", string(docmd))
 			if len(docmd) != 0 {
@@ -266,6 +269,7 @@ func main() {
 			goLog.Error.Println(err)
 			os.Exit(2)
 		}
+
 		// build []urls of pages  of the document to be fecthed
 		num := docmeta.TotalPage
 		urls := make([]string, num, num)
@@ -288,6 +292,7 @@ func main() {
 
 		for i, v := range sproxyResponses {
 			if err := v.Err; err == nil {
+				n++
 				resp := v.Response
 				body := *v.Body
 				/*
@@ -316,9 +321,16 @@ func main() {
 		media = "binary"
 		url := pathname
 
+		// Get the document metadata
 		if encoded_docmd, err = bns.GetEncodedMetadata(&bnsRequest, url); err == nil {
-			if docmd, err = base64.Decode64(encoded_docmd); err != nil {
-				goLog.Error.Println(err)
+			if len(encoded_docmd) > 0 {
+				if docmd, err = base64.Decode64(encoded_docmd); err != nil {
+					goLog.Error.Println(err)
+					os.Exit(2)
+				}
+				goLog.Trace.Println("Document Metadata=>", string(docmd))
+			} else {
+				goLog.Error.Println("Metadata is missing for ", pathname)
 				os.Exit(2)
 			}
 		} else {
@@ -348,7 +360,9 @@ func main() {
 		bnsResponses := make([]bns.BnsResponse, num, num)
 		bnsRequest.Client = &http.Client{}
 		for i, v := range sproxyResponses {
+
 			if err := v.Err; err == nil { //
+				n++
 				resp := v.Response
 				body := *v.Body
 				/*
@@ -395,6 +409,6 @@ func main() {
 		goLog.Info.Println("-action <action value> is missing")
 	}
 	duration := time.Since(start)
-	fmt.Println("total elapsed time:", duration)
-	goLog.Info.Println(duration)
+	fmt.Println("Total get elapsed time:", duration, " to get ", n, " pages")
+	goLog.Info.Println("Total get elapsed time:", duration, " to get ", n, " pages")
 }

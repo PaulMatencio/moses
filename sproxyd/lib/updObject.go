@@ -2,7 +2,10 @@ package sproxyd
 
 import (
 	"bytes"
-	"fmt"
+
+	// "fmt"
+	// base64 "moses/user/base64j"
+
 	"net/http"
 	"strconv"
 
@@ -31,9 +34,14 @@ func UpdObject(hspool hostpool.HostPool, client *http.Client, path string, objec
 func Updobject(sproxydRequest *HttpRequest, object []byte) (*http.Response, error) {
 
 	url := DummyHost + sproxydRequest.Path
-	fmt.Println("update Object", url, sproxydRequest.ReqHeader)
 	req, _ := http.NewRequest("PUT", url, bytes.NewBuffer(object))
 	if usermd, ok := sproxydRequest.ReqHeader["Usermd"]; ok {
+		/*
+			if pagemd, err := base64.Decode64(usermd); err == nil {
+				fmt.Println("Update Object : url=>", url, "page meata=>", string(pagemd), " Image length ", len(object))
+			}
+		*/
+
 		req.Header.Add("X-Scal-Usermd", usermd)
 	}
 	if contentType, ok := sproxydRequest.ReqHeader["Content-Type"]; ok {

@@ -89,7 +89,7 @@ func main() {
 	flag.StringVar(&trace, "t", "0", "Trace")     // Trace
 	flag.StringVar(&testname, "T", "copyDoc", "") // Test name
 	flag.StringVar(&pn, "pn", "", "Publication number")
-	flag.StringVar(&test, "test", "1", "Run copy in test mode")
+	flag.StringVar(&test, "test", "0", "Run copy in test mode")
 	flag.StringVar(&doconly, "doconly", "0", "Only update the document meta")
 	flag.Parse()
 	Trace, _ = strconv.ParseBool(trace)
@@ -203,8 +203,13 @@ func main() {
 
 	// Get the document metadata
 	if encoded_docmd, err = bns.GetEncodedMetadata(&bnsRequest, url); err == nil {
-		if docmd, err = base64.Decode64(encoded_docmd); err != nil {
-			goLog.Error.Println(err)
+		if len(encoded_docmd) > 0 {
+			if docmd, err = base64.Decode64(encoded_docmd); err != nil {
+				goLog.Error.Println(err)
+				os.Exit(2)
+			}
+		} else {
+			goLog.Error.Println("Metadata is missing for ", pathname)
 			os.Exit(2)
 		}
 	} else {
@@ -271,21 +276,32 @@ func main() {
 		sproxydResponses := bns.AsyncHttpCopyBlobs(bnsResponses)
 
 		num200 := 0
-		for k, v := range sproxydResponses {
-			resp := v.Response
-			goLog.Trace.Println(k, v.Url, resp.StatusCode)
-			if resp.StatusCode == 200 {
-				num200++
-			} else {
-				goLog.Error.Println(k, v.Url, v.Err, resp.StatusCode)
-			}
-			resp.Body.Close()
-		}
+		if !sproxyd.Test {
+			for _, v := range sproxydResponses {
+				resp := v.Response
+				url := v.Url
+				switch resp.StatusCode {
+				case 200:
+					goLog.Trace.Println(hostname, pid, url, resp.Status, resp.Header["X-Scal-Ring-Key"])
+					num200++
+				case 412:
+					goLog.Warning.Println(hostname, pid, url, resp.Status, "key=", resp.Header["X-Scal-Ring-Key"], "already exist")
 
-		if num200 < num {
-			fmt.Println("Some pages of ", pn, " could not be copied, Check the error log for more details", num, num200)
-		} else {
-			fmt.Println("All the pages of ", pn, " are copied", num, num200)
+				case 422:
+					goLog.Error.Println(hostname, pid, url, resp.Status, resp.Header["X-Scal-Ring-Status"])
+				default:
+					goLog.Warning.Println(hostname, pid, url, resp.Status)
+				}
+				// close all the connection
+				resp.Body.Close()
+			}
+
+			fmt.Println("\nPublication id:", pn, num, " Pages in;", num200, " Pages out")
+			if num200 < num {
+				goLog.Warning.Println("\nPublication id:", pn, num, " Pages in;", num200, " Pages out")
+			} else {
+				goLog.Info.Println("\nPublication id:", pn, num, " Pages in;", num200, " Pages out")
+			}
 		}
 	}
 	duration = time.Since(start)

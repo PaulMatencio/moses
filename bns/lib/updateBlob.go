@@ -58,21 +58,24 @@ func AsyncHttpUpdateBlobs(bnsResponses []BnsResponse) []*sproxyd.HttpResponse {
 	sproxydResponses := []*sproxyd.HttpResponse{}
 	client := &http.Client{}
 	treq := 0
-	for k, _ := range bnsResponses {
+	for k, v := range bnsResponses {
 		treq += 1
-		url := sproxyd.TargetEnv + "/" + bnsResponses[k].BnsId + "/" + bnsResponses[k].PageNumber
-		go func(url string) {
+		url := sproxyd.TargetEnv + "/" + v.BnsId + "/" + v.PageNumber
+		image := bnsResponses[k].Image
+		usermd := bnsResponses[k].Usermd
+		pagemd := bnsResponses[k].Pagemd
+		go func(url string, image []byte, usermd string, pagemd []byte) {
 			var err error
 			var resp *http.Response
-
 			sproxydRequest := sproxyd.HttpRequest{}
 			sproxydRequest.ReqHeader = map[string]string{
-				"Usermd": bnsResponses[k].Usermd,
+				"Usermd": usermd,
 			}
 			sproxydRequest.Hspool = sproxyd.TargetHP
 			sproxydRequest.Client = client
 			sproxydRequest.Path = url
-			resp, err = sproxyd.Updobject(&sproxydRequest, bnsResponses[k].Image)
+			// fmt.Println("PATH+META+IMAGE>", url, string(pagemd), len(image))
+			resp, err = sproxyd.Updobject(&sproxydRequest, image)
 			if resp != nil {
 				resp.Body.Close()
 			}
@@ -82,7 +85,7 @@ func AsyncHttpUpdateBlobs(bnsResponses []BnsResponse) []*sproxyd.HttpResponse {
 				time.Sleep(1 * time.Millisecond)
 			}
 			ch <- &sproxyd.HttpResponse{sproxydRequest.Path, resp, nil, err}
-		}(url)
+		}(url, image, usermd, pagemd)
 	}
 	for {
 		select {
@@ -97,48 +100,3 @@ func AsyncHttpUpdateBlobs(bnsResponses []BnsResponse) []*sproxyd.HttpResponse {
 	}
 	return sproxydResponses
 }
-
-/*
-func AsyncHttpUpdateBlobsTest(bnsResponses []BnsResponse) []*sproxyd.HttpResponse {
-
-	ch := make(chan *sproxyd.HttpResponse)
-	sproxydResponses := []*sproxyd.HttpResponse{}
-	client := &http.Client{}
-	treq := 0
-	for _, bnsResponse := range bnsResponses {
-
-		treq += 1
-		go func(bnsResponse *BnsResponse) {
-			var err error
-			var resp *http.Response
-
-			sproxydRequest := sproxyd.HttpRequest{}
-			header := map[string]string{
-				"Usermd": bnsResponse.Usermd,
-			}
-			sproxydRequest.Hspool = sproxyd.TargetHP
-			sproxydRequest.Client = client
-			sproxydRequest.Path = sproxyd.TargetEnv + "/" + bnsResponse.BnsId + "/" + bnsResponse.PageNumber
-			sproxydRequest.ReqHeader = header
-			resp, err = sproxyd.Updobject(&sproxydRequest, bnsResponse.Image,test)
-			if resp != nil {
-				resp.Body.Close()
-			}
-			ch <- &sproxyd.HttpResponse{sproxydRequest.Path, resp, nil, err}
-		}(&bnsResponse)
-	}
-	for {
-		select {
-		case r := <-ch:
-			sproxydResponses = append(sproxydResponses, r)
-			if len(sproxydResponses) == treq {
-				return sproxydResponses
-			}
-		case <-time.After(sproxyd.Timeout * time.Millisecond):
-			fmt.Printf("w")
-		}
-	}
-	return sproxydResponses
-}
-
-*/
