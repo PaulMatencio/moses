@@ -269,10 +269,11 @@ func main() {
 		}
 		time1 := time.Since(start)
 		if Count {
-			m := directory.CountResponse(responses)
+			m, nextMarker := directory.CountResponse(responses)
 			for k, v := range m {
 				goLog.Info.Println("Count:", k, v)
 			}
+			goLog.Info.Println("Next marker:", nextMarker)
 		} else {
 			directory.PrintResponse(responses)
 		}

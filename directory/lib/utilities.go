@@ -61,8 +61,9 @@ func PrintResponse(responses []*HttpResponse) {
 	}
 }
 
-func CountResponse(responses []*HttpResponse) map[string]int {
+func CountResponse(responses []*HttpResponse) (map[string]int, string) {
 	m := make(map[string]int)
+	var nextMarker string
 	for i := range responses {
 		var (
 			iresponse sindexd.Response
@@ -76,13 +77,13 @@ func CountResponse(responses []*HttpResponse) map[string]int {
 			iresponse = *responses[i].Response
 			m[pref] = len(iresponse.Fetched)
 			if iresponse.Next_marker != "" {
-				goLog.Info.Println("Next marker:", iresponse.Next_marker)
+				nextMarker = iresponse.Next_marker
 			}
 		} else {
 			goLog.Error.Println(pref, err)
 		}
 	}
-	return m
+	return m, nextMarker
 }
 
 func Check(iIndex string, start time.Time, resp *http.Response) {

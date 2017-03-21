@@ -30,7 +30,7 @@ func SplitFile(inputFile string, outputDir string) {
 	}
 	defer file.Close()
 	//
-	// reda the input file and create multiple output files based of the country code
+	// read the input file and create multiple output files based of the country code
 	i := 0
 	in := bufio.NewReader(file)
 	suf0 := ""

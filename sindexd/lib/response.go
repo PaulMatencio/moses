@@ -32,6 +32,7 @@ func (r *Response) GetStatus() int {
 }
 
 func GetResponse(resp *http.Response) *Response {
+
 	response := new(Response)
 	if resp != nil {
 		body := GetBody(resp)
@@ -43,16 +44,30 @@ func GetResponse(resp *http.Response) *Response {
 }
 
 func GetBody(resp *http.Response) []byte {
+
 	body, _ := ioutil.ReadAll(resp.Body)
 	defer resp.Body.Close()
 	return body
 }
 
 func (r *Response) PrintFetched() string {
+
 	for k, v := range r.Fetched {
 		goLog.Info.Println("key:", k, "value:", v)
 	}
 	return r.Next_marker
+}
+
+func (r *Response) GetFetchedKeys() ([]string, string) {
+
+	num := len(r.Fetched)
+	keys := make([]string, num, num)
+	i := 0
+	for k, _ := range r.Fetched {
+		keys[i] = k
+		i++
+	}
+	return keys, r.Next_marker
 }
 
 func (r *Response) PrintNotFound() {

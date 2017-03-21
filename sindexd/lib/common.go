@@ -14,14 +14,17 @@ const (
 )
 
 var (
-	Debug     bool
-	Maxinput  int64
-	Test      bool
-	Memstat   bool
-	Delimiter string
-	Host      []string
-	Driver    string
-	HP        hostpool.HostPool
+	Debug        bool
+	Maxinput     int64
+	Test         bool
+	Memstat      bool
+	Delimiter    string
+	Host         []string
+	TargetHost   []string
+	Driver       string
+	TargetDriver string
+	HP           hostpool.HostPool
+	TargetHP     hostpool.HostPool
 )
 
 type Index_spec struct {
