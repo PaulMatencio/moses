@@ -234,3 +234,10 @@ type HttpRequest struct {
 	Client *http.Client
 	Media  string
 }
+
+type CopyResponse struct {
+	Err    error
+	SrcUrl string
+	Num    int
+	Num200 int
+}

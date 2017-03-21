@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"runtime"
 	"strconv"
 	"strings"
 )
@@ -177,13 +178,13 @@ func RemoveSlash(input string) string {
 
 //  Used to PUT BLOB
 
-func CopyBlob(bnsRequest *HttpRequest, url string, buf []byte, header map[string]string, test bool) {
+func CopyBlob(bnsRequest *HttpRequest, url string, buf []byte, header map[string]string) {
 
 	pid := os.Getpid()
 	hostname, _ := os.Hostname()
 	action := "CopyBlob"
 	result := AsyncHttpPutBlob(bnsRequest, url, buf, header)
-	if test {
+	if sproxyd.Test {
 		goLog.Trace.Printf("URL => %s \n", result.Url)
 		return
 	}
@@ -273,7 +274,7 @@ func BuildBnsResponse(resp *http.Response, contentType string, body *[]byte) Bns
 			goLog.Trace.Println("page meata=>", string(pagemd))
 		}
 	} else {
-		goLog.Warning.Println("X-Scal-Usermd is missing the resp header", resp.Status, resp.Header)
+		goLog.Warning.Println("X-Scal-Usermd is missing in the resp header", resp.Status, resp.Header)
 	}
 
 	patha := strings.Split(resp.Request.URL.Path, "/")
@@ -287,4 +288,36 @@ func BuildBnsResponse(resp *http.Response, contentType string, body *[]byte) Bns
 
 	defer resp.Body.Close()
 	return bnsResponse
+}
+
+func SetCPU(cpu string) error {
+	var numCPU int
+
+	availCPU := runtime.NumCPU()
+
+	if strings.HasSuffix(cpu, "%") {
+		// Percent
+		var percent float32
+		pctStr := cpu[:len(cpu)-1]
+		pctInt, err := strconv.Atoi(pctStr)
+		if err != nil || pctInt < 1 || pctInt > 100 {
+			return errors.New("Invalid CPU value: percentage must be between 1-100")
+		}
+		percent = float32(pctInt) / 100
+		numCPU = int(float32(availCPU) * percent)
+	} else {
+		// Number
+		num, err := strconv.Atoi(cpu)
+		if err != nil || num < 1 {
+			return errors.New("Invalid CPU value: provide a number or percent greater than 0")
+		}
+		numCPU = num
+	}
+
+	if numCPU > availCPU {
+		numCPU = availCPU
+	}
+
+	runtime.GOMAXPROCS(numCPU)
+	return nil
 }

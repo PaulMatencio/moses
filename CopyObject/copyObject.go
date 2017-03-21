@@ -14,7 +14,7 @@ package main
 //
 
 import (
-	directory "directory/lib"
+	// directory "directory/lib"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -176,13 +176,16 @@ func main() {
 			}
 		}
 	}
+
+	bns.SetCPU("100%")
+
+	start := time.Now()
 	var (
 		err           error
 		encoded_docmd string
 		docmd         []byte
 	)
-	directory.SetCPU("100%")
-	start := time.Now()
+
 	bnsRequest := bns.HttpRequest{
 		Hspool: sproxyd.HP, // source sproxyd servers IP address and ports
 		Client: &http.Client{},
