@@ -263,9 +263,9 @@ func main() {
 			Concurrent = false
 		}
 		if !Concurrent {
-			responses = directory.GetSerialPrefix(iIndex, prefixs, delimiter, markers, Limit, Ind_Specs)
+			responses = directory.GetSerialPrefixs(iIndex, prefixs, delimiter, markers, Limit, Ind_Specs)
 		} else {
-			responses = directory.GetAsyncPrefix(iIndex, prefixs, delimiter, markers, Limit, Ind_Specs)
+			responses = directory.GetAsyncPrefixs(iIndex, prefixs, delimiter, markers, Limit, Ind_Specs)
 		}
 		time1 := time.Since(start)
 		if Count {

@@ -15,7 +15,6 @@ func WriteFile(filename string, buf []byte, mode os.FileMode) error {
 		goLog.Warning.Println(hostname, os.Getpid(), err, "Writing", filename)
 	}
 	return err
-
 }
 
 func AsyncWriteFiles(entries []string, buf [][]byte, mode os.FileMode) []*Responses {

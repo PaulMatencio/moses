@@ -9,10 +9,14 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-	"strings"
-	"time"
+	// "strings"
 
+	"bufio"
 	directory "moses/directory/lib"
+	files "moses/user/files/lib"
+	"os/user"
+	"path"
+	"time"
 
 	sindexd "moses/sindexd/lib"
 
@@ -21,26 +25,15 @@ import (
 )
 
 var (
-	action, lim, prefix, marker, pubdate, count, config, debug, delimiter, force, test, concurrent, memstat, reset, lo string
-	prefixs, markers                                                                                                   []string
-	Count, Debug, Delimiter, Force, Memstat                                                                            bool
+	action, lim, prefix, marker, pubdate, count, config, debug, delimiter, force, test, concurrent string
+	prefixs, markers                                                                               []string
+	Count, Debug, Delimiter, Concurrent                                                            bool
 	//Test       bool
-	maxinput, bulkindex, keys, iIndex, inputFile, outputDir, logPath string
+	maxinput, bulkindex, keys, iIndex, logPath string
 )
 
-/*
-type HttpResponse struct { // used for get prefix
-	pref     string
-	response *sindexd.Response
-	err      error
-}
-*/
-
-// sindexd -action Gp -prefix "GB" -index PN -delimiter "/"  -debug true
-//
 func usage() {
-	usage := "\nFunction==> Directory functions\n\nUsage: \nsindexd -action  Ci/Di/AMe/UMe/Uea/Ge/De/Gp/Gc/Sp " +
-		"\n-prefix 'p1,p2,p3..'\n-limit n (prefix)\n-debug  0/1 " +
+	usage := "\nGetPrefix  -prefix 'p1,p2,p3..'\n-limit n (prefix)\n-debug  0/1 " +
 		"\n-Delimiter 0/1" +
 		"\n\nDefault Options\n\n"
 
@@ -52,26 +45,20 @@ func usage() {
 func main() {
 
 	flag.Usage = usage
-	flag.StringVar(&lim, "limit", "500", "Limit the number of fetched keys per Get Prefix")
+	flag.StringVar(&lim, "limit", "10000", "Limit the number of fetched keys per Get Prefix")
 	flag.StringVar(&marker, "marker", "", "Start with this Marker (Key) for the Get Prefix ")
-	flag.StringVar(&pubdate, "pd", "18000101", "Default Publication date")
 	flag.StringVar(&debug, "debug", "false", "Debug mode")
 	flag.StringVar(&delimiter, "delimiter", "", "Delimiter value")
 	flag.StringVar(&prefix, "prefix", "", "Prefix Key")
-	flag.StringVar(&iIndex, "index", "", "Index Table <PN or PD>")
+	flag.StringVar(&iIndex, "index", "PN", "Index Table <PN or PD>")
 	flag.StringVar(&concurrent, "C", "true", "Use Goroutine when it is possible")
 	flag.StringVar(&count, "count", "false", "Count the number")
-	flag.StringVar(&config, "config", "s11", "Default Config file")
+	flag.StringVar(&config, "config", "moses-dev", "Default Config file")
 	flag.Parse()
-	if len(action) == 0 {
+	if len(prefix) == 0 {
 		usage()
 	}
-	if len(iIndex) == 0 {
-		if action != "St" && action != "Gc" && action != "Sp" {
-			fmt.Println("-index table is missing")
-			usage()
-		}
-	}
+
 	if len(config) != 0 {
 
 		if Config, err := sindexd.GetParmConfig(config); err == nil {
@@ -103,73 +90,63 @@ func main() {
 	log.SetOutput(l)
 	// Create  Log categories : Trace, Info, Warning, Error
 	Debug, _ = strconv.ParseBool(debug)
+	Concurrent, _ = strconv.ParseBool(concurrent)
 	if Debug {
 		goLog.Init(os.Stdout, os.Stdout, os.Stdout, os.Stderr)
 	} else {
 		goLog.Init(os.Stdout, l, l, os.Stderr)
 	}
-	//  Create hosts pool
-	/*
-		hlist := strings.Split(sindexd.Url, ",")
-		sindexd.HP = hostpool.NewEpsilonGreedy(hlist, 0, &hostpool.LinearEpsilonValueCalculator{})
-	*/
-	keys = strings.TrimSpace(keys)
+
 	Limit, _ := strconv.Atoi(lim)
-	Max, _ := strconv.Atoi(maxinput)
-	sindexd.Maxinput = int64(Max)
-	Memstat, _ = strconv.ParseBool(memstat)
-	Force, _ = strconv.ParseBool(force)
 	Count, _ = strconv.ParseBool(count)
 	Concurrent, _ := strconv.ParseBool(concurrent)
 	sindexd.Debug = Debug
 	sindexd.Delimiter = "/"
-	directory.PubDate = pubdate
 	directory.Action = action
-	sindexd.Memstat = Memstat
-	sindexd.Test, _ = strconv.ParseBool(test)
+
 	if err := directory.SetCPU("100%"); err != nil {
 		goLog.Error.Println(err)
 	}
-	//client := &http.Client{}
+
 	start := time.Now()
-	//
-	// Buid the index Specification based on the country code
-	//
 	Ind_Specs := directory.GetIndexSpec(iIndex)
+	var response *directory.HttpResponse
+	Nextmarker := true
 
-	// Get prefix
-	var (
-		responses []*directory.HttpResponse
-		markers   []string
-	)
-	prefixs := strings.Split(prefix, ",")
-	if len(marker) != 0 {
-		markers = strings.Split(marker, ",")
+	usr, _ := user.Current()
+	homeDir := usr.HomeDir
+	pref := "Prefixs"
+	filedir := path.Join(homeDir, pref)
+	if !files.Exist(filedir) {
+		_ = os.MkdirAll(filedir, 0755)
 	}
-	numpref := len(prefixs)
-	if numpref == 0 {
-		goLog.Error.Println("prefix keys  are missing")
-		os.Exit(3)
-	} else if numpref == 1 {
-		Concurrent = false
-	}
-	if !Concurrent {
-		responses = directory.GetSerialPrefix(iIndex, prefixs, delimiter, markers, Limit, Ind_Specs)
-	} else {
-		responses = directory.GetAsyncPrefix(iIndex, prefixs, delimiter, markers, Limit, Ind_Specs)
-	}
-	time1 := time.Since(start)
-	if Count {
-		m, nextMarker := directory.CountResponse(responses)
-		for k, v := range m {
-			goLog.Info.Println("Count:", k, v)
+	filename := filedir + "/" + prefix
+
+	f, _ := os.Create(filename)
+
+	w := bufio.NewWriter(f)
+	for Nextmarker {
+		fmt.Println(markers)
+		response = directory.GetSerialPrefix(iIndex, prefix, delimiter, marker, Limit, Ind_Specs)
+		keys, nextMarker := directory.GetResponse(response)
+
+		for _, v := range keys {
+			v = v + "\n"
+			if _, err := w.WriteString(v); err != nil {
+				goLog.Error.Println("Error writing file", filename, err)
+				os.Exit(10)
+			}
 		}
-		goLog.Info.Println("Next marker:", nextMarker)
-	} else {
-		directory.PrintResponse(responses)
-	}
-	goLog.Info.Println("Concurrent:", Concurrent, "Elasped:", time1)
+		fmt.Println("Next =>", nextMarker, len(keys))
 
+		if len(nextMarker) == 0 {
+			Nextmarker = false
+		}
+		marker = nextMarker
+	}
+	w.Flush()
+
+	goLog.Info.Println("Concurrent:", Concurrent, "Elasped:", time.Since(start))
 	sindexd.HP.Close()
 }
 

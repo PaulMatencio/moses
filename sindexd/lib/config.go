@@ -13,7 +13,7 @@ import (
 // var Host = []string{"http://luo001t.internal.epo.org:81/proxy/chord/", "http://luo002t.internal.epo.org:81/proxy/chord/", "http://luo003t.internal.epo.org:81/proxy/chord/"}
 type Configuration struct {
 	Hosts        []string `json:"hosts"`
-	TargetHosts  []string `json:"targetHost"`
+	TargetHosts  []string `json:"targetHosts"`
 	Driver       string   `json:"driver,omitempty"`
 	TargetDriver string   `json:"targetDriver,omitempty"`
 	Log          string   `json:"logpath"`

@@ -3,6 +3,7 @@ package directory
 import (
 	"encoding/json"
 	"errors"
+	// "fmt"
 	sindexd "moses/sindexd/lib"
 	goLog "moses/user/goLog"
 	"net/http"
@@ -45,7 +46,9 @@ func PrintResponse(responses []*HttpResponse) {
 		//index_id := responses[i].indexId
 		if err == nil {
 			iresponse = *responses[i].Response
+
 			iresponse.PrintFetched()
+
 			if iresponse.Next_marker != "" {
 				goLog.Info.Println("Next marker:", iresponse.Next_marker)
 			}
@@ -84,6 +87,41 @@ func CountResponse(responses []*HttpResponse) (map[string]int, string) {
 		}
 	}
 	return m, nextMarker
+}
+
+func GetResponse(response *HttpResponse) ([]string, string) {
+
+	var (
+		keys       []string
+		nextMarker string
+		iresponse  sindexd.Response
+		err        error
+		pref       string
+	)
+	pref = response.Pref
+	err = response.Err
+
+	if err == nil {
+		iresponse = *response.Response
+
+		keys, nextMarker = iresponse.GetFetchedKeys()
+
+		/*
+			if iresponse.Next_marker != "" {
+				goLog.Info.Println("Next marker:", iresponse.Next_marker)
+			}
+			if len(iresponse.Not_found) != 0 {
+				iresponse.PrintNotFound()
+			}
+			if len(iresponse.Common_prefix) != 0 {
+				iresponse.PrintCommonPrefix()
+			}
+		*/
+		// return keys, nextMarker
+	} else {
+		goLog.Error.Println(pref, err)
+	}
+	return keys, nextMarker
 }
 
 func Check(iIndex string, start time.Time, resp *http.Response) {
@@ -161,7 +199,7 @@ func GetIndexSpec(iIndex string) map[string]*sindexd.Index_spec {
 	}
 }
 
-func GetAsyncPrefix(iIndex string, prefixs []string, delimiter string, markers []string, Limit int, Ind_Specs map[string]*sindexd.Index_spec) []*HttpResponse {
+func GetAsyncPrefixs(iIndex string, prefixs []string, delimiter string, markers []string, Limit int, Ind_Specs map[string]*sindexd.Index_spec) []*HttpResponse {
 
 	//prefixs := strings.Split(prefix, ",")
 	// url = hp.Get().Host()
@@ -221,7 +259,7 @@ func GetAsyncPrefix(iIndex string, prefixs []string, delimiter string, markers [
 	return responses
 }
 
-func GetSerialPrefix(iIndex string, prefixs []string, delimiter string, markers []string, Limit int, Ind_Specs map[string]*sindexd.Index_spec) []*HttpResponse {
+func GetSerialPrefixs(iIndex string, prefixs []string, delimiter string, markers []string, Limit int, Ind_Specs map[string]*sindexd.Index_spec) []*HttpResponse {
 
 	var (
 		iresponse *sindexd.Response
@@ -264,6 +302,45 @@ func GetSerialPrefix(iIndex string, prefixs []string, delimiter string, markers 
 		r = &HttpResponse{pref, iresponse, err}
 		responses = append(responses, r)
 	}
+	return responses
+}
+
+func GetSerialPrefix(iIndex string, prefix string, delimiter string, marker string, Limit int, Ind_Specs map[string]*sindexd.Index_spec) *HttpResponse {
+
+	var (
+		iresponse *sindexd.Response
+		resp      *http.Response
+		err       error
+
+		j string
+		//index     *sindexd.Index_spec
+	)
+	responses := &HttpResponse{}
+	client := &http.Client{}
+	//prefixs = strings.Split(prefix, ",")
+
+	if len(prefix) > 2 {
+		j = prefix[0:2]
+	} else {
+		j = prefix[0:]
+	}
+	index := Ind_Specs[j]
+	if index == nil {
+		index = Ind_Specs["OTHER"]
+	}
+	// goLog.Info.Println(index, pref, delimiter, marker, Limit)
+	if resp, err = GetPrefix(client, index, prefix, delimiter, marker, Limit); err == nil {
+		// goLog.Info.Println("Status Code ===>", resp.StatusCode)
+		if resp.StatusCode == 200 {
+			iresponse = sindexd.GetResponse(resp)
+		} else {
+			iresponse = nil
+			err = errors.New(resp.Status)
+		}
+	}
+	// iresponse is nil if err != nil
+	responses = &HttpResponse{prefix, iresponse, err}
+
 	return responses
 }
 
