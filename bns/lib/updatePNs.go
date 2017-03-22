@@ -24,7 +24,7 @@ import (
 	// hostpool "github.com/bitly/go-hostpool"
 )
 
-func AsyncUpdatePNs(pns []string, srcEnv string, targetEnv string) []*CopyResponse {
+func AsyncUpdatePns(pns []string, srcEnv string, targetEnv string) []*CopyResponse {
 
 	SetCPU("100%")
 	pid := os.Getpid()
@@ -99,11 +99,13 @@ func AsyncUpdatePNs(pns []string, srcEnv string, targetEnv string) []*CopyRespon
 				}
 				buf0 := make([]byte, 0)
 				bnsRequest.Hspool = sproxyd.TargetHP // Set Target sproxyd servers
+
 				// Copy the document metadata to the destination buffer size = 0 byte
 				// we could  update the meta data : TODO
 				UpdateBlob(&bnsRequest, dstUrl, buf0, header)
 
 			}
+
 			var duration time.Duration
 
 			num = docmeta.TotalPage
@@ -167,8 +169,9 @@ func AsyncUpdatePNs(pns []string, srcEnv string, targetEnv string) []*CopyRespon
 				if num200 < num {
 					goLog.Warning.Println("\nPublication id:", pn, num, " Pages in;", num200, " Pages out")
 					err = errors.New("Pages out < Pages in")
+				} else {
+					goLog.Info.Println("\nPublication id:", pn, num, " Pages in;", num200, " Pages out")
 				}
-
 			}
 			ch <- &CopyResponse{err, pn, num, num200}
 
@@ -183,8 +186,8 @@ func AsyncUpdatePNs(pns []string, srcEnv string, targetEnv string) []*CopyRespon
 			if len(copyResponses) == treq {
 				return copyResponses
 			}
-		case <-time.After(sproxyd.Timeout * time.Millisecond):
-			fmt.Printf("w")
+		case <-time.After(sproxyd.CopyTimeout * time.Millisecond):
+			fmt.Printf("u")
 		}
 	}
 	return copyResponses

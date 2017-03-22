@@ -1,5 +1,8 @@
 package main
 
+//
+//  ATTENTION ====>    USE updatePNs instead
+//
 import (
 	directory "directory/lib"
 	"encoding/json"
@@ -10,18 +13,15 @@ import (
 	"io/ioutil"
 	bns "moses/bns/lib"
 	sproxyd "moses/sproxyd/lib"
+	base64 "moses/user/base64j"
+	file "moses/user/files/lib"
+	goLog "moses/user/goLog"
 	"net/http"
 	"os"
 	"os/user"
 	"path"
 	"strconv"
 	"time"
-
-	base64 "moses/user/base64j"
-	file "moses/user/files/lib"
-	goLog "moses/user/goLog"
-
-	// hostpool "github.com/bitly/go-hostpool"
 )
 
 var (
@@ -98,7 +98,6 @@ func main() {
 	if testname != "" {
 		testname += string(os.PathSeparator)
 	}
-
 	if len(config) != 0 {
 
 		if Config, err := sproxyd.GetConfig(config); err == nil {
@@ -113,10 +112,8 @@ func main() {
 			sproxyd.SetNewTargetProxydHost(Config)
 			sproxyd.TargetDriver = Config.GetTargetDriver()
 			sproxyd.TargetEnv = Config.GetTargetEnv()
-
 			fmt.Println("INFO: Using config Hosts", sproxyd.Host, sproxyd.Driver, sproxyd.Env, logPath)
 			fmt.Println("INFO: Using config target Hosts", sproxyd.TargetHost, sproxyd.TargetDriver, sproxyd.TargetEnv, logPath)
-
 		} else {
 			// sproxyd.HP = hostpool.NewEpsilonGreedy(sproxyd.Host, 0, &hostpool.LinearEpsilonValueCalculator{})
 			fmt.Println(err, "WARNING: Using defaults :", "\nHosts=>", sproxyd.Host, sproxyd.TargetHost, "\nEnv", sproxyd.Env, sproxyd.TargetEnv)

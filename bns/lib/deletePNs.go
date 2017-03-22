@@ -1,6 +1,7 @@
 package bns
 
-// a DocId is composed of a TOC and pages
+//  DELETE <targetENV>  PNs on the Target RING
+//
 
 import (
 	"encoding/json"
@@ -15,21 +16,18 @@ import (
 	"time"
 )
 
-func AsyncCopyPns(pns []string, srcEnv string, targetEnv string) []*CopyResponse {
-
-	SetCPU("100%")
+func AsyncDeletePns(pns []string, targetEnv string) []*CopyResponse {
 	pid := os.Getpid()
 	hostname, _ := os.Hostname()
-	start := time.Now()
+	SetCPU("100%")
 	var (
 		err           error
 		encoded_docmd string
 		docmd         []byte
+		pnPath        string
 	)
 	media := "binary"
-	if len(srcEnv) == 0 {
-		srcEnv = sproxyd.Env
-	}
+
 	if len(targetEnv) == 0 {
 		targetEnv = sproxyd.TargetEnv
 	}
@@ -40,25 +38,28 @@ func AsyncCopyPns(pns []string, srcEnv string, targetEnv string) []*CopyResponse
 
 	//  launch concurrent requets
 	for _, pn := range pns {
-
-		srcPath := srcEnv + "/" + pn
-		dstPath := targetEnv + "/" + pn
-		srcUrl := srcPath
-		dstUrl := dstPath
-
+		targetPath := targetEnv + "/" + pn
+		targetUrl := targetPath
+		//
+		//  Read the PN 's metadata  from the source RING
+		//  The SOURCE RING may be the same as the DESTINATION RING
+		//  Check the config file sproxyd.HP and sproxyd.TargetHP
+		//
 		bnsRequest := HttpRequest{
-			Hspool: sproxyd.HP, // source sproxyd servers IP address and ports
+			Hspool: sproxyd.TargetHP, // <<<<<<  sproxyd.TargetHP is the Destination RING
 			Client: &http.Client{},
 			Media:  media,
 		}
 
-		go func(srcUrl string, dstUrl string) {
+		goLog.Info.Println("Deleting", pnPath)
+
+		go func(targetUrl string) {
 
 			treq++
 			num200 := 0
 			num := 0
 			// Get the PN metadata ( Table of Content)
-			if encoded_docmd, err = GetEncodedMetadata(&bnsRequest, srcUrl); err == nil {
+			if encoded_docmd, err = GetEncodedMetadata(&bnsRequest, targetUrl); err == nil {
 				if len(encoded_docmd) > 0 {
 					if docmd, err = base64.Decode64(encoded_docmd); err != nil {
 						goLog.Error.Println(err)
@@ -66,7 +67,7 @@ func AsyncCopyPns(pns []string, srcEnv string, targetEnv string) []*CopyResponse
 						return
 					}
 				} else {
-					err = errors.New("Metadata is missing for " + srcPath)
+					err = errors.New("Metadata is missing for " + targetPath)
 					goLog.Error.Println(err)
 					ch <- &CopyResponse{err, pn, num, num200}
 					return
@@ -84,54 +85,34 @@ func AsyncCopyPns(pns []string, srcEnv string, targetEnv string) []*CopyResponse
 				goLog.Error.Println(docmeta, err)
 				ch <- &CopyResponse{err, pn, num, num200}
 				return
-			} else {
-				header := map[string]string{
-					"Usermd": encoded_docmd,
-				}
-				buf0 := make([]byte, 0)
-				bnsRequest.Hspool = sproxyd.TargetHP // Set Target sproxyd servers
-				// Copy the document metadata to the destination buffer size = 0 byte
-				// we could  update the meta data : TODO
-				CopyBlob(&bnsRequest, dstUrl, buf0, header)
-
 			}
-			var duration time.Duration
 
 			num = docmeta.TotalPage
-			urls := make([]string, num, num)
-			// dstUrls := make([]string, num, num)
-			getHeader := map[string]string{}
-			getHeader["Content-Type"] = "application/binary"
-			for i := 0; i < num; i++ {
-				urls[i] = srcPath + "/p" + strconv.Itoa(i+1)
-				// dstUrls[i] = dstPath + "/p" + strconv.Itoa(i+1)
-			}
-			bnsRequest.Urls = urls
-			bnsRequest.Hspool = sproxyd.HP // Set source sproxyd servers
+			// urls := make([]string, num, num)
+
+			//  DELETE THE DOCUMENT ON THE TARGET ENVIRONMENT
+			fmt.Println("len => ", num)
+			bnsRequest.Hspool = sproxyd.TargetHP // set target sproxyd servers ( Destination RING)
+			bnsRequest.Urls = make([]string, num, num)
+			targetPath := targetEnv + "/" + pn
+			pnPath = targetPath
 			bnsRequest.Client = &http.Client{}
-			// Get all the pages from the source Ring
-			sproxydResponses := AsyncHttpGetBlobs(&bnsRequest, getHeader)
-			// Build a response array of BnsResponse array to be used to update the pages  of  destination sproxyd servers
+			//  DELETE ALL THE PAGES FIRST
+			for i := 0; i < num; i++ {
+				bnsRequest.Urls[i] = targetPath + "/p" + strconv.Itoa(i+1)
+			}
+
+			sproxydResponses := AsyncHttpDeleteBlobs(&bnsRequest)
 			bnsResponses := make([]BnsResponse, num, num)
 
 			for i, sproxydResponse := range sproxydResponses {
 				if err := sproxydResponse.Err; err == nil { //
-					resp := sproxydResponse.Response                                        /* http response */ // http response
-					body := *sproxydResponse.Body                                           // http response
-					bnsResponse := BuildBnsResponse(resp, getHeader["Content-Type"], &body) // bnsResponse is a Go structure
+					resp := sproxydResponse.Response               /* http response */ // http response                                                      /* copy of the body */ // http body response
+					bnsResponse := BuildBnsResponse(resp, "", nil) // bnsResponse is a Go structure
 					bnsResponses[i] = bnsResponse
 					resp.Body.Close()
 				}
 			}
-			duration = time.Since(start)
-			fmt.Println("Get elapsed time:", duration)
-			goLog.Info.Println("Get elapsed time:", duration)
-
-			// var sproxydResponses []*sproxyd.HttpResponse
-			//   new &http.Client{}  and hosts pool are set to the target by the AsyncHttpCopyBlobs
-			//  			sproxyd.TargetHP
-			sproxydResponses = AsyncHttpCopyBlobs(bnsResponses)
-
 			if !sproxyd.Test {
 				for _, v := range sproxydResponses {
 					resp := v.Response
@@ -154,15 +135,27 @@ func AsyncCopyPns(pns []string, srcEnv string, targetEnv string) []*CopyResponse
 
 				if num200 < num {
 					goLog.Warning.Println("\nPublication id:", pn, num, " Pages in;", num200, " Pages out")
-					err = errors.New("Pages out < Pages in")
-				} else {
-					goLog.Info.Println("\nPublication id:", pn, num, " Pages in;", num200, " Pages out")
+					err = errors.New("Not all pages were deleted, Check the Warning/Errors logs for details")
 				}
-
 			}
+			// Delete the PN metadata when all pages have been deleted
+			if num == num200 {
+				bnsRequest := HttpRequest{
+					Hspool: sproxyd.TargetHP,
+					Client: &http.Client{},
+					Media:  media,
+				}
+				if err, statusCode := DeleteBlob(&bnsRequest, pnPath); err != nil {
+					goLog.Error.Println("Error deleting PN", pnPath, " Error:", err, "Status Code:", statusCode)
+				} else {
+					goLog.Info.Println(pnPath, " is deleted")
+				}
+			}
+
 			ch <- &CopyResponse{err, pn, num, num200}
 
-		}(srcUrl, dstUrl)
+		}(targetUrl)
+
 	}
 
 	//  Loop wait for results
@@ -177,5 +170,18 @@ func AsyncCopyPns(pns []string, srcEnv string, targetEnv string) []*CopyResponse
 			fmt.Printf("c")
 		}
 	}
+
+	/* DELETE THE PN METADATA ONLY WHEN ALL THE PN'S PAGES ARE DELETED
+	if *copyResponse.Num == *copyResponse.Num200 {
+	bnsRequest := HttpRequest{
+		Hspool: sproxyd.TargetHP,
+		Client: &http.Client{},
+		Media:  media,
+	}
+
+	err, _ = DeleteBlob(&bnsRequest, pnPath)
+	}
+	*/
+
 	return copyResponses
 }

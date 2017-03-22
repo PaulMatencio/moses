@@ -2,12 +2,7 @@ package main
 
 //  Copy  all the objects (pages + document metatdata) of a document  from one Ring  ( moses-dev) to another Ring (Moses-Prod)
 //
-//   GET he document metatada from the source  Ring
-//   PUT  the document metadata  to the destination Ring
-//     For every object ( header+ tiff+ png + pdf) of the document
-//         GET The Object  from the source Ring
-//         PUT the object  to the source Ring
-//
+//  ATTENTION ====>    USE copyPNs instead
 //
 //  Check the config file sproxyd/conf/<default config file> moses-dev for more detail before running this program
 //  The <default config file>  can be changed via the -config parm

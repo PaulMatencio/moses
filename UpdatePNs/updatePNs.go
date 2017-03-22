@@ -6,7 +6,7 @@ package main
 //   PUT  the document metadata  to the destination Ring
 //     For every object ( header+ tiff+ png + pdf) of the document
 //         GET The Object  from the source Ring
-//         PUT the object to the destination  Ring
+//         PUT the object  to the source Ring
 //
 //
 //  Check the config file sproxyd/conf/<default config file> moses-dev for more detail before running this program
@@ -87,8 +87,8 @@ func main() {
 	flag.StringVar(&config, "config", defaultConfig, "Config file")
 	flag.StringVar(&srcEnv, "srcEnv", "", "Environment")
 	flag.StringVar(&targetEnv, "targetEnv", "", "Target Environment")
-	flag.StringVar(&trace, "t", "0", "Trace")     // Trace
-	flag.StringVar(&testname, "T", "copyPns", "") // Test name
+	flag.StringVar(&trace, "t", "0", "Trace")       // Trace
+	flag.StringVar(&testname, "T", "updatePNs", "") // Test name
 	flag.StringVar(&pns, "pns", "", "Publication numbers")
 	flag.StringVar(&test, "test", "0", "Run copy in test mode")
 	flag.StringVar(&doconly, "doconly", "0", "Only update the document meta")
@@ -101,7 +101,7 @@ func main() {
 	Doconly, _ = strconv.ParseBool(doconly)
 
 	action = "CopyPNs"
-	application = "copyPN"
+	application = "copyPNs"
 	if len(pns) == 0 {
 		fmt.Println("Error:\n-pn <DocumentId> is missing, what Document objects do you want to copy ?")
 		usage()
@@ -179,12 +179,8 @@ func main() {
 	}
 	pna := strings.Split(pns, ",")
 	start := time.Now()
-	/*
-		fmt.Println(pna, srcEnv, targetEnv, sproxyd.Host, sproxyd.TargetHost)
-		copyResponses := []*bns.CopyResponse{}
-	*/
-	copyResponses := bns.AsyncCopyPns(pna, srcEnv, targetEnv)
 
+	copyResponses := bns.AsyncUpdatePns(pna, srcEnv, targetEnv)
 	duration := time.Since(start)
 	for _, copyResponse := range copyResponses {
 		fmt.Println(copyResponse.Err, copyResponse.Num, copyResponse.Num200)

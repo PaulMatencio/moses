@@ -1,12 +1,12 @@
 package main
 
-//  Copy  all the objects (pages + document metatdata) of a document  from one Ring  ( moses-dev) to another Ring (Moses-Prod)
+//  Delete  all the objects (pages + document metatdata) of a document  from one Ring  ( moses-dev) to another Ring (Moses-Prod)
 //
 //   GET he document metatada from the source  Ring
-//   PUT  the document metadata  to the destination Ring
+//   DELETE  the document metadata  to the destination Ring
 //     For every object ( header+ tiff+ png + pdf) of the document
-//         GET The Object  from the source Ring
-//         PUT the object to the destination  Ring
+//
+//         Delete  the object  on  the source Ring
 //
 //
 //  Check the config file sproxyd/conf/<default config file> moses-dev for more detail before running this program
@@ -45,15 +45,14 @@ func usage() {
 	usage := "\n\nUsage:\n\nCopyPNs -config  <config file>  default is  $HOME/sproxyd/config/moses-dev]" +
 		"\n -pns <List of PN separated by a comma>  \n -srcEnv <Source environment> \n -targEnv <Target environment> \n -t <trace 0/1>  \n -test <test mode 0/1>"
 
-	what := "\nFunction:\n\nCopy PN's (Publication Numbers)  from one Ring  (Ex:moses-dev) to another Ring (Ex:moses-Prod)" +
+	what := "\nFunction:\nDelete PN's (Publication Numbers)  from one Ring  (Ex:moses-dev) to another Ring (Ex:moses-Prod)" +
 		"\n" +
 		"\nFor every PN { " +
-		"\n     GET he PN's metatada from the source  Ring " +
-		"\n     PUT the PN's metadata  to the destination Ring" +
+		"\n     GET he PN's metatada from the target  Ring " +
 		"\n     For every blob ( header+ tiff+ png + pdf) of the PN {" +
-		"\n      	GET The Object  from the source Ring" +
-		"\n      	PUT the object  to thedestination Ring" +
+		"\n      	Delete the blob  to thedestination Ring" +
 		"\n		{ " +
+		"\n		Delete the PN's metadata " +
 		"\n{ " +
 		"\n" +
 		"\n\nCheck the config file $HOME/sproxyd/conf/<default config file name> moses-dev for more detail regarding source and destination Rings before running this program" +
@@ -87,10 +86,10 @@ func main() {
 	flag.StringVar(&config, "config", defaultConfig, "Config file")
 	flag.StringVar(&srcEnv, "srcEnv", "", "Environment")
 	flag.StringVar(&targetEnv, "targetEnv", "", "Target Environment")
-	flag.StringVar(&trace, "t", "0", "Trace")     // Trace
-	flag.StringVar(&testname, "T", "copyPns", "") // Test name
+	flag.StringVar(&trace, "t", "0", "Trace")       // Trace
+	flag.StringVar(&testname, "T", "deletePns", "") // Test name
 	flag.StringVar(&pns, "pns", "", "Publication numbers")
-	flag.StringVar(&test, "test", "0", "Run copy in test mode")
+	flag.StringVar(&test, "test", "1", "Run copy in test mode")
 	flag.StringVar(&doconly, "doconly", "0", "Only update the document meta")
 	flag.Parse()
 	Trace, _ = strconv.ParseBool(trace)
@@ -100,8 +99,8 @@ func main() {
 	// sproxyd.Test = Test
 	Doconly, _ = strconv.ParseBool(doconly)
 
-	action = "CopyPNs"
-	application = "copyPN"
+	action = "DeletePNs"
+	application = "deletePN"
 	if len(pns) == 0 {
 		fmt.Println("Error:\n-pn <DocumentId> is missing, what Document objects do you want to copy ?")
 		usage()
@@ -179,12 +178,8 @@ func main() {
 	}
 	pna := strings.Split(pns, ",")
 	start := time.Now()
-	/*
-		fmt.Println(pna, srcEnv, targetEnv, sproxyd.Host, sproxyd.TargetHost)
-		copyResponses := []*bns.CopyResponse{}
-	*/
-	copyResponses := bns.AsyncCopyPns(pna, srcEnv, targetEnv)
-
+	targetEnv = sproxyd.TargetEnv
+	copyResponses := bns.AsyncDeletePns(pna, targetEnv)
 	duration := time.Since(start)
 	for _, copyResponse := range copyResponses {
 		fmt.Println(copyResponse.Err, copyResponse.Num, copyResponse.Num200)

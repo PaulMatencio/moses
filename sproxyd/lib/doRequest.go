@@ -24,16 +24,18 @@ func DoRequest(hspool hostpool.HostPool, client *http.Client, req *http.Request,
 		waittime time.Duration
 	)
 	u := req.URL
+	uPath := u.Path
 	waittime = 50 * time.Millisecond
 	// goLog.Trace.Println(req.Method, req.Header, u.Host, u.Path, len(object))
-	for r = 1; r <= 3; r++ {
+	for r = 1; r <= DoRetry; r++ {
 		// hpool = HP.Get()
 		hpool = hspool.Get()
 		host := hpool.Host()
 		u1, _ := url.Parse(host)
 		req.URL.Host = u1.Host
 		req.Host = u1.Host
-		req.URL.Path = u1.Path + u.Path
+		// req.URL.Path = u1.Path + u.Path
+		req.URL.Path = u1.Path + uPath
 		// goLog.Trace.Println(r, host, req.URL.Path)
 		if r > 1 && req.ContentLength > 0 && len(object) > 0 {
 			var body io.Reader
@@ -54,7 +56,7 @@ func DoRequest(hspool hostpool.HostPool, client *http.Client, req *http.Request,
 				hpool.Mark(nil)
 			}
 		} else {
-			goLog.Trace.Println(host, u.Path, resp.Status, time.Since(start))
+			goLog.Trace.Println(host, uPath, resp.Status, time.Since(start))
 			switch resp.StatusCode {
 			case 500, 503:
 				hpool.Mark(errors.New(resp.Status))

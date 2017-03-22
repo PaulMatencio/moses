@@ -25,10 +25,10 @@ import (
 )
 
 var (
-	action, config, env, targetEnv, logPath, application, testname, hostname, pn, page, trace, test string
-	Trace, Meta, Image, CopyObject, Test                                                            bool
-	pid                                                                                             int
-	timeout                                                                                         time.Duration
+	action, config, srcEnv, targetEnv, logPath, application, testname, hostname, pn, page, trace, test string
+	Trace, Meta, Image, CopyObject, Test                                                               bool
+	pid                                                                                                int
+	timeout                                                                                            time.Duration
 )
 
 func usage() {
@@ -87,7 +87,7 @@ func main() {
 
 	flag.Usage = usage
 	flag.StringVar(&config, "config", "storage", "Config file")
-	flag.StringVar(&env, "env", "prod", "Environment")
+	flag.StringVar(&srcEnv, "srcEnv", "prod", "Environment")
 	flag.StringVar(&targetEnv, "targetEnv", "moses-prod", "Environment")
 	flag.StringVar(&trace, "t", "0", "Trace")       // Trace
 	flag.StringVar(&testname, "T", "deleteDoc", "") // Test name
@@ -183,8 +183,9 @@ func main() {
 	// READ THE DOCUMENT FROM THE SOURCE ENV to GET ITS METADATA
 	// SOURCE AND TARGET COULD BE THE SAME . CHECK the config file
 
-	pathname := env + "/" + pn
-	if encoded_docmd, err = bns.GetEncodedMetadata(&bnsRequest, pathname); err == nil {
+	targetPath := targetEnv + "/" + pn
+
+	if encoded_docmd, err = bns.GetEncodedMetadata(&bnsRequest, targetPath); err == nil {
 		if docmd, err = base64.Decode64(encoded_docmd); err != nil {
 			goLog.Error.Println(err)
 			os.Exit(2)
@@ -193,6 +194,7 @@ func main() {
 		goLog.Error.Println(err)
 		os.Exit(2)
 	}
+
 	docmeta := bns.DocumentMetadata{}
 	if err := json.Unmarshal(docmd, &docmeta); err != nil {
 		goLog.Error.Println(docmeta)
@@ -201,25 +203,26 @@ func main() {
 	}
 
 	//  DELETE THE DOCUMENT ON THE TARGET ENVIRONMENT
-	len := docmeta.TotalPage
-	fmt.Println("len => ", len)
-	bnsRequest.Urls = make([]string, len, len)
-	pathname = targetEnv + "/" + pn
+	num := docmeta.TotalPage
+	fmt.Println("len => ", num)
+	bnsRequest.Urls = make([]string, num, num)
 
-	doc := pathname
+	targetPath = targetEnv + "/" + pn
+
+	docPath := targetPath
 
 	bnsRequest.Hspool = sproxyd.TargetHP // set target sproxyd servers
 	bnsRequest.Client = &http.Client{}
 	//  DELETE ALL THE PAGES FIRST
-	for i := 0; i < len; i++ {
-		bnsRequest.Urls[i] = pathname + "/p" + strconv.Itoa(i+1)
+	for i := 0; i < num; i++ {
+		bnsRequest.Urls[i] = targetPath + "/p" + strconv.Itoa(i+1)
 		url := bnsRequest.Urls[i]
 		deleteBlob(&bnsRequest, url)
 	}
 
 	// DELETE THE DOC METADATA AFTER DELING ALL THE PAGES
 
-	deleteBlob(&bnsRequest, doc)
+	deleteBlob(&bnsRequest, docPath)
 
 	duration := time.Since(start)
 	fmt.Println("total detelete elapsed time:", duration)

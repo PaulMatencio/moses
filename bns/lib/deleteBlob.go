@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-func DeleteBlob(bnsRequest *HttpRequest, url string) (error, time.Duration) {
+func DeleteBlob(bnsRequest *HttpRequest, url string) (error, int) {
 
 	// deleteHeader := map[string]string{}
 	err := error(nil)
@@ -40,7 +40,7 @@ func DeleteBlob(bnsRequest *HttpRequest, url string) (error, time.Duration) {
 		}
 		resp.Body.Close()
 	}
-	return err, elapse
+	return err, resp.StatusCode
 }
 
 func AsyncHttpDeleteBlob(bnsRequest *HttpRequest, url string) *sproxyd.HttpResponse {

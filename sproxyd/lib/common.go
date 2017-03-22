@@ -19,7 +19,9 @@ var (
 	Driver       = "bparc"              /* default  source sproxyd driver */
 	TargetDriver = "bpchord"            /* destination sproxy driver */
 	DummyHost    = "http://0.0.0.0:81/" /* Used by doRequest.go  to build the url with hostpool */
-	Timeout      = time.Duration(50)
+	Timeout      = time.Duration(50)    /* GET/PUT timeout */
+	CopyTimeout  = time.Duration(1000)  /* Copy PNs TIME OUT */
+	DoRetry      = 5                    /* number of low level sproxyd Retry if errors */
 	Host         = []string{"http://10.12.201.11:81/proxy/bparc/", "http://10.12.201.12:81/proxy/bparc/", "http://10.11.201.21:81/proxy/bparc/",
 		"http://10.11.201.22:81/proxy/bparc/", "http://10.11.201.31:81/proxy/bparc/", "http://10.11.201.31:81/proxy/bparc/"}
 	Env        = "prod"
