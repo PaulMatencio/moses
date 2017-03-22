@@ -14,8 +14,6 @@ package main
 //
 
 import (
-	// directory "directory/lib"
-	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -23,25 +21,23 @@ import (
 	"io/ioutil"
 	bns "moses/bns/lib"
 	sproxyd "moses/sproxyd/lib"
-	"net/http"
+	file "moses/user/files/lib"
+	goLog "moses/user/goLog"
 	"os"
 	"os/user"
 	"path"
 	"strconv"
+	"strings"
 	"time"
-
-	base64 "moses/user/base64j"
-	file "moses/user/files/lib"
-	goLog "moses/user/goLog"
 
 	// hostpool "github.com/bitly/go-hostpool"
 )
 
 var (
-	action, config, srcEnv, targetEnv, logPath, outDir, application, testname, hostname, pn, page, trace, test, meta, image, media, doconly string
-	Trace, Meta, Image, CopyObject, Test, Doconly                                                                                           bool
-	pid                                                                                                                                     int
-	timeout                                                                                                                                 time.Duration
+	action, config, srcEnv, targetEnv, logPath, outDir, application, testname, hostname, pns, page, trace, test, meta, image, media, doconly string
+	Trace, Meta, Image, CopyObject, Test, Doconly                                                                                            bool
+	pid                                                                                                                                      int
+	timeout                                                                                                                                  time.Duration
 )
 
 func usage() {
@@ -88,20 +84,20 @@ func main() {
 	flag.StringVar(&targetEnv, "targetEnv", "", "Target Environment")
 	flag.StringVar(&trace, "t", "0", "Trace")     // Trace
 	flag.StringVar(&testname, "T", "copyDoc", "") // Test name
-	flag.StringVar(&pn, "pn", "", "Publication number")
+	flag.StringVar(&pns, "pns", "", "Publication numbers")
 	flag.StringVar(&test, "test", "0", "Run copy in test mode")
 	flag.StringVar(&doconly, "doconly", "0", "Only update the document meta")
 	flag.Parse()
 	Trace, _ = strconv.ParseBool(trace)
 	Meta, _ = strconv.ParseBool(meta)
 	Image, _ = strconv.ParseBool(image)
-	Test, _ = strconv.ParseBool(test)
-	sproxyd.Test = Test
+	sproxyd.Test, _ = strconv.ParseBool(test)
+	// sproxyd.Test = Test
 	Doconly, _ = strconv.ParseBool(doconly)
 
 	action = "CopyObject"
 	application = "copyObject"
-	if len(pn) == 0 {
+	if len(pns) == 0 {
 		fmt.Println("Error:\n-pn <DocumentId> is missing, what Document objects do you want to copy ?")
 		usage()
 	}
@@ -176,138 +172,14 @@ func main() {
 			}
 		}
 	}
-
-	bns.SetCPU("100%")
-
+	pna := strings.Split(pns, "/")
 	start := time.Now()
-	var (
-		err           error
-		encoded_docmd string
-		docmd         []byte
-	)
 
-	bnsRequest := bns.HttpRequest{
-		Hspool: sproxyd.HP, // source sproxyd servers IP address and ports
-		Client: &http.Client{},
-		Media:  media,
+	copyResponses := bns.AsyncCopyPns(pna, srcEnv, targetEnv)
+	duration := time.Since(start)
+	for _, copyResponse := range copyResponses {
+		fmt.Println(copyResponse.Err, copyResponse.Num, copyResponse.Num200)
 	}
-
-	media = "binary"
-	if len(srcEnv) == 0 {
-		srcEnv = sproxyd.Env
-	}
-	if len(targetEnv) == 0 {
-		targetEnv = sproxyd.TargetEnv
-	}
-	srcPath := srcEnv + "/" + pn
-	targetPath := targetEnv + "/" + pn
-	url := srcPath
-	targetUrl := targetPath
-
-	// Get the document metadata
-	if encoded_docmd, err = bns.GetEncodedMetadata(&bnsRequest, url); err == nil {
-		if len(encoded_docmd) > 0 {
-			if docmd, err = base64.Decode64(encoded_docmd); err != nil {
-				goLog.Error.Println(err)
-				os.Exit(2)
-			}
-		} else {
-			goLog.Error.Println("Metadata is missing for ", srcPath)
-			os.Exit(2)
-		}
-	} else {
-		goLog.Error.Println(err)
-		os.Exit(2)
-	}
-
-	// convert the json metadata into a go structure
-	docmeta := bns.DocumentMetadata{}
-	if err := json.Unmarshal(docmd, &docmeta); err != nil {
-		goLog.Error.Println(docmeta)
-		goLog.Error.Println(err)
-		os.Exit(2)
-	} else {
-		header := map[string]string{
-			"Usermd": encoded_docmd,
-		}
-		buf0 := make([]byte, 0)
-		bnsRequest.Hspool = sproxyd.TargetHP // Set Target sproxyd servers
-		// Write the document metadata to the destination with no buffer
-		// we could only update the meta data : TODO
-		bns.CopyBlob(&bnsRequest, targetUrl, buf0, header)
-
-	}
-	var duration time.Duration
-
-	// update all the pages if requested
-	if !Doconly {
-
-		num := docmeta.TotalPage
-		urls := make([]string, num, num)
-		targetUrls := make([]string, num, num)
-		getHeader := map[string]string{}
-		getHeader["Content-Type"] = "application/binary"
-		for i := 0; i < num; i++ {
-			urls[i] = srcPath + "/p" + strconv.Itoa(i+1)
-			targetUrls[i] = targetPath + "/p" + strconv.Itoa(i+1)
-		}
-		bnsRequest.Urls = urls
-		bnsRequest.Hspool = sproxyd.HP // Set source sproxyd servers
-		bnsRequest.Client = &http.Client{}
-		// Get all the pages from the source Ring
-		sproxyResponses := bns.AsyncHttpGetBlobs(&bnsRequest, getHeader)
-		// Build a response array of BnsResponse array to be used to update the pages  of  destination sproxyd servers
-		bnsResponses := make([]bns.BnsResponse, num, num)
-
-		// bnsRequest.Client = &http.Client{}
-		for i, sproxydResponse := range sproxyResponses {
-			if err := sproxydResponse.Err; err == nil {
-				resp := sproxydResponse.Response                                            // http response
-				body := *sproxydResponse.Body                                               /* copy of the body */ // http body response
-				bnsResponse := bns.BuildBnsResponse(resp, getHeader["Content-Type"], &body) // bnsResponse is a Go structure
-				bnsResponses[i] = bnsResponse
-				resp.Body.Close()
-			}
-		}
-		duration = time.Since(start)
-		fmt.Println("Get elapsed time:", duration)
-		goLog.Info.Println("Get elapsed time:", duration)
-
-		// var sproxydResponses []*sproxyd.HttpResponse
-		//   new &http.Client{}  and hosts pool are set to the target by the AsyncHttpCopyBlobs
-		//  			sproxyd.TargetHP
-		sproxydResponses := bns.AsyncHttpCopyBlobs(bnsResponses)
-
-		num200 := 0
-		if !sproxyd.Test {
-			for _, v := range sproxydResponses {
-				resp := v.Response
-				url := v.Url
-				switch resp.StatusCode {
-				case 200:
-					goLog.Trace.Println(hostname, pid, url, resp.Status, resp.Header["X-Scal-Ring-Key"])
-					num200++
-				case 412:
-					goLog.Warning.Println(hostname, pid, url, resp.Status, "key=", resp.Header["X-Scal-Ring-Key"], "already exist")
-
-				case 422:
-					goLog.Error.Println(hostname, pid, url, resp.Status, resp.Header["X-Scal-Ring-Status"])
-				default:
-					goLog.Warning.Println(hostname, pid, url, resp.Status)
-				}
-				// close all the connection
-				resp.Body.Close()
-			}
-
-			fmt.Println("\nPublication id:", pn, num, " Pages in;", num200, " Pages out")
-			if num200 < num {
-				goLog.Warning.Println("\nPublication id:", pn, num, " Pages in;", num200, " Pages out")
-			} else {
-				goLog.Info.Println("\nPublication id:", pn, num, " Pages in;", num200, " Pages out")
-			}
-		}
-	}
-	duration = time.Since(start)
 	fmt.Println("Total copy elapsed time:", duration)
 	goLog.Info.Println("Total copy elapsed time:", duration)
 }

@@ -24,7 +24,7 @@ import (
 	// hostpool "github.com/bitly/go-hostpool"
 )
 
-func AsyncUpdateDocIds(pns []string, srcEnv string, targetEnv string) []*CopyResponse {
+func AsyncUpdatePNs(pns []string, srcEnv string, targetEnv string) []*CopyResponse {
 
 	SetCPU("100%")
 	pid := os.Getpid()
