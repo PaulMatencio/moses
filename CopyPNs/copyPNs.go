@@ -14,6 +14,7 @@ package main
 //
 
 import (
+	"bufio"
 	"errors"
 	"flag"
 	"fmt"
@@ -34,16 +35,19 @@ import (
 )
 
 var (
-	action, config, srcEnv, targetEnv, logPath, outDir, application, testname, hostname, pns, page, trace, test, meta, image, media, doconly string
-	Trace, Meta, Image, CopyObject, Test, Doconly                                                                                            bool
-	pid                                                                                                                                      int
-	timeout                                                                                                                                  time.Duration
+	action, config, srcEnv, targetEnv, logPath, outDir, application, testname, hostname, pns, pnfile, trace, test, meta, image, media, doconly string
+	Trace, Meta, Image, CopyObject, Test, Doconly                                                                                              bool
+	pid                                                                                                                                        int
+	timeout, duration                                                                                                                          time.Duration
+	scanner                                                                                                                                    *bufio.Scanner
 )
 
 func usage() {
 	default_config := "moses-dev"
 	usage := "\n\nUsage:\n\nCopyPNs -config  <config file>  default is  $HOME/sproxyd/config/moses-dev]" +
-		"\n -pns <List of PN separated by a comma>  \n -srcEnv <Source environment> \n -targEnv <Target environment> \n -t <trace 0/1>  \n -test <test mode 0/1>"
+		"\n -pns <List of PN separated by a comma> " +
+		"\n -pnfile <filename> " +
+		"\n -srcEnv <Source environment> \n -targEnv <Target environment> \n -t <trace 0/1>  \n -test <test mode 0/1>"
 
 	what := "\nFunction:\n\nCopy PN's (Publication Numbers)  from one Ring  (Ex:moses-dev) to another Ring (Ex:moses-Prod)" +
 		"\n" +
@@ -90,6 +94,7 @@ func main() {
 	flag.StringVar(&trace, "t", "0", "Trace")     // Trace
 	flag.StringVar(&testname, "T", "copyPns", "") // Test name
 	flag.StringVar(&pns, "pns", "", "Publication numbers")
+	flag.StringVar(&pnfile, "pnfile", "", "File containg PN, one PN per line")
 	flag.StringVar(&test, "test", "0", "Run copy in test mode")
 	flag.StringVar(&doconly, "doconly", "0", "Only update the document meta")
 	flag.Parse()
@@ -102,10 +107,12 @@ func main() {
 
 	action = "CopyPNs"
 	application = "copyPN"
-	if len(pns) == 0 {
-		fmt.Println("Error:\n-pn <DocumentId> is missing, what Document objects do you want to copy ?")
-		usage()
-	}
+	/*
+		if len(pns) == 0 && len(pnfile) == 0 {
+			fmt.Println("Error:\n-pn <DocumentId list separated by comma>  or -pnfile <file name> is missing ?")
+			usage()
+		}
+	*/
 	pid := os.Getpid()
 	hostname, _ := os.Hostname()
 	usr, _ := user.Current()
@@ -113,7 +120,19 @@ func main() {
 	if testname != "" {
 		testname += string(os.PathSeparator)
 	}
+	// Check input parameters
+	var err error
+	if len(pnfile) > 0 {
+		pnfile = path.Join(homeDir, pnfile)
+		if scanner, err = file.Scanner(pnfile); err != nil {
+			os.Exit(10)
+		}
+	} else if len(pns) == 0 {
+		fmt.Println("Error:\n-pn <DocumentId list separated by comma>  or -pnfile <file name> is missing ?")
+		usage()
+	}
 
+	// initilize the config
 	if Config, err := sproxyd.GetConfig(config); err == nil {
 
 		logPath = path.Join(homeDir, Config.GetLogPath())
@@ -177,19 +196,45 @@ func main() {
 			}
 		}
 	}
+
 	pna := strings.Split(pns, ",")
-	start := time.Now()
+	start0 := time.Now()
+	start := start0
 	/*
 		fmt.Println(pna, srcEnv, targetEnv, sproxyd.Host, sproxyd.TargetHost)
 		copyResponses := []*bns.CopyResponse{}
 	*/
-	copyResponses := bns.AsyncCopyPns(pna, srcEnv, targetEnv)
 
-	duration := time.Since(start)
-	for _, copyResponse := range copyResponses {
-		fmt.Println(copyResponse.Err, copyResponse.Num, copyResponse.Num200)
-		goLog.Info.Println(copyResponse.Err, copyResponse.Num, copyResponse.Num200)
+	stop := false
+	numloop := 0
+	Numpns := 0
+	if len(pna) > 0 {
+		for !stop {
+			if linea, _ := file.ScanLines(scanner, 5); len(linea) > 0 {
+
+				start = time.Now()
+				copyResponses := bns.AsyncCopyPns(linea, srcEnv, targetEnv)
+				duration = time.Since(start)
+				for _, copyResponse := range copyResponses {
+					fmt.Println(copyResponse.Err, copyResponse.Num, copyResponse.Num200)
+					goLog.Info.Println(copyResponse.Err, copyResponse.Num, copyResponse.Num200)
+				}
+				numloop++
+				Numpns = Numpns + len(linea)
+			} else {
+				stop = true
+			}
+		}
+	} else {
+		copyResponses := bns.AsyncCopyPns(pna, srcEnv, targetEnv)
+		Numpns = len(pna)
+		duration = time.Since(start)
+		for _, copyResponse := range copyResponses {
+			fmt.Println(copyResponse.Err, copyResponse.Num, copyResponse.Num200)
+			goLog.Info.Println(copyResponse.Err, copyResponse.Num, copyResponse.Num200)
+		}
 	}
-	fmt.Println("Total copy elapsed time:", duration)
-	goLog.Info.Println("Total copy elapsed time:", duration)
+
+	fmt.Println("Total copy elapsed time:", time.Since(start0))
+	goLog.Info.Println("Total copy elapsed time:", time.Since(start0))
 }

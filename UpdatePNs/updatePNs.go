@@ -14,6 +14,7 @@ package main
 //
 
 import (
+	"bufio"
 	"errors"
 	"flag"
 	"fmt"
@@ -34,10 +35,11 @@ import (
 )
 
 var (
-	action, config, srcEnv, targetEnv, logPath, outDir, application, testname, hostname, pns, page, trace, test, meta, image, media, doconly string
-	Trace, Meta, Image, CopyObject, Test, Doconly                                                                                            bool
-	pid                                                                                                                                      int
-	timeout                                                                                                                                  time.Duration
+	action, config, srcEnv, targetEnv, logPath, outDir, application, testname, hostname, pns, pnfile, page, trace, test, meta, image, media, doconly string
+	Trace, Meta, Image, CopyObject, Test, Doconly                                                                                                    bool
+	pid                                                                                                                                              int
+	timeout, duration                                                                                                                                time.Duration
+	scanner                                                                                                                                          *bufio.Scanner
 )
 
 func usage() {
@@ -113,6 +115,18 @@ func main() {
 	if testname != "" {
 		testname += string(os.PathSeparator)
 	}
+	// Check input parameter
+	var err error
+	if len(pnfile) > 0 {
+		pnfile = path.Join(homeDir, pnfile)
+		if scanner, err = file.Scanner(pnfile); err != nil {
+			os.Exit(10)
+		}
+
+	} else if len(pns) == 0 {
+		fmt.Println("Error:\n-pn <DocumentId list separated by comma>  or -pnfile <file name> is missing ?")
+		usage()
+	}
 
 	if Config, err := sproxyd.GetConfig(config); err == nil {
 
@@ -178,14 +192,37 @@ func main() {
 		}
 	}
 	pna := strings.Split(pns, ",")
-	start := time.Now()
+	start0 := time.Now()
+	start := start0
+	stop := false
+	numloop := 0
+	Numpns := 0
+	if len(pna) > 0 {
+		for !stop {
+			if linea, _ := file.ScanLines(scanner, 5); len(linea) > 0 {
 
-	copyResponses := bns.AsyncUpdatePns(pna, srcEnv, targetEnv)
-	duration := time.Since(start)
-	for _, copyResponse := range copyResponses {
-		fmt.Println(copyResponse.Err, copyResponse.Num, copyResponse.Num200)
-		goLog.Info.Println(copyResponse.Err, copyResponse.Num, copyResponse.Num200)
+				start = time.Now()
+				copyResponses := bns.AsyncUpdatePns(linea, srcEnv, targetEnv)
+				duration = time.Since(start)
+				for _, copyResponse := range copyResponses {
+					fmt.Println(copyResponse.Err, copyResponse.Num, copyResponse.Num200)
+					goLog.Info.Println(copyResponse.Err, copyResponse.Num, copyResponse.Num200)
+				}
+				numloop++
+				Numpns = Numpns + len(linea)
+			} else {
+				stop = true
+			}
+		}
+	} else {
+		copyResponses := bns.AsyncCopyPns(pna, srcEnv, targetEnv)
+		Numpns = len(pna)
+		duration = time.Since(start)
+		for _, copyResponse := range copyResponses {
+			fmt.Println(copyResponse.Err, copyResponse.Num, copyResponse.Num200)
+			goLog.Info.Println(copyResponse.Err, copyResponse.Num, copyResponse.Num200)
+		}
 	}
-	fmt.Println("Total copy elapsed time:", duration)
-	goLog.Info.Println("Total copy elapsed time:", duration)
+	fmt.Println("Total copy elapsed time:", time.Since(start0))
+	goLog.Info.Println("Total copy elapsed time:", time.Since(start0))
 }
