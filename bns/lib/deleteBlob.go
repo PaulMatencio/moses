@@ -90,18 +90,25 @@ func AsyncHttpDeleteBlobs(bnsRequest *HttpRequest) []*sproxyd.HttpResponse {
 	sproxydResponses := []*sproxyd.HttpResponse{}
 	treq := 0
 	// fmt.Printf("\n")
-	bnsRequest.Client = &http.Client{} // one http connection for all requests
 
 	for _, url := range bnsRequest.Urls {
+
 		if len(url) == 0 {
 			break
 		} else {
 			treq += 1
 		}
+		bnsRequest.Client = &http.Client{}
 
 		go func(url string) {
-			err, _ := DeleteBlob(bnsRequest, url)
-			ch <- &sproxyd.HttpResponse{url, nil, nil, err}
+			sproxydRequest := sproxyd.HttpRequest{
+				Hspool: bnsRequest.Hspool,
+				Client: bnsRequest.Client,
+				Path:   url,
+			}
+			resp, err := sproxyd.Deleteobject(&sproxydRequest)
+
+			ch <- &sproxyd.HttpResponse{url, resp, nil, err}
 		}(url)
 	}
 	// wait for http response  message
@@ -110,11 +117,11 @@ func AsyncHttpDeleteBlobs(bnsRequest *HttpRequest) []*sproxyd.HttpResponse {
 		case r := <-ch:
 			// fmt.Printf("%s was fetched\n", r.Url)
 			sproxydResponses = append(sproxydResponses, r)
-			if len(sproxydResponses) == treq /*len(urls)*/ {
-				// fmt.Println(responses)
+			if len(sproxydResponses) == treq {
+
 				return sproxydResponses
 			}
-		case <-time.After(100 * time.Millisecond):
+		case <-time.After(50 * time.Millisecond):
 			fmt.Printf("r")
 		}
 	}

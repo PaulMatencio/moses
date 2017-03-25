@@ -56,7 +56,7 @@ func AsyncHttpUpdateBlobs(bnsResponses []BnsResponse) []*sproxyd.HttpResponse {
 
 	ch := make(chan *sproxyd.HttpResponse)
 	sproxydResponses := []*sproxyd.HttpResponse{}
-	client := &http.Client{}
+
 	treq := 0
 	for k, v := range bnsResponses {
 		treq += 1
@@ -64,6 +64,7 @@ func AsyncHttpUpdateBlobs(bnsResponses []BnsResponse) []*sproxyd.HttpResponse {
 		image := bnsResponses[k].Image
 		usermd := bnsResponses[k].Usermd
 		pagemd := bnsResponses[k].Pagemd
+		client := &http.Client{}
 		go func(url string, image []byte, usermd string, pagemd []byte) {
 			var err error
 			var resp *http.Response

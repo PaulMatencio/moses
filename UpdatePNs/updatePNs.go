@@ -35,11 +35,11 @@ import (
 )
 
 var (
-	action, config, srcEnv, targetEnv, logPath, outDir, application, testname, hostname, pns, pnfile, page, trace, test, meta, image, media, doconly string
-	Trace, Meta, Image, CopyObject, Test, Doconly                                                                                                    bool
-	pid                                                                                                                                              int
-	timeout, duration                                                                                                                                time.Duration
-	scanner                                                                                                                                          *bufio.Scanner
+	action, config, srcEnv, targetEnv, logPath, outDir, application, testname, hostname, pns, pnfile, cpn, page, trace, test, meta, image, media, doconly string
+	Trace, Meta, Image, CopyObject, Test, Doconly                                                                                                         bool
+	pid, Cpn                                                                                                                                              int
+	timeout, duration                                                                                                                                     time.Duration
+	scanner                                                                                                                                               *bufio.Scanner
 )
 
 func usage() {
@@ -92,6 +92,8 @@ func main() {
 	flag.StringVar(&trace, "t", "0", "Trace")       // Trace
 	flag.StringVar(&testname, "T", "updatePNs", "") // Test name
 	flag.StringVar(&pns, "pns", "", "Publication numbers")
+	flag.StringVar(&pnfile, "pnfile", "", "Publication numbers")
+	flag.StringVar(&cpn, "cpn", "10", "Concurrent PN number")
 	flag.StringVar(&test, "test", "0", "Run copy in test mode")
 	flag.StringVar(&doconly, "doconly", "0", "Only update the document meta")
 	flag.Parse()
@@ -99,15 +101,11 @@ func main() {
 	Meta, _ = strconv.ParseBool(meta)
 	Image, _ = strconv.ParseBool(image)
 	sproxyd.Test, _ = strconv.ParseBool(test)
-	// sproxyd.Test = Test
 	Doconly, _ = strconv.ParseBool(doconly)
+	Cpn, _ = strconv.Atoi(cpn)
+	action = "UpdatePNs"
+	application = "updatePNs"
 
-	action = "CopyPNs"
-	application = "copyPNs"
-	if len(pns) == 0 {
-		fmt.Println("Error:\n-pn <DocumentId> is missing, what Document objects do you want to copy ?")
-		usage()
-	}
 	pid := os.Getpid()
 	hostname, _ := os.Hostname()
 	usr, _ := user.Current()
@@ -120,6 +118,7 @@ func main() {
 	if len(pnfile) > 0 {
 		pnfile = path.Join(homeDir, pnfile)
 		if scanner, err = file.Scanner(pnfile); err != nil {
+			fmt.Println(err)
 			os.Exit(10)
 		}
 
@@ -197,32 +196,42 @@ func main() {
 	stop := false
 	numloop := 0
 	Numpns := 0
-	if len(pna) > 0 {
+	NumpnsDone := 0
+	if len(pns) == 0 {
 		for !stop {
-			if linea, _ := file.ScanLines(scanner, 5); len(linea) > 0 {
+			if linea, err := file.ScanLines(scanner, 5); len(linea) > 0 && err == nil {
 
 				start = time.Now()
 				copyResponses := bns.AsyncUpdatePns(linea, srcEnv, targetEnv)
 				duration = time.Since(start)
 				for _, copyResponse := range copyResponses {
-					fmt.Println(copyResponse.Err, copyResponse.Num, copyResponse.Num200)
-					goLog.Info.Println(copyResponse.Err, copyResponse.Num, copyResponse.Num200)
+					fmt.Println(copyResponse.SrcUrl, copyResponse.Err, copyResponse.Num, copyResponse.Num200)
+					goLog.Info.Println(copyResponse.SrcUrl, copyResponse.Err, copyResponse.Num, copyResponse.Num200)
+					if copyResponse.Num > 0 && copyResponse.Num == copyResponse.Num200 {
+						NumpnsDone++
+					}
 				}
 				numloop++
 				Numpns = Numpns + len(linea)
 			} else {
+				if err != nil {
+					goLog.Error.Println(err)
+				}
 				stop = true
 			}
 		}
 	} else {
-		copyResponses := bns.AsyncCopyPns(pna, srcEnv, targetEnv)
+		copyResponses := bns.AsyncUpdatePns(pna, srcEnv, targetEnv)
 		Numpns = len(pna)
 		duration = time.Since(start)
 		for _, copyResponse := range copyResponses {
 			fmt.Println(copyResponse.Err, copyResponse.Num, copyResponse.Num200)
 			goLog.Info.Println(copyResponse.Err, copyResponse.Num, copyResponse.Num200)
+			if copyResponse.Num > 0 && copyResponse.Num == copyResponse.Num200 {
+				NumpnsDone++
+			}
 		}
 	}
-	fmt.Println("Total copy elapsed time:", time.Since(start0))
-	goLog.Info.Println("Total copy elapsed time:", time.Since(start0))
+	fmt.Println("Total update elapsed time:", time.Since(start0), "\nNumber of PN processed:", NumpnsDone, "/", Numpns)
+	goLog.Info.Println("Total update elapsed time:", time.Since(start0), "\nNumber of PN processed:", NumpnsDone, "/", Numpns)
 }

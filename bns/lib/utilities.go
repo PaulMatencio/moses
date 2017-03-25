@@ -267,26 +267,32 @@ func UpdateBlob(bnsRequest *HttpRequest, url string, buf []byte, header map[stri
 func BuildBnsResponse(resp *http.Response, contentType string, body *[]byte) BnsResponse {
 
 	bnsResponse := BnsResponse{}
-	if _, ok := resp.Header["X-Scal-Usermd"]; ok {
-		bnsResponse.Usermd = resp.Header["X-Scal-Usermd"][0]
-		if pagemd, err := base64.Decode64(bnsResponse.Usermd); err == nil {
-			bnsResponse.Pagemd = pagemd
-			goLog.Trace.Println("page meata=>", string(pagemd))
+	if body != nil {
+		if _, ok := resp.Header["X-Scal-Usermd"]; ok {
+			bnsResponse.Usermd = resp.Header["X-Scal-Usermd"][0]
+			if pagemd, err := base64.Decode64(bnsResponse.Usermd); err == nil {
+				bnsResponse.Pagemd = pagemd
+				goLog.Trace.Println("page meata=>", string(pagemd))
+			}
+		} else {
+			goLog.Warning.Println("X-Scal-Usermd is missing in the resp header", resp.Status, resp.Header)
 		}
-	} else {
-		goLog.Warning.Println("X-Scal-Usermd is missing in the resp header", resp.Status, resp.Header)
+		bnsResponse.Image = *body
 	}
-
 	patha := strings.Split(resp.Request.URL.Path, "/")
 	bnsResponse.PageNumber = patha[len(patha)-1]
 
 	// bnsida := patha[len(patha)-4 : len(patha)-1]
 	bnsResponse.BnsId = strings.Join(patha[len(patha)-4:len(patha)-1], "/")
-	bnsResponse.Image = *body
+	/*
+		if body != nil {
+			bnsResponse.Image = *body
+		}
+	*/
 	bnsResponse.ContentType = contentType
 	bnsResponse.HttpStatusCode = resp.StatusCode
 
-	defer resp.Body.Close()
+	// defer resp.Body.Close()
 	return bnsResponse
 }
 

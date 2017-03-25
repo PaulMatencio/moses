@@ -13,11 +13,10 @@ import (
 	sproxyd "moses/sproxyd/lib"
 	base64 "moses/user/base64j"
 	// file "moses/user/files/lib"
+	// "bytes"
 	goLog "moses/user/goLog"
 	"net/http"
 	"os"
-	// "os/user"
-	// "path"
 	"strconv"
 	"time"
 
@@ -30,11 +29,6 @@ func AsyncUpdatePns(pns []string, srcEnv string, targetEnv string) []*CopyRespon
 	pid := os.Getpid()
 	hostname, _ := os.Hostname()
 	start := time.Now()
-	var (
-		err           error
-		encoded_docmd string
-		docmd         []byte
-	)
 	media := "binary"
 	if len(srcEnv) == 0 {
 		srcEnv = sproxyd.Env
@@ -64,8 +58,14 @@ func AsyncUpdatePns(pns []string, srcEnv string, targetEnv string) []*CopyRespon
 		go func(srcUrl string, dstUrl string) {
 
 			treq++
-			num200 := 0
-			num := 0
+			var (
+				err           error
+				encoded_docmd string
+				docmd         []byte
+				num200        = 0
+				num           = 0
+			)
+
 			// Get the PN metadata ( Table of Content)
 			if encoded_docmd, err = GetEncodedMetadata(&bnsRequest, srcUrl); err == nil {
 				if len(encoded_docmd) > 0 {
@@ -85,12 +85,13 @@ func AsyncUpdatePns(pns []string, srcEnv string, targetEnv string) []*CopyRespon
 				ch <- &CopyResponse{err, pn, num, num200}
 				return
 			}
-
-			// The PN meta data ( TOC) is valid
 			// convert the PN  metadata (TOC) into a go structure
 			docmeta := DocumentMetadata{}
+
+			/*  docmd = bytes.Replace(docmd1, []byte(`\n`), []byte(``), -1) */
 			if err := json.Unmarshal(docmd, &docmeta); err != nil {
-				goLog.Error.Println(docmeta, err)
+				goLog.Error.Println("Document metadata is invalid ", srcUrl, err)
+				goLog.Error.Println(string(docmd), docmeta)
 				ch <- &CopyResponse{err, pn, num, num200}
 				return
 			} else {
@@ -100,17 +101,33 @@ func AsyncUpdatePns(pns []string, srcEnv string, targetEnv string) []*CopyRespon
 				buf0 := make([]byte, 0)
 				bnsRequest.Hspool = sproxyd.TargetHP // Set Target sproxyd servers
 
-				// Copy the document metadata to the destination buffer size = 0 byte
+				// Copy the document metadata to the destination with buffer size = 0 byte
 				// we could  update the meta data : TODO
 				UpdateBlob(&bnsRequest, dstUrl, buf0, header)
 
 			}
 
-			var duration time.Duration
+			/*
+				_ = json.Unmarshal(docmd, &docmeta)
+				header := map[string]string{
+					"Usermd": encoded_docmd,
+				}
+				buf0 := make([]byte, 0)
+				bnsRequest.Hspool = sproxyd.TargetHP // Set Target sproxyd servers
 
-			num = docmeta.TotalPage
+				// Copy the document metadata to the destination buffer size = 0 byte
+				// we could  update the meta data : TODO
+				UpdateBlob(&bnsRequest, dstUrl, buf0, header)
+			*/
+
+			if num = docmeta.TotalPage; num <= 0 {
+				err := errors.New(pn + " Number of pages is invalid. Document Metada may be updated without pages updated")
+				ch <- &CopyResponse{err, pn, num, num200}
+				return
+			}
 
 			// COPY EVERY PAGES ASYNCHRONOUSLY
+			var duration time.Duration
 			urls := make([]string, num, num)
 			// dstUrls := make([]string, num, num)
 			getHeader := map[string]string{}
@@ -155,7 +172,7 @@ func AsyncUpdatePns(pns []string, srcEnv string, targetEnv string) []*CopyRespon
 						goLog.Trace.Println(hostname, pid, url, resp.Status, resp.Header["X-Scal-Ring-Key"])
 						num200++
 					case 412:
-						goLog.Warning.Println(hostname, pid, url, resp.Status, "key=", resp.Header["X-Scal-Ring-Key"], "already exist")
+						goLog.Warning.Println(hostname, pid, url, resp.Status, "key=", resp.Header["X-Scal-Ring-Key"], "does not exist")
 
 					case 422:
 						goLog.Error.Println(hostname, pid, url, resp.Status, resp.Header["X-Scal-Ring-Status"])
@@ -167,10 +184,10 @@ func AsyncUpdatePns(pns []string, srcEnv string, targetEnv string) []*CopyRespon
 				}
 
 				if num200 < num {
-					goLog.Warning.Println("\nPublication id:", pn, num, " Pages in;", num200, " Pages out")
+					goLog.Warning.Println("Publication id:", hostname, pid, pn, num, " Pages in;", num200, " Pages out")
 					err = errors.New("Pages out < Pages in")
 				} else {
-					goLog.Info.Println("\nPublication id:", pn, num, " Pages in;", num200, " Pages out")
+					goLog.Info.Println("Publication id:", hostname, pid, pn, num, " Pages in;", num200, " Pages out")
 				}
 			}
 			ch <- &CopyResponse{err, pn, num, num200}

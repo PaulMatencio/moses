@@ -340,12 +340,13 @@ func main() {
 
 		docmeta := bns.DocumentMetadata{}
 		if err := json.Unmarshal(docmd, &docmeta); err != nil {
-			goLog.Error.Println(docmeta)
-			goLog.Error.Println(err)
+			goLog.Error.Println("Metadata is invalid ", pathname)
+			goLog.Error.Println(string(docmd), docmeta, err)
 			os.Exit(2)
 		} else {
 			writeMeta(outDir, "", docmd)
 		}
+
 		num := docmeta.TotalPage
 		urls := make([]string, num, num)
 		getHeader := map[string]string{}

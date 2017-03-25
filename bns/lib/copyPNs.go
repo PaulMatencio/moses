@@ -3,6 +3,7 @@ package bns
 // a DocId is composed of a TOC and pages
 
 import (
+	// "bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -21,11 +22,6 @@ func AsyncCopyPns(pns []string, srcEnv string, targetEnv string) []*CopyResponse
 	pid := os.Getpid()
 	hostname, _ := os.Hostname()
 	start := time.Now()
-	var (
-		err           error
-		encoded_docmd string
-		docmd         []byte
-	)
 	media := "binary"
 	if len(srcEnv) == 0 {
 		srcEnv = sproxyd.Env
@@ -55,16 +51,24 @@ func AsyncCopyPns(pns []string, srcEnv string, targetEnv string) []*CopyResponse
 		go func(srcUrl string, dstUrl string) {
 
 			treq++
-			num200 := 0
-			num := 0
+
+			var (
+				docmd         []byte
+				encoded_docmd string
+				err           error
+				num200        = 0
+				num           = 0
+			)
 			// Get the PN metadata ( Table of Content)
 			if encoded_docmd, err = GetEncodedMetadata(&bnsRequest, srcUrl); err == nil {
 				if len(encoded_docmd) > 0 {
+
 					if docmd, err = base64.Decode64(encoded_docmd); err != nil {
 						goLog.Error.Println(err)
 						ch <- &CopyResponse{err, pn, num, num200}
 						return
 					}
+
 				} else {
 					err = errors.New("Metadata is missing for " + srcPath)
 					goLog.Error.Println(err)
@@ -76,12 +80,13 @@ func AsyncCopyPns(pns []string, srcEnv string, targetEnv string) []*CopyResponse
 				ch <- &CopyResponse{err, pn, num, num200}
 				return
 			}
-
-			// The PN meta data is valid
 			// convert the PN  metadata into a go structure
 			docmeta := DocumentMetadata{}
+			// remove \n from docm    "\n  "
+			// docmd := bytes.Replace(docmd1, []byte(`"\n  "`), []byte(`{}`), -1)
 			if err := json.Unmarshal(docmd, &docmeta); err != nil {
-				goLog.Error.Println(docmeta, err)
+				goLog.Error.Println("Document metadata is invalid ", srcUrl, err)
+				goLog.Error.Println(string(docmd), docmeta)
 				ch <- &CopyResponse{err, pn, num, num200}
 				return
 			} else {
@@ -93,18 +98,22 @@ func AsyncCopyPns(pns []string, srcEnv string, targetEnv string) []*CopyResponse
 				// Copy the document metadata to the destination buffer size = 0 byte
 				// we could  update the meta data : TODO
 				CopyBlob(&bnsRequest, dstUrl, buf0, header)
-
 			}
 			var duration time.Duration
 
 			num = docmeta.TotalPage
+
+			if num = docmeta.TotalPage; num <= 0 {
+				err := errors.New(pn + " Number of pages is invalid. Document metadata is copied without pages")
+				ch <- &CopyResponse{err, pn, num, num200}
+				return
+			}
+
 			urls := make([]string, num, num)
-			// dstUrls := make([]string, num, num)
 			getHeader := map[string]string{}
 			getHeader["Content-Type"] = "application/binary"
 			for i := 0; i < num; i++ {
 				urls[i] = srcPath + "/p" + strconv.Itoa(i+1)
-				// dstUrls[i] = dstPath + "/p" + strconv.Itoa(i+1)
 			}
 			bnsRequest.Urls = urls
 			bnsRequest.Hspool = sproxyd.HP // Set source sproxyd servers
@@ -120,7 +129,9 @@ func AsyncCopyPns(pns []string, srcEnv string, targetEnv string) []*CopyResponse
 					body := *sproxydResponse.Body                                           // http response
 					bnsResponse := BuildBnsResponse(resp, getHeader["Content-Type"], &body) // bnsResponse is a Go structure
 					bnsResponses[i] = bnsResponse
-					resp.Body.Close()
+
+					resp.Body.Close() // Close the connection after BuildBnsResponse()
+
 				}
 			}
 			duration = time.Since(start)
@@ -151,12 +162,11 @@ func AsyncCopyPns(pns []string, srcEnv string, targetEnv string) []*CopyResponse
 					// close all the connection
 					resp.Body.Close()
 				}
-
 				if num200 < num {
-					goLog.Warning.Println("\nPublication id:", pn, num, " Pages in;", num200, " Pages out")
+					goLog.Warning.Println("Publication id:", hostname, pid, pn, num, " Pages in;", num200, " Pages out")
 					err = errors.New("Pages out < Pages in")
 				} else {
-					goLog.Info.Println("\nPublication id:", pn, num, " Pages in;", num200, " Pages out")
+					goLog.Info.Println("Publication id:", hostname, pid, pn, num, " Pages in;", num200, " Pages out")
 				}
 
 			}

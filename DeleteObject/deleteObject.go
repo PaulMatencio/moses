@@ -172,7 +172,7 @@ func main() {
 	directory.SetCPU("100%")
 	start := time.Now()
 	bnsRequest := bns.HttpRequest{
-		Hspool: sproxyd.HP,
+		Hspool: sproxyd.HP, // TargetHP
 		Client: &http.Client{},
 	}
 	var (
@@ -184,8 +184,9 @@ func main() {
 	// SOURCE AND TARGET COULD BE THE SAME . CHECK the config file
 
 	targetPath := targetEnv + "/" + pn
+	SrcPath := srcEnv + "/" + pn
 
-	if encoded_docmd, err = bns.GetEncodedMetadata(&bnsRequest, targetPath); err == nil {
+	if encoded_docmd, err = bns.GetEncodedMetadata(&bnsRequest, SrcPath); err == nil {
 		if docmd, err = base64.Decode64(encoded_docmd); err != nil {
 			goLog.Error.Println(err)
 			os.Exit(2)

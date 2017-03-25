@@ -3,6 +3,7 @@ package files
 import (
 	"bufio"
 	"errors"
+	// "fmt"
 	"os"
 )
 
@@ -18,7 +19,7 @@ func ScanLines(scanner *bufio.Scanner, num int) ([]string, error) {
 		scanner.Scan()
 		eof := false
 		if text := scanner.Text(); len(text) > 0 {
-			linea[k] = scanner.Text()
+			linea[k] = text
 			k++
 		} else {
 			eof = true
@@ -36,15 +37,15 @@ func Scanner(pathname string) (*bufio.Scanner, error) {
 	var (
 		err     error
 		scanner *bufio.Scanner
+		// fp      *os.File
 	)
 	if len(pathname) > 0 {
-
 		fp, err := os.Open(pathname)
 		if err == nil {
-			defer fp.Close()
+			// defer fp.Close()
 			scanner = bufio.NewScanner(fp)
 		} else {
-			os.Exit(10)
+			return nil, err
 		}
 	} else {
 		err = errors.New(pathname + " is empty")

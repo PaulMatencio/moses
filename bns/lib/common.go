@@ -21,14 +21,14 @@ type DocumentMetadata struct {
 		KindCode    string `json: "kindCode"`
 	} `json: "bnsId,omitempty"`
 
-	DocId             string `json:"docId`
-	PublicationOffice string `json:"publicationOffice`
-	FamilyId          string `json:"familyId"`
-	TotalPage         int    `json:totalPage"`
-	DocType           string `json:docType"`
-	PubDate           string `json:pubDate"`
-	LoadDate          string `json:loadDate"`
-	Copyright         string `json:"copyright,omitempty"`
+	DocId             interface{} `json:"docId` // could be integer  or string
+	PublicationOffice string      `json:"publicationOffice`
+	FamilyId          interface{} `json:"familyId"` // could be integer  or string
+	TotalPage         int         `json:totalPage"`
+	DocType           string      `json:docType"`
+	PubDate           string      `json:pubDate"`
+	LoadDate          string      `json:loadDate"`
+	Copyright         string      `json:"copyright,omitempty"`
 
 	LinkPubId []struct {
 		CountryCode string `json: "countryCode`
@@ -240,4 +240,11 @@ type CopyResponse struct {
 	SrcUrl string
 	Num    int
 	Num200 int
+}
+
+type MetaResponse struct {
+	Err     error
+	SrcUrl  string
+	Encoded string
+	Decoded []byte
 }

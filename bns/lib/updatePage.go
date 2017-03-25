@@ -91,12 +91,10 @@ func AsyncHttpUpdates(hspool hostpool.HostPool, urls []string, bufa [][]byte, he
 		go func(url string) {
 			var err error
 			var resp *http.Response
-			// clientw := &http.Client{}
 			resp, err = sproxyd.UpdObject(hspool, client, url, bufa[k], headera[k])
 			if resp != nil {
 				resp.Body.Close()
 			}
-
 			ch <- &sproxyd.HttpResponse{url, resp, nil, err}
 		}(url)
 	}

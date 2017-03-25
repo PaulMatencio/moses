@@ -35,11 +35,11 @@ import (
 )
 
 var (
-	action, config, srcEnv, targetEnv, logPath, outDir, application, testname, hostname, pns, pnfile, trace, test, meta, image, media, doconly string
-	Trace, Meta, Image, CopyObject, Test, Doconly                                                                                              bool
-	pid                                                                                                                                        int
-	timeout, duration                                                                                                                          time.Duration
-	scanner                                                                                                                                    *bufio.Scanner
+	action, config, srcEnv, targetEnv, logPath, outDir, application, testname, hostname, pns, cpn, pnfile, trace, test, meta, image, media, doconly string
+	Trace, Meta, Image, CopyObject, Test, Doconly                                                                                                   bool
+	pid, Cpn                                                                                                                                        int
+	timeout, duration                                                                                                                               time.Duration
+	scanner                                                                                                                                         *bufio.Scanner
 )
 
 func usage() {
@@ -95,6 +95,7 @@ func main() {
 	flag.StringVar(&testname, "T", "copyPns", "") // Test name
 	flag.StringVar(&pns, "pns", "", "Publication numbers")
 	flag.StringVar(&pnfile, "pnfile", "", "File containg PN, one PN per line")
+	flag.StringVar(&cpn, "cpn", "10", "Concurrent PN number")
 	flag.StringVar(&test, "test", "0", "Run copy in test mode")
 	flag.StringVar(&doconly, "doconly", "0", "Only update the document meta")
 	flag.Parse()
@@ -102,9 +103,8 @@ func main() {
 	Meta, _ = strconv.ParseBool(meta)
 	Image, _ = strconv.ParseBool(image)
 	sproxyd.Test, _ = strconv.ParseBool(test)
-	// sproxyd.Test = Test
 	Doconly, _ = strconv.ParseBool(doconly)
-
+	Cpn, _ = strconv.Atoi(cpn)
 	action = "CopyPNs"
 	application = "copyPN"
 	/*
@@ -208,16 +208,22 @@ func main() {
 	stop := false
 	numloop := 0
 	Numpns := 0
-	if len(pna) > 0 {
+	NumpnsDone := 0
+	if len(pns) == 0 {
 		for !stop {
-			if linea, _ := file.ScanLines(scanner, 5); len(linea) > 0 {
+			if linea, _ := file.ScanLines(scanner, Cpn); len(linea) > 0 {
 
 				start = time.Now()
+
 				copyResponses := bns.AsyncCopyPns(linea, srcEnv, targetEnv)
+
 				duration = time.Since(start)
 				for _, copyResponse := range copyResponses {
-					fmt.Println(copyResponse.Err, copyResponse.Num, copyResponse.Num200)
-					goLog.Info.Println(copyResponse.Err, copyResponse.Num, copyResponse.Num200)
+					fmt.Println(copyResponse.SrcUrl, copyResponse.Err, copyResponse.Num, copyResponse.Num200)
+					goLog.Info.Println(copyResponse.SrcUrl, copyResponse.Err, copyResponse.Err, copyResponse.Num, copyResponse.Num200)
+					if copyResponse.Num > 0 && copyResponse.Num200 == copyResponse.Num {
+						NumpnsDone++
+					}
 				}
 				numloop++
 				Numpns = Numpns + len(linea)
@@ -232,9 +238,12 @@ func main() {
 		for _, copyResponse := range copyResponses {
 			fmt.Println(copyResponse.Err, copyResponse.Num, copyResponse.Num200)
 			goLog.Info.Println(copyResponse.Err, copyResponse.Num, copyResponse.Num200)
+			if copyResponse.Num > 0 && copyResponse.Num200 == copyResponse.Num {
+				NumpnsDone++
+			}
 		}
 	}
 
-	fmt.Println("Total copy elapsed time:", time.Since(start0))
-	goLog.Info.Println("Total copy elapsed time:", time.Since(start0))
+	fmt.Println("Total copy elapsed time:", time.Since(start0), "\nNumber of PN processed:", NumpnsDone, "/", Numpns)
+	goLog.Info.Println("Total copy elapsed time:", time.Since(start0), "\nNumber of PN processed:", NumpnsDone, "/", Numpns)
 }

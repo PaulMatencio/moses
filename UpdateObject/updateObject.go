@@ -4,6 +4,7 @@ package main
 //  ATTENTION ====>    USE updatePNs instead
 //
 import (
+	"bytes"
 	directory "directory/lib"
 	"encoding/json"
 	"errors"
@@ -173,7 +174,7 @@ func main() {
 	var (
 		err           error
 		encoded_docmd string
-		docmd         []byte
+		docmd, docmd1 []byte
 	)
 	media = "binary"
 	if len(env) == 0 {
@@ -190,7 +191,7 @@ func main() {
 	// Get the document metadata
 	if encoded_docmd, err = bns.GetEncodedMetadata(&bnsRequest, url); err == nil {
 		if len(encoded_docmd) > 0 {
-			if docmd, err = base64.Decode64(encoded_docmd); err != nil {
+			if docmd1, err = base64.Decode64(encoded_docmd); err != nil {
 				goLog.Error.Println(err)
 				os.Exit(2)
 			}
@@ -204,7 +205,8 @@ func main() {
 	}
 
 	docmeta := bns.DocumentMetadata{}
-
+	// docmd = bytes.Replace(docmd1, []byte("\n"), []byte(""), -1)
+	docmd = bytes.Replace(docmd1, []byte(`\n`), []byte(``), -1)
 	// convert the document metadata into go structure : docmeta
 	if err := json.Unmarshal(docmd, &docmeta); err != nil {
 		goLog.Error.Println(docmeta)
