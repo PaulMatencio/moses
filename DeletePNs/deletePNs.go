@@ -18,8 +18,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"io"
-	"io/ioutil"
 	bns "moses/bns/lib"
 	sproxyd "moses/sproxyd/lib"
 	file "moses/user/files/lib"
@@ -35,13 +33,20 @@ import (
 )
 
 var (
-	action, config, srcEnv, targetEnv, logPath, outDir, application, testname, hostname,
-	pns, cpn, pnfile, page, trace, test, meta, image, media, doconly string
+	config, srcEnv, targetEnv, logPath, outDir,
+	runname, hostname, pns, cpn, pnfile, page, trace, test,
+	meta, image, media, doconly string
 	Trace, Meta, Image, CopyObject, Test, Doconly bool
 	pid, Cpn                                      int
 	timeout, duration                             time.Duration
 	scanner                                       *bufio.Scanner
 	fp                                            *os.File
+	Config                                        sproxyd.Configuration
+	action, application                           string = "DeletePNs", "Moses"
+	err                                           error
+	defaultConfig                                 string = "moses-dev"
+	start, start0                                 time.Time
+	numloop, Numpns, NumpnsDone                   int = 0, 0, 0
 )
 
 func usage() {
@@ -53,7 +58,7 @@ func usage() {
 		"\nFor every PN { " +
 		"\n     GET he PN's metatada from the target  Ring " +
 		"\n     For every blob ( header+ tiff+ png + pdf) of the PN {" +
-		"\n      	Delete the blob  to thedestination Ring" +
+		"\n      	Delete the blob at the destination Ring" +
 		"\n		{ " +
 		"\n		Delete the PN's metadata " +
 		"\n{ " +
@@ -84,13 +89,12 @@ func checkOutdir(outDir string) (err error) {
 }
 
 func main() {
-	defaultConfig := "moses-dev"
 	flag.Usage = usage
 	flag.StringVar(&config, "config", defaultConfig, "Config file")
 	flag.StringVar(&srcEnv, "srcEnv", "", "Environment")
 	flag.StringVar(&targetEnv, "targetEnv", "", "Target Environment")
-	flag.StringVar(&trace, "t", "0", "Trace")       // Trace
-	flag.StringVar(&testname, "T", "deletePns", "") // Test name
+	flag.StringVar(&trace, "trace", "0", "Trace") // Trace
+	flag.StringVar(&runname, "runname", "", "")   // Test name
 	flag.StringVar(&pns, "pns", "", "Publication numbers")
 	flag.StringVar(&pnfile, "pnfile", "", "Publication numbers")
 	flag.StringVar(&cpn, "cpn", "10", "Concurrent PN number")
@@ -103,106 +107,45 @@ func main() {
 	sproxyd.Test, _ = strconv.ParseBool(test)
 	Doconly, _ = strconv.ParseBool(doconly)
 	Cpn, _ = strconv.Atoi(cpn)
-	action = "DeletePNs"
-	application = "deletePN"
-
-	pid := os.Getpid()
-	hostname, _ := os.Hostname()
 	usr, _ := user.Current()
 	homeDir := usr.HomeDir
-	if testname != "" {
-		testname += string(os.PathSeparator)
-	}
 
-	// Check input parameter
-	var err error
+	// Check input parameters
+	if runname == "" {
+		runname += time.Now().Format("2006-01-02:15:04:05.00")
+	}
+	runname += string(os.PathSeparator)
 	if len(pnfile) > 0 {
 		pnfile = path.Join(homeDir, pnfile)
 		if scanner, err = file.Scanner(pnfile); err != nil {
 			fmt.Println(err)
 			os.Exit(10)
 		}
-
 	} else if len(pns) == 0 {
-		fmt.Println("Error:\n-pn <DocumentId list separated by comma>  or -pnfile <file name> is missing ?")
+		fmt.Println("Error:\nOr -pn <DocumentId list separated by comma>  Either -pnfile <file name> is missing ?")
 		usage()
 	}
 
-	// defer fp.Close()
-
-	//  Initialze the config
-
-	if Config, err := sproxyd.GetConfig(config); err == nil {
-
-		logPath = path.Join(homeDir, Config.GetLogPath())
-		if len(outDir) == 0 {
-			outDir = path.Join(homeDir, Config.GetOutputDir())
-		}
-
-		sproxyd.SetNewProxydHost(Config)
-		sproxyd.Driver = Config.GetDriver()
-		sproxyd.Env = Config.GetEnv()
-		sproxyd.SetNewTargetProxydHost(Config)
-		sproxyd.TargetDriver = Config.GetTargetDriver()
-		sproxyd.TargetEnv = Config.GetTargetEnv()
-
-		fmt.Println("INFO: Using config Hosts=>", sproxyd.Host, sproxyd.Driver, sproxyd.Env)
-		fmt.Println("INFO: Using config target Hosts=>", sproxyd.TargetHost, sproxyd.TargetDriver, sproxyd.TargetEnv)
-		fmt.Println("INFO: Logs Path=>", logPath)
-	} else {
-		// sproxyd.HP = hostpool.NewEpsilonGreedy(sproxyd.Host, 0, &hostpool.LinearEpsilonValueCalculator{})
-		fmt.Println(err, "WARNING: Using defaults :", "\nHosts=>", sproxyd.Host, sproxyd.TargetHost, "\nEnv", sproxyd.Env, sproxyd.TargetEnv)
-		fmt.Println("$HOME/sproxyd/config/" + config + " must exist and well formed")
-		os.Exit(100)
+	/* INIT CONFIG */
+	if Config, err = sproxyd.InitConfig(config); err != nil {
+		os.Exit(12)
 	}
 
+	fmt.Printf("INFO: Logs Path=>%s", logPath)
+
 	// init logging
-
-	if logPath == "" {
-		fmt.Println("WARNING: Using default logging")
-		goLog.Init(ioutil.Discard, os.Stdout, os.Stdout, os.Stderr)
-	} else {
-		logPath = logPath + string(os.PathSeparator) + testname
-		if !file.Exist(logPath) {
-			_ = os.MkdirAll(logPath, 0755)
-		}
-		traceLog := logPath + application + "_trace.log"
-		infoLog := logPath + application + "_info.log"
-		warnLog := logPath + application + "_warning.log"
-		errLog := logPath + application + "_error.log"
-
-		trf, err1 := os.OpenFile(traceLog, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0744)
-		inf, err2 := os.OpenFile(infoLog, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0744)
-		waf, err3 := os.OpenFile(warnLog, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0744)
-		erf, err4 := os.OpenFile(errLog, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0744)
-
+	if defaut, trf, inf, waf, erf := goLog.InitLog(logPath, runname, application, action, Trace); !defaut {
 		defer trf.Close()
 		defer inf.Close()
 		defer waf.Close()
 		defer erf.Close()
-
-		if err1 != nil || err2 != nil || err3 != nil || err4 != nil {
-			goLog.Init(ioutil.Discard, os.Stdout, os.Stdout, os.Stderr)
-			goLog.Warning.Println(err1, err2, err3, err3)
-			goLog.Warning.Println(hostname, pid, "Using default logging")
-		} else {
-			if trace == "0" {
-				goLog.Init(ioutil.Discard, io.Writer(inf), io.Writer(waf), io.Writer(erf))
-
-			} else {
-				goLog.Init(io.Writer(trf), io.Writer(inf), io.Writer(waf), io.Writer(erf))
-				goLog.Trace.Println(hostname, pid, "Start", application, action)
-			}
-		}
 	}
 
 	pna := strings.Split(pns, ",")
 	start0 := time.Now()
 	start := start0
 	stop := false
-	numloop := 0
-	Numpns := 0
-	NumpnsDone := 0
+
 	if len(pns) == 0 {
 		for !stop {
 			if linea, err := file.ScanLines(scanner, Cpn); len(linea) > 0 && err == nil {
@@ -212,8 +155,8 @@ func main() {
 
 				duration = time.Since(start)
 				for _, copyResponse := range copyResponses {
-					fmt.Println(copyResponse.Err, copyResponse.Num, copyResponse.Num200)
-					goLog.Info.Println(copyResponse.Err, copyResponse.Num, copyResponse.Num200)
+					fmt.Printf("Source Url=%s,Error=%v,#Input=%d, #Ouput=%d, Duration %v", copyResponse.SrcUrl, copyResponse.Err, copyResponse.Num, copyResponse.Num200, duration)
+					goLog.Info.Printf("Source Url=%s,Error=%v,#Input=%d, #Ouput=%d, Duration %v", copyResponse.SrcUrl, copyResponse.Err, copyResponse.Num, copyResponse.Num200, duration)
 					if copyResponse.Num > 0 && copyResponse.Num == copyResponse.Num200 {
 						NumpnsDone++
 					}
@@ -233,15 +176,14 @@ func main() {
 		Numpns = len(pna)
 		duration = time.Since(start)
 		for _, copyResponse := range copyResponses {
-			fmt.Println(copyResponse.Err, copyResponse.Num, copyResponse.Num200)
-			goLog.Info.Println(copyResponse.Err, copyResponse.Num, copyResponse.Num200)
+			fmt.Printf("Source Url=%s,Error=%v,#Input=%d, #Ouput=%d, Duration %v", copyResponse.SrcUrl, copyResponse.Err, copyResponse.Num, copyResponse.Num200, duration)
+			goLog.Info.Printf("Source Url=%s,Error=%v,#Input=%d, #Ouput=%d, Duration %v", copyResponse.SrcUrl, copyResponse.Err, copyResponse.Num, copyResponse.Num200, duration)
 			if copyResponse.Num > 0 && copyResponse.Num == copyResponse.Num200 {
 				NumpnsDone++
 			}
 		}
 	}
 
-	fmt.Println("Total delete elapsed time:", time.Since(start0), "\nNumber of PN processed:", NumpnsDone, "/", Numpns)
-	goLog.Info.Println("Total delete elapsed time:", time.Since(start0), "\nNumber of PN processed:", NumpnsDone, "/", Numpns)
-
+	fmt.Printf("Total Elapsed Time %v \nNumber of PN's completed %d / Number of PN's", time.Since(start0), NumpnsDone, Numpns)
+	goLog.Info.Printf("Total Elapsed Time %v \nNumber of PN's completed %d / Number of PN's", time.Since(start0), NumpnsDone, Numpns)
 }

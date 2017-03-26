@@ -201,7 +201,7 @@ func main() {
 	targetUrl := targetPath
 
 	// Get the document metadata
-	if encoded_docmd, err = bns.GetEncodedMetadata(&bnsRequest, url); err == nil {
+	if encoded_docmd, err, _ = bns.GetEncodedMetadata(&bnsRequest, url); err == nil {
 		if len(encoded_docmd) > 0 {
 			if docmd1, err = base64.Decode64(encoded_docmd); err != nil {
 				goLog.Error.Println(err)

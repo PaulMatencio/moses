@@ -17,12 +17,17 @@ import (
 )
 
 func AsyncCopyPns(pns []string, srcEnv string, targetEnv string) []*CopyResponse {
+	var (
+		duration time.Duration
+		media    string = "binary"
+		treq     int    = 0
+	)
 
 	SetCPU("100%")
 	pid := os.Getpid()
 	hostname, _ := os.Hostname()
 	start := time.Now()
-	media := "binary"
+
 	if len(srcEnv) == 0 {
 		srcEnv = sproxyd.Env
 	}
@@ -32,7 +37,6 @@ func AsyncCopyPns(pns []string, srcEnv string, targetEnv string) []*CopyResponse
 
 	ch := make(chan *CopyResponse)
 	copyResponses := []*CopyResponse{}
-	treq := 0
 
 	//  launch concurrent requets
 	for _, pn := range pns {
@@ -53,25 +57,28 @@ func AsyncCopyPns(pns []string, srcEnv string, targetEnv string) []*CopyResponse
 			treq++
 
 			var (
-				docmd         []byte
-				encoded_docmd string
-				err           error
-				num200        = 0
-				num           = 0
+				docmd                                         []byte
+				encoded_docmd                                 string
+				err                                           error
+				statusCode                                    int
+				num, num200, num412, num422, num404, numOther int = 0, 0, 0, 0, 0, 0
 			)
 			// Get the PN metadata ( Table of Content)
-			if encoded_docmd, err = GetEncodedMetadata(&bnsRequest, srcUrl); err == nil {
+			if encoded_docmd, err, statusCode = GetEncodedMetadata(&bnsRequest, srcUrl); err == nil {
 				if len(encoded_docmd) > 0 {
 
 					if docmd, err = base64.Decode64(encoded_docmd); err != nil {
-						goLog.Error.Println(err)
+						goLog.Error.Println(err) // Invalid meta data
 						ch <- &CopyResponse{err, pn, num, num200}
 						return
 					}
-
 				} else {
-					err = errors.New("Metadata is missing for " + srcPath)
-					goLog.Error.Println(err)
+					if statusCode == 404 {
+						err = errors.New("Document " + srcPath + " not found")
+					} else {
+						err = errors.New("Metadata is missing for " + srcPath)
+					}
+					goLog.Warning.Println(err)
 					ch <- &CopyResponse{err, pn, num, num200}
 					return
 				}
@@ -82,7 +89,6 @@ func AsyncCopyPns(pns []string, srcEnv string, targetEnv string) []*CopyResponse
 			}
 			// convert the PN  metadata into a go structure
 			docmeta := DocumentMetadata{}
-			// remove \n from docm    "\n  "
 			// docmd := bytes.Replace(docmd1, []byte(`"\n  "`), []byte(`{}`), -1)
 			if err := json.Unmarshal(docmd, &docmeta); err != nil {
 				goLog.Error.Println("Document metadata is invalid ", srcUrl, err)
@@ -99,9 +105,14 @@ func AsyncCopyPns(pns []string, srcEnv string, targetEnv string) []*CopyResponse
 				// we could  update the meta data : TODO
 				CopyBlob(&bnsRequest, dstUrl, buf0, header)
 			}
-			var duration time.Duration
 
-			num = docmeta.TotalPage
+			// num = docmeta.TotalPage
+
+			if num = docmeta.TotalPage; num <= 0 {
+				err := errors.New(pn + " Number of pages is invalid. Document Metada may be updated without pages updated")
+				ch <- &CopyResponse{err, pn, num, num200}
+				return
+			}
 
 			if num = docmeta.TotalPage; num <= 0 {
 				err := errors.New(pn + " Number of pages is invalid. Document metadata is copied without pages")
@@ -141,7 +152,7 @@ func AsyncCopyPns(pns []string, srcEnv string, targetEnv string) []*CopyResponse
 			// var sproxydResponses []*sproxyd.HttpResponse
 			//   new &http.Client{}  and hosts pool are set to the target by the AsyncHttpCopyBlobs
 			//  			sproxyd.TargetHP
-			sproxydResponses = AsyncHttpCopyBlobs(bnsResponses)
+			sproxydResponses = AsyncHttpPutBlobs(bnsResponses)
 
 			if !sproxyd.Test {
 				for _, v := range sproxydResponses {
@@ -151,22 +162,27 @@ func AsyncCopyPns(pns []string, srcEnv string, targetEnv string) []*CopyResponse
 					case 200:
 						goLog.Trace.Println(hostname, pid, url, resp.Status, resp.Header["X-Scal-Ring-Key"])
 						num200++
+					case 404:
+						goLog.Trace.Println(hostname, pid, url, resp.Status)
+						num404++
 					case 412:
 						goLog.Warning.Println(hostname, pid, url, resp.Status, "key=", resp.Header["X-Scal-Ring-Key"], "already exist")
-
+						num412++
 					case 422:
 						goLog.Error.Println(hostname, pid, url, resp.Status, resp.Header["X-Scal-Ring-Status"])
+						num422++
 					default:
 						goLog.Warning.Println(hostname, pid, url, resp.Status)
+						numOther++
 					}
 					// close all the connection
 					resp.Body.Close()
 				}
 				if num200 < num {
-					goLog.Warning.Println("Publication id:", hostname, pid, pn, num, " Pages in;", num200, " Pages out")
-					err = errors.New("Pages out < Pages in")
+					goLog.Warning.Printf("Host name:%s,Pid:%d,Publication:%s,Ins:%d,Outs:%d,Notfound:%d,Existed:%d,Other:%d", hostname, pid, pn, num, num200, num404, num412, numOther)
+					err = errors.New("Pages outs < Page ins")
 				} else {
-					goLog.Info.Println("Publication id:", hostname, pid, pn, num, " Pages in;", num200, " Pages out")
+					goLog.Warning.Printf("Host name:%s,Pid:%d,Publication:%s,Ins:%d,Outs:%d,Notfound:%d,Existed:%d,Other:%d", hostname, pid, pn, num, num200, num404, num412, numOther)
 				}
 
 			}

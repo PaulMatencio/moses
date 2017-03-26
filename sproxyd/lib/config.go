@@ -24,6 +24,34 @@ type Configuration struct {
 	OutDir        string   `json:"outputDir,omitempty"`
 }
 
+func InitConfig(config string) (Configuration, error) {
+	var (
+		err    error
+		Config Configuration
+	)
+	if Config, err = GetConfig(config); err == nil {
+
+		// logPath = path.Join(homeDir, Config.GetLogPath())
+
+		SetNewProxydHost(Config)
+		Driver = Config.GetDriver()
+		Env = Config.GetEnv()
+		SetNewTargetProxydHost(Config)
+		TargetDriver = Config.GetTargetDriver()
+		TargetEnv = Config.GetTargetEnv()
+
+		fmt.Println("INFO: Using config Hosts=>", Host, Driver, Env)
+		fmt.Println("INFO: Using config target Hosts=>", TargetHost, TargetDriver, TargetEnv)
+
+	} else {
+		// sproxyd.HP = hostpool.NewEpsilonGreedy(sproxyd.Host, 0, &hostpool.LinearEpsilonValueCalculator{})
+		fmt.Println(err, "WARNING: Using defaults :", "\nHosts=>", Host, TargetHost, "\nEnv", Env, TargetEnv)
+		fmt.Println("$HOME/sproxyd/config/" + config + " must exist and well formed")
+		Config = Configuration{}
+	}
+	return Config, err
+}
+
 func GetConfig(c_file string) (Configuration, error) {
 
 	usr, _ := user.Current()

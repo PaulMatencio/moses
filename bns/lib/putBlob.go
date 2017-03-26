@@ -49,7 +49,8 @@ func AsyncHttpPutBlob(bnsRequest *HttpRequest, url string, buf []byte, header ma
 	return sproxydResponse
 }
 
-func AsyncHttpCopyBlobs(bnsResponses []BnsResponse) []*sproxyd.HttpResponse {
+// func AsyncHttpCopyBlobs(bnsResponses []BnsResponse) []*sproxyd.HttpResponse {
+func AsyncHttpPutBlobs(bnsResponses []BnsResponse) []*sproxyd.HttpResponse {
 	// Put objects
 	ch := make(chan *sproxyd.HttpResponse)
 	sproxydResponses := []*sproxyd.HttpResponse{}

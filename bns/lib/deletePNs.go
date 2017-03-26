@@ -21,7 +21,11 @@ func AsyncDeletePns(pns []string, targetEnv string) []*CopyResponse {
 	pid := os.Getpid()
 	hostname, _ := os.Hostname()
 	SetCPU("100%")
-	media := "binary"
+	var (
+		media      = "binary"
+		statusCode int
+		treq       = 0
+	)
 
 	if len(targetEnv) == 0 {
 		targetEnv = sproxyd.TargetEnv
@@ -29,7 +33,6 @@ func AsyncDeletePns(pns []string, targetEnv string) []*CopyResponse {
 
 	ch := make(chan *CopyResponse)
 	copyResponses := []*CopyResponse{}
-	treq := 0
 
 	//  launch concurrent requets
 	for _, pn := range pns {
@@ -53,15 +56,14 @@ func AsyncDeletePns(pns []string, targetEnv string) []*CopyResponse {
 		go func(targetUrl string) {
 
 			var (
-				docmd         []byte
-				encoded_docmd string
-				err           error
-				num200        = 0
-				num           = 0
+				docmd                                         []byte
+				encoded_docmd                                 string
+				err                                           error
+				num, num200, num404, numOther, num412, num422 = 0, 0, 0, 0, 0, 0
 			)
 			treq++
 			// Get the PN metadata ( Table of Content)
-			if encoded_docmd, err = GetEncodedMetadata(&bnsRequest, targetUrl); err == nil {
+			if encoded_docmd, err, statusCode = GetEncodedMetadata(&bnsRequest, targetUrl); err == nil {
 				if len(encoded_docmd) > 0 {
 					if docmd, err = base64.Decode64(encoded_docmd); err != nil {
 						goLog.Error.Println(err)
@@ -69,9 +71,13 @@ func AsyncDeletePns(pns []string, targetEnv string) []*CopyResponse {
 						return
 					}
 				} else {
-					err = errors.New("Metadata is missing for " + targetUrl)
-					goLog.Error.Println(err)
-					ch <- &CopyResponse{err, targetUrl, num, num200}
+					if statusCode == 404 {
+						err = errors.New("Document " + targetUrl + " not found")
+					} else {
+						err = errors.New("Metadata is missing for " + targetUrl)
+					}
+					goLog.Warning.Println(err)
+					ch <- &CopyResponse{err, pn, num, num200}
 					return
 				}
 			} else {
@@ -132,12 +138,17 @@ func AsyncDeletePns(pns []string, targetEnv string) []*CopyResponse {
 					case 200:
 						goLog.Trace.Println(hostname, pid, url, resp.Status, resp.Header["X-Scal-Ring-Key"])
 						num200++
+					case 404:
+						goLog.Trace.Println(hostname, pid, url, resp.Status)
+						num404++
 					case 412:
-						goLog.Warning.Println(hostname, pid, url, resp.Status, "key=", resp.Header["X-Scal-Ring-Key"], "already exist")
-
+						goLog.Warning.Println(hostname, pid, url, resp.Status, "key=", resp.Header["X-Scal-Ring-Key"], "Precondition Fails")
+						num412++
 					case 422:
 						goLog.Error.Println(hostname, pid, url, resp.Status, resp.Header["X-Scal-Ring-Status"])
+						num422++
 					default:
+						numOther++
 						goLog.Warning.Println(hostname, pid, url, resp.Status)
 					}
 					// close all the connection
@@ -145,8 +156,10 @@ func AsyncDeletePns(pns []string, targetEnv string) []*CopyResponse {
 				}
 
 				if num200 < num {
-					goLog.Warning.Println("Publication id:", hostname, pid, pn, num, " Pages in;", num200, " Pages out")
-					err = errors.New("Not all pages were deleted, Check the Warning/Errors logs for details")
+					goLog.Warning.Printf("Host name:%s,Pid:%d,Publication:%s,Ins:%d,Outs:%d,Notfound:%d,Other:%d", hostname, pid, pn, num, num200, num404, numOther)
+					err = errors.New("Pages outs < Page ins")
+				} else {
+					goLog.Warning.Printf("Host name:%s,Pid:%d,Publication:%s,Ins:%d,Outs:%d,Notfound:%d,Other:%d", hostname, pid, pn, num, num200, num404, numOther)
 				}
 			}
 			// Delete the PN metadata when all pages have been deleted

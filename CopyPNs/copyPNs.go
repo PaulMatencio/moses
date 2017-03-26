@@ -18,8 +18,10 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"io"
-	"io/ioutil"
+	/*
+		"io"
+		"io/ioutil"
+	*/
 	bns "moses/bns/lib"
 	sproxyd "moses/sproxyd/lib"
 	file "moses/user/files/lib"
@@ -35,11 +37,19 @@ import (
 )
 
 var (
-	action, config, srcEnv, targetEnv, logPath, outDir, application, testname, hostname, pns, cpn, pnfile, trace, test, meta, image, media, doconly string
-	Trace, Meta, Image, CopyObject, Test, Doconly                                                                                                   bool
-	pid, Cpn                                                                                                                                        int
-	timeout, duration                                                                                                                               time.Duration
-	scanner                                                                                                                                         *bufio.Scanner
+	config, srcEnv, targetEnv, logPath, outDir, runname,
+	hostname, pns, cpn, pnfile, trace, test, meta, image,
+	media, doconly string
+	Trace, Meta, Image, CopyObject, Test, Doconly bool
+	pid, Cpn                                      int
+	timeout, duration                             time.Duration
+	scanner                                       *bufio.Scanner
+	action, application                           string = "CopyPNs", "Moses"
+	numloop, Numpns, NumpnsDone                   int    = 0, 0, 0
+	Config                                        sproxyd.Configuration
+	err                                           error
+	defaultConfig                                 string = "moses-dev"
+	start, start0                                 time.Time
 )
 
 func usage() {
@@ -86,18 +96,18 @@ func checkOutdir(outDir string) (err error) {
 }
 
 func main() {
-	defaultConfig := "moses-dev"
+
 	flag.Usage = usage
 	flag.StringVar(&config, "config", defaultConfig, "Config file")
 	flag.StringVar(&srcEnv, "srcEnv", "", "Environment")
 	flag.StringVar(&targetEnv, "targetEnv", "", "Target Environment")
-	flag.StringVar(&trace, "t", "0", "Trace")     // Trace
-	flag.StringVar(&testname, "T", "copyPns", "") // Test name
-	flag.StringVar(&pns, "pns", "", "Publication numbers")
-	flag.StringVar(&pnfile, "pnfile", "", "File containg PN, one PN per line")
-	flag.StringVar(&cpn, "cpn", "10", "Concurrent PN number")
+	flag.StringVar(&trace, "trace", "0", "Trace") // Trace
+	flag.StringVar(&runname, "runname", "", "")   // Test name
+	flag.StringVar(&pns, "pns", "", "Publication numbers -pns PN1,PN2,PN3,PN4")
+	flag.StringVar(&pnfile, "pnfile", "", "File of publication numbers, one PN per line  -pnfile filename")
+	flag.StringVar(&cpn, "cpn", "10", "Concurrent number of PN's reading from -pnfile")
 	flag.StringVar(&test, "test", "0", "Run copy in test mode")
-	flag.StringVar(&doconly, "doconly", "0", "Only update the document meta")
+	flag.StringVar(&doconly, "doconly", "0", "Copy  only the document meta")
 	flag.Parse()
 	Trace, _ = strconv.ParseBool(trace)
 	Meta, _ = strconv.ParseBool(meta)
@@ -105,23 +115,14 @@ func main() {
 	sproxyd.Test, _ = strconv.ParseBool(test)
 	Doconly, _ = strconv.ParseBool(doconly)
 	Cpn, _ = strconv.Atoi(cpn)
-	action = "CopyPNs"
-	application = "copyPN"
-	/*
-		if len(pns) == 0 && len(pnfile) == 0 {
-			fmt.Println("Error:\n-pn <DocumentId list separated by comma>  or -pnfile <file name> is missing ?")
-			usage()
-		}
-	*/
-	pid := os.Getpid()
-	hostname, _ := os.Hostname()
 	usr, _ := user.Current()
 	homeDir := usr.HomeDir
-	if testname != "" {
-		testname += string(os.PathSeparator)
-	}
+
 	// Check input parameters
-	var err error
+	if runname == "" {
+		runname += time.Now().Format("2006-01-02:15:04:05.00")
+	}
+	runname += string(os.PathSeparator)
 	if len(pnfile) > 0 {
 		pnfile = path.Join(homeDir, pnfile)
 		if scanner, err = file.Scanner(pnfile); err != nil {
@@ -132,98 +133,46 @@ func main() {
 		usage()
 	}
 
-	// initilize the config
-	if Config, err := sproxyd.GetConfig(config); err == nil {
-
-		logPath = path.Join(homeDir, Config.GetLogPath())
-		if len(outDir) == 0 {
-			outDir = path.Join(homeDir, Config.GetOutputDir())
-		}
-
-		sproxyd.SetNewProxydHost(Config)
-		sproxyd.Driver = Config.GetDriver()
-		sproxyd.Env = Config.GetEnv()
-		sproxyd.SetNewTargetProxydHost(Config)
-		sproxyd.TargetDriver = Config.GetTargetDriver()
-		sproxyd.TargetEnv = Config.GetTargetEnv()
-
-		fmt.Println("INFO: Using config Hosts=>", sproxyd.Host, sproxyd.Driver, sproxyd.Env)
-		fmt.Println("INFO: Using config target Hosts=>", sproxyd.TargetHost, sproxyd.TargetDriver, sproxyd.TargetEnv)
-		fmt.Println("INFO: Logs Path=>", logPath)
-	} else {
-		// sproxyd.HP = hostpool.NewEpsilonGreedy(sproxyd.Host, 0, &hostpool.LinearEpsilonValueCalculator{})
-		fmt.Println(err, "WARNING: Using defaults :", "\nHosts=>", sproxyd.Host, sproxyd.TargetHost, "\nEnv", sproxyd.Env, sproxyd.TargetEnv)
-		fmt.Println("$HOME/sproxyd/config/" + config + " must exist and well formed")
-		os.Exit(100)
+	/* INIT CONFIG */
+	if Config, err = sproxyd.InitConfig(config); err != nil {
+		os.Exit(12)
 	}
+
+	fmt.Printf("INFO: Logs Path=>%s", logPath)
+
+	if len(outDir) == 0 {
+		outDir = path.Join(homeDir, Config.GetOutputDir())
+	}
+	logPath = path.Join(homeDir, Config.GetLogPath())
 
 	// init logging
 
-	if logPath == "" {
-		fmt.Println("WARNING: Using default logging")
-		goLog.Init(ioutil.Discard, os.Stdout, os.Stdout, os.Stderr)
-	} else {
-		logPath = logPath + string(os.PathSeparator) + testname
-		if !file.Exist(logPath) {
-			_ = os.MkdirAll(logPath, 0755)
-		}
-		traceLog := logPath + application + "_trace.log"
-		infoLog := logPath + application + "_info.log"
-		warnLog := logPath + application + "_warning.log"
-		errLog := logPath + application + "_error.log"
-
-		trf, err1 := os.OpenFile(traceLog, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0744)
-		inf, err2 := os.OpenFile(infoLog, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0744)
-		waf, err3 := os.OpenFile(warnLog, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0744)
-		erf, err4 := os.OpenFile(errLog, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0744)
-
+	if defaut, trf, inf, waf, erf := goLog.InitLog(logPath, runname, application, action, Trace); !defaut {
 		defer trf.Close()
 		defer inf.Close()
 		defer waf.Close()
 		defer erf.Close()
-
-		if err1 != nil || err2 != nil || err3 != nil || err4 != nil {
-			goLog.Init(ioutil.Discard, os.Stdout, os.Stdout, os.Stderr)
-			goLog.Warning.Println(err1, err2, err3, err3)
-			goLog.Warning.Println(hostname, pid, "Using default logging")
-		} else {
-			if trace == "0" {
-				goLog.Init(ioutil.Discard, io.Writer(inf), io.Writer(waf), io.Writer(erf))
-
-			} else {
-				goLog.Init(io.Writer(trf), io.Writer(inf), io.Writer(waf), io.Writer(erf))
-				goLog.Trace.Println(hostname, pid, "Start", application, action)
-			}
-		}
 	}
 
 	pna := strings.Split(pns, ",")
-	start0 := time.Now()
-	start := start0
-	/*
-		fmt.Println(pna, srcEnv, targetEnv, sproxyd.Host, sproxyd.TargetHost)
-		copyResponses := []*bns.CopyResponse{}
-	*/
-
+	start0 = time.Now()
 	stop := false
-	numloop := 0
-	Numpns := 0
-	NumpnsDone := 0
+
 	if len(pns) == 0 {
+		//  Take  the PNs from a file
+		//  Cpn is the number of concuurent PN's to be processed
 		for !stop {
 			if linea, _ := file.ScanLines(scanner, Cpn); len(linea) > 0 {
-
 				start = time.Now()
-
 				copyResponses := bns.AsyncCopyPns(linea, srcEnv, targetEnv)
-
 				duration = time.Since(start)
 				for _, copyResponse := range copyResponses {
-					fmt.Println(copyResponse.SrcUrl, copyResponse.Err, copyResponse.Num, copyResponse.Num200)
-					goLog.Info.Println(copyResponse.SrcUrl, copyResponse.Err, copyResponse.Err, copyResponse.Num, copyResponse.Num200)
+					fmt.Printf("Source Url=%s,Error=%v,#Input=%d, #Ouput=%d, Duration %v", copyResponse.SrcUrl, copyResponse.Err, copyResponse.Num, copyResponse.Num200, duration)
+					goLog.Info.Printf("Source Url=%s,Error=%v,#Input=%d, #Ouput=%d, Duration %v", copyResponse.SrcUrl, copyResponse.Err, copyResponse.Num, copyResponse.Num200, duration)
 					if copyResponse.Num > 0 && copyResponse.Num200 == copyResponse.Num {
 						NumpnsDone++
 					}
+
 				}
 				numloop++
 				Numpns = Numpns + len(linea)
@@ -232,18 +181,20 @@ func main() {
 			}
 		}
 	} else {
+		// take the PN's from the pna ( -pns PN1,PN2,PN3,PN4 )
+		start = time.Now()
 		copyResponses := bns.AsyncCopyPns(pna, srcEnv, targetEnv)
 		Numpns = len(pna)
 		duration = time.Since(start)
 		for _, copyResponse := range copyResponses {
-			fmt.Println(copyResponse.Err, copyResponse.Num, copyResponse.Num200)
-			goLog.Info.Println(copyResponse.Err, copyResponse.Num, copyResponse.Num200)
+			fmt.Printf("Source Url=%s,Error=%v,#Input=%d, #Ouput=%d, Duration %v", copyResponse.SrcUrl, copyResponse.Err, copyResponse.Num, copyResponse.Num200, duration)
+			goLog.Info.Printf("Source Url=%s,Error=%v,#Input=%d, #Ouput=%d, Duration %v", copyResponse.SrcUrl, copyResponse.Err, copyResponse.Num, copyResponse.Num200, duration)
 			if copyResponse.Num > 0 && copyResponse.Num200 == copyResponse.Num {
 				NumpnsDone++
 			}
 		}
 	}
 
-	fmt.Println("Total copy elapsed time:", time.Since(start0), "\nNumber of PN processed:", NumpnsDone, "/", Numpns)
-	goLog.Info.Println("Total copy elapsed time:", time.Since(start0), "\nNumber of PN processed:", NumpnsDone, "/", Numpns)
+	fmt.Printf("Total Elapsed Time %v \nNumber of PN's completed %d / Number of PN's", time.Since(start0), NumpnsDone, Numpns)
+	goLog.Info.Printf("Total Elapsed Time %v \nNumber of PN's completed %d / Number of PN's", time.Since(start0), NumpnsDone, Numpns)
 }

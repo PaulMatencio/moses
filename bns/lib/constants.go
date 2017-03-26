@@ -65,14 +65,15 @@ const (
 )
 
 const (
-	Bib      string = "BB" // Biblio
-	Abs      string = "AB" // Abstrcat
-	Cla      string = "CL" // Claims
-	Dra      string = "DR" // Drawing
-	Amd      string = "AM" // Amendement
-	Des      string = "DE" // Description
-	Srp      string = "SR" // Search Report
-	Dna      string = "DN" // DNA
-	Aci      string = "AC" // Application citation
+	Bib      string = "BibliRangePageNumber"
+	Abs      string = "AbsRangePageNumber"
+	Cla      string = "ClaimsRangePageNumber"
+	Dra      string = "DrawRangePageNumber"
+	Amd      string = "AmdRangePageNumber"
+	Des      string = "DescRangePageNumber"
+	Srp      string = "SearchRepRangePageNumber"
+	Dna      string = "DnaSequenceRangePageNumber"
+	Aci      string = "ApplicantCitationsRangePageNumber"
+	Cls      string = "Classification"
 	Max_page int    = 1000 // maximum subpage
 )

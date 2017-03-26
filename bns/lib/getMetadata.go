@@ -7,18 +7,18 @@ import (
 	goLog "moses/user/goLog"
 	"net/http"
 	"time"
-
-	// hostpool "github.com/bitly/go-hostpool"
 )
 
 // new function
-func GetMetadata(bnsRequest *HttpRequest, url string) ([]byte, error) {
+func GetMetadata(bnsRequest *HttpRequest, url string) ([]byte, error, int) {
 	// client := &http.Client{}
 	// getHeader := map[string]string{}
 
-	var usermd []byte
-	var resp *http.Response
-	err := error(nil)
+	var (
+		usermd []byte
+		resp   *http.Response
+		err    error = error(nil)
+	)
 
 	sproxydRequest := sproxyd.HttpRequest{
 		Hspool:    bnsRequest.Hspool,
@@ -43,11 +43,11 @@ func GetMetadata(bnsRequest *HttpRequest, url string) ([]byte, error) {
 		}
 	}
 	/* the resp,Body is closed by sproxyd.getMetadata */
-	return usermd, err
+	return usermd, err, resp.StatusCode
 }
 
 //new  function
-func GetEncodedMetadata(bnsRequest *HttpRequest, url string) (string, error) {
+func GetEncodedMetadata(bnsRequest *HttpRequest, url string) (string, error, int) {
 
 	getHeader := map[string]string{}
 	var (
@@ -77,7 +77,7 @@ func GetEncodedMetadata(bnsRequest *HttpRequest, url string) (string, error) {
 		}
 	}
 	/* the resp,Body is closed by sproxyd.getMetadata */
-	return encoded_usermd, err
+	return encoded_usermd, err, resp.StatusCode
 }
 
 func AsyncHttpGetMetadatas(bnsRequest *HttpRequest, getHeader map[string]string) []*sproxyd.HttpResponse {

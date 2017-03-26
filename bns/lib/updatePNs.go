@@ -59,15 +59,15 @@ func AsyncUpdatePns(pns []string, srcEnv string, targetEnv string) []*CopyRespon
 
 			treq++
 			var (
-				err           error
-				encoded_docmd string
-				docmd         []byte
-				num200        = 0
-				num           = 0
+				err                                           error
+				encoded_docmd                                 string
+				docmd                                         []byte
+				statusCode                                    int
+				num, num200, num404, num412, num422, numOther int = 0, 0, 0, 0, 0, 0
 			)
 
 			// Get the PN metadata ( Table of Content)
-			if encoded_docmd, err = GetEncodedMetadata(&bnsRequest, srcUrl); err == nil {
+			if encoded_docmd, err, statusCode = GetEncodedMetadata(&bnsRequest, srcUrl); err == nil {
 				if len(encoded_docmd) > 0 {
 					if docmd, err = base64.Decode64(encoded_docmd); err != nil {
 						goLog.Error.Println(err)
@@ -75,8 +75,12 @@ func AsyncUpdatePns(pns []string, srcEnv string, targetEnv string) []*CopyRespon
 						return
 					}
 				} else {
-					err = errors.New("Metadata is missing for " + srcPath)
-					goLog.Error.Println(err)
+					if statusCode == 404 {
+						err = errors.New("Document " + srcPath + " not found")
+					} else {
+						err = errors.New("Metadata is missing for " + srcPath)
+					}
+					goLog.Warning.Println(err)
 					ch <- &CopyResponse{err, pn, num, num200}
 					return
 				}
@@ -106,19 +110,6 @@ func AsyncUpdatePns(pns []string, srcEnv string, targetEnv string) []*CopyRespon
 				UpdateBlob(&bnsRequest, dstUrl, buf0, header)
 
 			}
-
-			/*
-				_ = json.Unmarshal(docmd, &docmeta)
-				header := map[string]string{
-					"Usermd": encoded_docmd,
-				}
-				buf0 := make([]byte, 0)
-				bnsRequest.Hspool = sproxyd.TargetHP // Set Target sproxyd servers
-
-				// Copy the document metadata to the destination buffer size = 0 byte
-				// we could  update the meta data : TODO
-				UpdateBlob(&bnsRequest, dstUrl, buf0, header)
-			*/
 
 			if num = docmeta.TotalPage; num <= 0 {
 				err := errors.New(pn + " Number of pages is invalid. Document Metada may be updated without pages updated")
@@ -171,23 +162,28 @@ func AsyncUpdatePns(pns []string, srcEnv string, targetEnv string) []*CopyRespon
 					case 200:
 						goLog.Trace.Println(hostname, pid, url, resp.Status, resp.Header["X-Scal-Ring-Key"])
 						num200++
+					case 404:
+						goLog.Trace.Println(hostname, pid, url, resp.Status)
+						num404++
 					case 412:
 						goLog.Warning.Println(hostname, pid, url, resp.Status, "key=", resp.Header["X-Scal-Ring-Key"], "does not exist")
-
+						num412++
 					case 422:
 						goLog.Error.Println(hostname, pid, url, resp.Status, resp.Header["X-Scal-Ring-Status"])
+						num422++
 					default:
 						goLog.Warning.Println(hostname, pid, url, resp.Status)
+						numOther++
 					}
 					// close all the connection
 					resp.Body.Close()
 				}
 
 				if num200 < num {
-					goLog.Warning.Println("Publication id:", hostname, pid, pn, num, " Pages in;", num200, " Pages out")
-					err = errors.New("Pages out < Pages in")
+					goLog.Warning.Printf("Host name:%s,Pid:%d,Publication:%s,Ins:%d,Outs:%d,Notfound:%d,Existed:%d,Other:%d", hostname, pid, pn, num, num200, num404, num412, numOther)
+					err = errors.New("Pages outs < Page ins")
 				} else {
-					goLog.Info.Println("Publication id:", hostname, pid, pn, num, " Pages in;", num200, " Pages out")
+					goLog.Warning.Printf("Host name:%s,Pid:%d,Publication:%s,Ins:%d,Outs:%d,Notfound:%d,Existed:%d,Other:%d", hostname, pid, pn, num, num200, num404, num412, numOther)
 				}
 			}
 			ch <- &CopyResponse{err, pn, num, num200}

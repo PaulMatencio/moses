@@ -13,11 +13,11 @@ import (
 	// hostpool "github.com/bitly/go-hostpool"
 )
 
-func GetPageMetadata(bnsRequest *HttpRequest, url string) ([]byte, error) {
+func GetPageMetadata(bnsRequest *HttpRequest, url string) ([]byte, error, int) {
 	return GetMetadata(bnsRequest, url)
 }
 
-func GetDocMetadata(bnsRequest *HttpRequest, url string) ([]byte, error) {
+func GetDocMetadata(bnsRequest *HttpRequest, url string) ([]byte, error, int) {
 	return GetMetadata(bnsRequest, url)
 }
 

@@ -16,14 +16,20 @@ var (
 	Error   *log.Logger
 )
 
-func Init0(logPath, testname, application, action string, trace bool) {
+func InitLog(logPath string, testname string, application string, action string, trace bool) (bool, *os.File, *os.File, *os.File, *os.File) {
 
 	hostname, _ := os.Hostname()
 	pid := os.Getgid()
 
+	var (
+		trf, waf, inf, erf *os.File
+		defaut             = false
+	)
+
 	if logPath == "" {
 		fmt.Println("WARNING: Using default logging")
 		Init(ioutil.Discard, os.Stdout, os.Stdout, os.Stderr)
+		defaut = true
 	} else {
 
 		// mkAll dir
@@ -52,11 +58,6 @@ func Init0(logPath, testname, application, action string, trace bool) {
 		waf, err3 := os.OpenFile(warnLog, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0744)
 		erf, err4 := os.OpenFile(errLog, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0744)
 
-		defer trf.Close()
-		defer inf.Close()
-		defer waf.Close()
-		defer erf.Close()
-
 		if err1 != nil || err2 != nil || err3 != nil || err4 != nil {
 			Init(ioutil.Discard, os.Stdout, os.Stdout, os.Stderr)
 			Warning.Println(err1, err2, err3, err3)
@@ -71,13 +72,10 @@ func Init0(logPath, testname, application, action string, trace bool) {
 			}
 		}
 	}
+	return defaut, trf, inf, waf, erf
 }
 
-func Init(
-	traceHandle io.Writer,
-	infoHandle io.Writer,
-	warningHandle io.Writer,
-	errorHandle io.Writer) {
+func Init(traceHandle io.Writer, infoHandle io.Writer, warningHandle io.Writer, errorHandle io.Writer) {
 	Time := log.Lmicroseconds
 
 	Trace = log.New(traceHandle,
@@ -97,13 +95,3 @@ func Init(
 		log.Ldate|Time|log.Lshortfile)
 
 }
-
-/*
- usage:
- Init(ioutil.Discard, os.Stdout, os.Stdout, os.Stderr)
-
-    Trace.Println("I have something standard to say")
-    Info.Println("Special Information")
-    Warning.Println("There is something you need to know about")
-    Error.Println("Something has failed")
-*/

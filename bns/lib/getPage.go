@@ -30,7 +30,7 @@ func GetPageType(bnsRequest *HttpRequest, url string) (*http.Response, error) {
 		resp   *http.Response
 	)
 
-	usermd, err = GetMetadata(bnsRequest, url)
+	usermd, err, _ = GetMetadata(bnsRequest, url)
 	if err != nil {
 		return nil, errors.New("Page metadata is missing or invalid")
 	} else {

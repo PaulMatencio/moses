@@ -280,15 +280,10 @@ func BuildBnsResponse(resp *http.Response, contentType string, body *[]byte) Bns
 		bnsResponse.Image = *body
 	}
 	patha := strings.Split(resp.Request.URL.Path, "/")
-	bnsResponse.PageNumber = patha[len(patha)-1]
-
-	// bnsida := patha[len(patha)-4 : len(patha)-1]
+	page := patha[len(patha)-1]
+	bnsResponse.PageNumber = page
+	bnsResponse.Page, _ = strconv.Atoi(page[1:])
 	bnsResponse.BnsId = strings.Join(patha[len(patha)-4:len(patha)-1], "/")
-	/*
-		if body != nil {
-			bnsResponse.Image = *body
-		}
-	*/
 	bnsResponse.ContentType = contentType
 	bnsResponse.HttpStatusCode = resp.StatusCode
 
@@ -296,6 +291,61 @@ func BuildBnsResponse(resp *http.Response, contentType string, body *[]byte) Bns
 	return bnsResponse
 }
 
+func BuildBnsResponseLi(resp *http.Response, contentType string, body *[]byte) BnsResponseLi {
+
+	bnsResponse := BnsResponseLi{}
+	if body != nil {
+		if _, ok := resp.Header["X-Scal-Usermd"]; ok {
+			Usermd := resp.Header["X-Scal-Usermd"][0]
+			if pagemd, err := base64.Decode64(Usermd); err == nil {
+				bnsResponse.Pagemd = pagemd
+				goLog.Trace.Println("page meata=>", string(pagemd))
+			}
+		} else {
+			goLog.Warning.Println("X-Scal-Usermd is missing in the resp header", resp.Status, resp.Header)
+		}
+		bnsResponse.Image = body /* just get the pointer */
+	}
+	patha := strings.Split(resp.Request.URL.Path, "/")
+	page := patha[len(patha)-1]
+	bnsResponse.Page, _ = strconv.Atoi(page[1:])
+	bnsResponse.BnsId = strings.Join(patha[len(patha)-4:len(patha)-1], "/")
+	bnsResponse.ContentType = contentType
+	// bnsResponse.HttpStatusCode = resp.StatusCode
+	// defer resp.Body.Close()
+	return bnsResponse
+}
+
+func BuildPagesRanges(pagesranges string) ([]string, error) {
+
+	var (
+		out        string
+		Start, End int
+		err        error
+	)
+	PagesRangesa := strings.Split(pagesranges, ",")
+	if len(PagesRangesa) == 0 {
+
+		goLog.Error.Printf("Missing Pages ranges %s", pagesranges)
+		return PagesRangesa, errors.New("Invalid pages ranges")
+	}
+	for _, pagesrange := range PagesRangesa {
+		pa := strings.Split(pagesrange, ":")
+		if Start, err = strconv.Atoi(pa[0]); err != nil {
+			fmt.Printf("Invalid Start pages ranges %s", pa[0])
+			goLog.Error.Printf("Invalid start pages ranges %s", pa[0])
+		}
+		if End, err = strconv.Atoi(pa[1]); err != nil {
+			goLog.Error.Printf("Invalid end  pages ranges %s", pa[1])
+		}
+		for k := Start; k <= End; k++ {
+			out += fmt.Sprintf("%d,", k)
+		}
+
+	}
+	return strings.Split(out[0:len(out)-1], ","), err
+
+}
 func SetCPU(cpu string) error {
 	var numCPU int
 

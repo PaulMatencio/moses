@@ -216,9 +216,18 @@ type BnsResponse struct {
 	Usermd         string `json: "usermd,omitempty"`   // encoded user meta data
 	ContentType    string `json: "content-type,omitempty"`
 	Image          []byte `json: "images"`
-	BnsId          string `json: "bnsId,omitemty"`
-	PageNumber     string `json: "pageNunber,omitemty"`
+	BnsId          string `json: "bnsId,omitempty"`
+	PageNumber     string `json: "pageNunber,omitempty"`
+	Page           int    `json: "page,omitempty`
 	Err            error  `json: "errorCode"`
+}
+
+type BnsResponseLi struct {
+	Page        int     `json: "page,omitempty`
+	Pagemd      []byte  `json: "pagemeta,omitempty"` // decoded user meta data
+	ContentType string  `json: "content-type,omitempty"`
+	Image       *[]byte `json: "images"` // address of the image
+	BnsId       string  `json: "bnsId,omitempty"`
 }
 
 type Date struct {

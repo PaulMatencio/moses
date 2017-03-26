@@ -7,7 +7,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"io"
+
 	"io/ioutil"
 	bns "moses/bns/lib"
 	sproxyd "moses/sproxyd/lib"
@@ -23,14 +23,18 @@ import (
 	file "moses/user/files/lib"
 	goLog "moses/user/goLog"
 
-	hostpool "github.com/bitly/go-hostpool"
+	"github.com/bradfitz/slice"
 )
 
 var (
-	action, config, env, logPath, outDir, application, testname, hostname, pn, page, trace, test, meta, image, media string
-	Trace, Meta, Image, CopyObject, Test                                                                             bool
-	pid                                                                                                              int
-	timeout                                                                                                          time.Duration
+	action, config, env, logPath, outDir, runname,
+	hostname, pn, page, trace, test, meta, image, media, pagesranges string
+	Trace, Meta, Image, CopyObject, Test bool
+	pid                                  int
+	timeout                              time.Duration
+	application                          = "moses"
+	Config                               sproxyd.Configuration
+	err                                  error
 )
 
 func usage() {
@@ -92,19 +96,62 @@ func checkOutdir(outDir string) (err error) {
 	return err
 }
 
+func BuildSubPagesRanges(action string, bnsRequest *bns.HttpRequest, pathname string) (string, error) {
+	var (
+		pagesranges string
+		err         error
+	)
+	/* Get the meta data of the document */
+	docmeta := bns.DocumentMetadata{}
+	if docmd, err, statusCode := bns.GetDocMetadata(bnsRequest, pathname); err == nil {
+		goLog.Trace.Println("Document Metadata=>", string(docmd))
+		if len(docmd) != 0 {
+			if err = json.Unmarshal(docmd, &docmeta); err != nil {
+				goLog.Error.Println(docmd, docmeta, err)
+				return "", err
+			}
+		} else if statusCode == 404 {
+			goLog.Warning.Printf("Document %s is not found", pathname)
+			return "", errors.New("Document not found")
+		} else {
+			goLog.Warning.Printf("Document's %s metadata is missing", pathname)
+			return "", errors.New("Document metadata is missing")
+		}
+	} else {
+		goLog.Error.Println(err)
+		return "", err
+	}
+
+	//  Compute pages ranges based on the action value
+	switch action {
+	case "Abstract":
+		for _, ranges := range docmeta.AbsRangePageNumber {
+			pagesranges += fmt.Sprintf("%s:%s,", strconv.Itoa(ranges.Start), strconv.Itoa(ranges.End))
+		}
+	case "Biblio":
+		for _, ranges := range docmeta.AbsRangePageNumber {
+			pagesranges += fmt.Sprintf("%s:%s,", strconv.Itoa(ranges.Start), strconv.Itoa(ranges.End))
+		}
+	default:
+	}
+
+	return pagesranges[0 : len(pagesranges)-1], err
+}
+
 func main() {
 
 	flag.Usage = usage
-	flag.StringVar(&action, "action", "", "<getPageMeta> <getPageType> <getDocumentMeta> <getDocumentType> <GetPageRange>")
+	flag.StringVar(&action, "action", "", "<getPageMeta> <getPageType> <getDocumentMeta> <getDocumentType> <agesRange>")
 	flag.StringVar(&config, "config", "moses-dev", "Config file")
 	flag.StringVar(&env, "env", "", "Environment")
-	flag.StringVar(&trace, "t", "0", "Trace")       // Trace
+	flag.StringVar(&trace, "trace", "0", "Trace")   // Trace
 	flag.StringVar(&test, "test", "0", "Test mode") // Test mode
 	flag.StringVar(&meta, "meta", "0", "Save object meta in output Directory")
 	flag.StringVar(&image, "image", "0", "Save object image  type in output Directory")
-	flag.StringVar(&testname, "T", "getDoc", "") // Test name
+	flag.StringVar(&runname, "runname", "", "") // Test name
 	flag.StringVar(&pn, "pn", "", "Publication number")
 	flag.StringVar(&page, "page", "1", "page number")
+	flag.StringVar(&pagesranges, "pagesranges", "", "multiple pages ranges")
 	flag.StringVar(&media, "media", "tiff", "media type: tiff/png/pdf")
 	flag.StringVar(&outDir, "outDir", "", "output directory")
 
@@ -121,80 +168,36 @@ func main() {
 	if len(pn) == 0 {
 		fmt.Println("-pn <DocumentId> is missing")
 	}
-	application = "DocumentGet"
-	pid := os.Getpid()
-	hostname, _ := os.Hostname()
 	usr, _ := user.Current()
 	homeDir := usr.HomeDir
 
-	if testname != "" {
-		testname += string(os.PathSeparator)
+	// Check input parameters
+	if runname == "" {
+		runname += time.Now().Format("2006-01-02:15:04:05.00")
+	}
+	runname += string(os.PathSeparator)
+
+	/* INIT CONFIG */
+	if Config, err = sproxyd.InitConfig(config); err != nil {
+		os.Exit(12)
 	}
 
-	if len(config) != 0 {
-		if Config, err := sproxyd.GetConfig(config); err == nil {
-			logPath = path.Join(homeDir, Config.GetLogPath())
-			if len(outDir) == 0 {
-				outDir = path.Join(homeDir, Config.GetOutputDir())
-			}
+	fmt.Printf("INFO: Logs Path=>%s", logPath)
 
-			sproxyd.SetNewProxydHost(Config)
-			sproxyd.Driver = Config.GetDriver()
-			sproxyd.Env = Config.GetEnv()
-			sproxyd.SetNewTargetProxydHost(Config)
-			sproxyd.TargetDriver = Config.GetTargetDriver()
-			sproxyd.TargetEnv = Config.GetTargetEnv()
-
-			fmt.Println("INFO: Using config Hosts", sproxyd.Host, sproxyd.Driver, sproxyd.Env, logPath)
-			fmt.Println("INFO: Using config target Hosts", sproxyd.TargetHost, sproxyd.TargetDriver, sproxyd.TargetEnv, logPath)
-		} else {
-			sproxyd.HP = hostpool.NewEpsilonGreedy(sproxyd.Host, 0, &hostpool.LinearEpsilonValueCalculator{})
-			fmt.Println(err, "WARNING: Using default Hosts:", sproxyd.Host)
-		}
+	if len(outDir) == 0 {
+		outDir = path.Join(homeDir, Config.GetOutputDir())
 	}
+	logPath = path.Join(homeDir, Config.GetLogPath())
+
 	// init logging
 
-	if logPath == "" {
-		fmt.Println("WARNING: Using default logging")
-		goLog.Init(ioutil.Discard, os.Stdout, os.Stdout, os.Stderr)
-	} else {
-
-		// mkAll dir
-		logPath = logPath + string(os.PathSeparator) + testname
-		if !file.Exist(logPath) {
-			_ = os.MkdirAll(logPath, 0755)
-		}
-		traceLog := logPath + application + "_trace.log"
-		infoLog := logPath + application + "_info.log"
-		warnLog := logPath + application + "_warning.log"
-		errLog := logPath + application + "_error.log"
-
-		trf, err1 := os.OpenFile(traceLog, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0744)
-		inf, err2 := os.OpenFile(infoLog, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0744)
-		waf, err3 := os.OpenFile(warnLog, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0744)
-		erf, err4 := os.OpenFile(errLog, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0744)
-
+	if defaut, trf, inf, waf, erf := goLog.InitLog(logPath, runname, application, action, Trace); !defaut {
 		defer trf.Close()
 		defer inf.Close()
 		defer waf.Close()
 		defer erf.Close()
-
-		if err1 != nil || err2 != nil || err3 != nil || err4 != nil {
-			goLog.Init(ioutil.Discard, os.Stdout, os.Stdout, os.Stderr)
-			goLog.Warning.Println(err1, err2, err3, err3)
-			goLog.Warning.Println(hostname, pid, "Using default logging")
-		} else {
-			if trace == "0" {
-				goLog.Init(ioutil.Discard, io.Writer(inf), io.Writer(waf), io.Writer(erf))
-
-			} else {
-				goLog.Init(io.Writer(trf), io.Writer(inf), io.Writer(waf), io.Writer(erf))
-				goLog.Trace.Println(hostname, pid, "Start", application, action)
-			}
-		}
 	}
 
-	//goLog.Init0(logPath, testname, application, action, Trace)
 	directory.SetCPU("100%")
 	client := &http.Client{}
 	start := time.Now()
@@ -203,11 +206,6 @@ func main() {
 		env = sproxyd.Env
 	}
 	pathname := env + "/" + pn
-
-	if action == "copyObject" {
-		action = "getObject"
-		CopyObject = true
-	}
 
 	bnsRequest := bns.HttpRequest{
 		Hspool: sproxyd.HP,
@@ -220,7 +218,7 @@ func main() {
 		Meta = true
 		pathname = pathname + "/" + page
 		// bnsRequest.Path = pathname
-		if pagemd, err := bns.GetPageMetadata(&bnsRequest, pathname); err == nil {
+		if pagemd, err, _ := bns.GetPageMetadata(&bnsRequest, pathname); err == nil {
 			writeMeta(outDir, page, pagemd)
 		} else {
 			goLog.Error.Println(err)
@@ -231,17 +229,19 @@ func main() {
 		// the document's  metatadata is the metadata the object given <pathname>
 		// bnsRequest.Path = pathname
 		Meta = true
-		if docmd, err := bns.GetDocMetadata(&bnsRequest, pathname); err == nil {
+		if docmd, err, statusCode := bns.GetDocMetadata(&bnsRequest, pathname); err == nil {
 			goLog.Info.Println("Document Metadata=>\n", string(docmd))
 			if len(docmd) != 0 {
 				docmeta := bns.DocumentMetadata{}
 				if err := json.Unmarshal(docmd, &docmeta); err != nil {
-					goLog.Error.Println(err)
+					goLog.Error.Println(err, docmd, &docmeta)
 				} else {
 					writeMeta(outDir, "", docmd)
 				}
+			} else if statusCode == 404 {
+				goLog.Warning.Printf("Document %s is not found", pathname)
 			} else {
-				goLog.Error.Println(pathname, "Document Metadata is missing")
+				goLog.Warning.Printf("Document's %s metadata is missing", pathname)
 			}
 		} else {
 			goLog.Error.Println(err)
@@ -251,19 +251,19 @@ func main() {
 	case "getDocumentType":
 		docmeta := bns.DocumentMetadata{}
 
-		if docmd, err := bns.GetDocMetadata(&bnsRequest, pathname); err == nil {
+		if docmd, err, statusCode := bns.GetDocMetadata(&bnsRequest, pathname); err == nil {
 			goLog.Trace.Println("Document Metadata=>", string(docmd))
 			if len(docmd) != 0 {
-
 				if err := json.Unmarshal(docmd, &docmeta); err != nil {
-					goLog.Error.Println(docmeta)
-					goLog.Error.Println(err)
+					goLog.Error.Println(docmd, docmeta, err)
 					os.Exit(2)
 				} else {
 					writeMeta(outDir, "", docmd)
 				}
+			} else if statusCode == 404 {
+				goLog.Warning.Printf("Document %s is not found", pathname)
 			} else {
-				goLog.Error.Println(pathname, "Document Metadata is missing")
+				goLog.Warning.Printf("Document's %s metadata is missing", pathname)
 			}
 		} else {
 			goLog.Error.Println(err)
@@ -272,6 +272,7 @@ func main() {
 
 		// build []urls of pages  of the document to be fecthed
 		num := docmeta.TotalPage
+
 		urls := make([]string, num, num)
 
 		getHeader := map[string]string{}
@@ -282,33 +283,90 @@ func main() {
 		}
 
 		bnsRequest.Urls = urls
-
 		sproxyResponses := bns.AsyncHttpGetpageType(&bnsRequest)
-
-		// AsyncHttpGetPageType should already  close [defer resp.Body.Clsoe()] all open connections
-
-		bnsResponses := make([]bns.BnsResponse, num, num)
-		// var pagemd []byte
+		bnsResponses := make([]bns.BnsResponseLi, num, num)
 
 		for i, v := range sproxyResponses {
 			if err := v.Err; err == nil {
 				n++
 				resp := v.Response
 				body := *v.Body
-				/*
-					patha := strings.Split(resp.Request.URL.Path, "/")
-					page = patha[len(patha)-1]
-				*/
-				bnsResponse := bns.BuildBnsResponse(resp, getHeader["Content-Type"], &body)
+				bnsResponse := bns.BuildBnsResponseLi(resp, getHeader["Content-Type"], &body)
 				bnsResponses[i] = bnsResponse
-				page := bnsResponse.PageNumber
-
+				page := bnsResponse.Page
+				Page := "p" + strconv.Itoa(page)
 				if Image {
-					writeImage(outDir, page, media, &bnsResponse.Image)
+					writeImage(outDir, Page, media, bnsResponse.Image)
 				}
 				if Meta {
-					writeMeta(outDir, page, bnsResponse.Pagemd)
+					writeMeta(outDir, Page, bnsResponse.Pagemd)
 				}
+				defer resp.Body.Close()
+
+			}
+		}
+		// Sort the bnsResponse array by page number
+		slice.Sort(bnsResponses[:], func(i, j int) bool {
+			return bnsResponses[i].Page < bnsResponses[j].Page
+		})
+	case "PagesRanges", "Abstract", "Descrition", "Claims", "Drawings", "Citations", "DNASequence", "Biblio":
+
+		var (
+			Page   string
+			pagesa []string
+		)
+		if action == "getPagesRanges" {
+			// pagesranges := "5:7,17:25"
+			pagesa, _ = bns.BuildPagesRanges(pagesranges)
+		} else {
+			pagesranges, _ = BuildSubPagesRanges(action, &bnsRequest, pathname)
+			pagesa, _ = bns.BuildPagesRanges(pagesranges)
+		}
+		num := len(pagesa)
+		urls := make([]string, num, num)
+		getHeader := map[string]string{}
+		getHeader["Content-Type"] = "image/" + strings.ToLower(media)
+
+		for i, page := range pagesa {
+			urls[i] = pathname + "/p" + page
+		}
+
+		bnsRequest.Urls = urls
+		sproxyResponses := bns.AsyncHttpGetpageType(&bnsRequest)
+		bnsResponses := make([]bns.BnsResponseLi, num, num)
+
+		for i, v := range sproxyResponses {
+			if err := v.Err; err == nil {
+				n++
+				resp := v.Response
+				body := *v.Body
+				bnsResponse := bns.BuildBnsResponseLi(resp, getHeader["Content-Type"], &body)
+				bnsResponses[i] = bnsResponse
+				//page = bnsResponse.Page
+				// Page = "p" + strconv.Itoa(page)
+				/*
+					if Image {
+						writeImage(outDir, Page, media, bnsResponse.Image)
+					}
+					if Meta {
+						writeMeta(outDir, Page, bnsResponse.Pagemd)
+					}
+				*/
+				defer resp.Body.Close()
+
+			}
+		}
+		// Sort the bnsResponse array by page number
+		slice.Sort(bnsResponses[:], func(i, j int) bool {
+			return bnsResponses[i].Page < bnsResponses[j].Page
+		})
+		for _, bnsResponse := range bnsResponses {
+			Page = "p" + strconv.Itoa(bnsResponse.Page)
+			if Image {
+				writeImage(outDir, Page, media, bnsResponse.Image)
+			}
+			if Meta {
+				writeMeta(outDir, Page, bnsResponse.Pagemd)
 			}
 		}
 
@@ -317,22 +375,25 @@ func main() {
 			err           error
 			encoded_docmd string
 			docmd         []byte
+			statusCode    int
 		)
 		media = "binary"
 		url := pathname
 
 		// Get the document metadata
-		if encoded_docmd, err = bns.GetEncodedMetadata(&bnsRequest, url); err == nil {
+		if encoded_docmd, err, statusCode = bns.GetEncodedMetadata(&bnsRequest, url); err == nil {
 			if len(encoded_docmd) > 0 {
 				if docmd, err = base64.Decode64(encoded_docmd); err != nil {
 					goLog.Error.Println(err)
 					os.Exit(2)
 				}
 				goLog.Trace.Println("Document Metadata=>", string(docmd))
+			} else if statusCode == 404 {
+				goLog.Error.Printf("Document %s is not found", pathname)
 			} else {
-				goLog.Error.Println("Metadata is missing for ", pathname)
-				os.Exit(2)
+				goLog.Error.Printf("Document's %s metadata is missing", pathname)
 			}
+
 		} else {
 			goLog.Error.Println(err)
 			os.Exit(2)
@@ -366,11 +427,6 @@ func main() {
 				n++
 				resp := v.Response
 				body := *v.Body
-				/*
-					patha := strings.Split(resp.Request.URL.Path, "/")
-					page = patha[len(patha)-1]
-					usermd := resp.Header["X-Scal-Usermd"][0]
-				*/
 				bnsResponse := bns.BuildBnsResponse(resp, getHeader["Content-Type"], &body) // bnsImage is a Go structure
 				page := bnsResponse.PageNumber
 
