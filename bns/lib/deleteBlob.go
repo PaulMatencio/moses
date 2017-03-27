@@ -10,16 +10,17 @@ import (
 
 func DeleteBlob(bnsRequest *HttpRequest, url string) (error, int) {
 
-	// deleteHeader := map[string]string{}
-	err := error(nil)
-	var resp *http.Response
-	start := time.Now()
-	var elapse time.Duration
-	sproxydRequest := sproxyd.HttpRequest{
-		Hspool: bnsRequest.Hspool,
-		Client: bnsRequest.Client,
-		Path:   url,
-	}
+	var (
+		resp           *http.Response
+		start          = time.Now()
+		elapse         time.Duration
+		err            error
+		sproxydRequest = sproxyd.HttpRequest{
+			Hspool: bnsRequest.Hspool,
+			Client: bnsRequest.Client,
+			Path:   url,
+		}
+	)
 
 	// if resp, err = sproxyd.DeleteObject(hspool, client, path); err != nil {
 	if resp, err = sproxyd.Deleteobject(&sproxydRequest); err != nil {
@@ -45,14 +46,15 @@ func DeleteBlob(bnsRequest *HttpRequest, url string) (error, int) {
 
 func AsyncHttpDeleteBlob(bnsRequest *HttpRequest, url string) *sproxyd.HttpResponse {
 
-	ch := make(chan *sproxyd.HttpResponse)
-	sproxydResponse := &sproxyd.HttpResponse{}
-	sproxydRequest := sproxyd.HttpRequest{
-		Hspool: bnsRequest.Hspool,
-		Client: &http.Client{},
-		Path:   url,
-	}
-
+	var (
+		ch              = make(chan *sproxyd.HttpResponse)
+		sproxydResponse = &sproxyd.HttpResponse{}
+		sproxydRequest  = sproxyd.HttpRequest{
+			Hspool: bnsRequest.Hspool,
+			Client: &http.Client{},
+			Path:   url,
+		}
+	)
 	if len(url) == 0 {
 		return sproxydResponse
 	}

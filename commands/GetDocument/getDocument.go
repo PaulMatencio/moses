@@ -1,6 +1,5 @@
 package main
 
-/*   ./DocumentGet  -action getPage -media pdf   -page p3  -pn /HR/P20020309/A2 -t 1   */
 import (
 	directory "directory/lib"
 	"encoding/json"
@@ -27,7 +26,7 @@ import (
 )
 
 var (
-	action, config, env, logPath, outDir, runname,
+	action, config, env, logPath, outDir, runname, subpages,
 	hostname, pn, page, trace, test, meta, image, media, pagesranges string
 	Trace, Meta, Image, CopyObject, Test bool
 	pid                                  int
@@ -103,26 +102,6 @@ func BuildSubPagesRanges(action string, bnsRequest *bns.HttpRequest, pathname st
 	)
 	/* Get the meta data of the document */
 	docmeta := bns.DocumentMetadata{}
-	/*
-		if docmd, err, statusCode := bns.GetDocMetadata(bnsRequest, pathname); err == nil {
-			goLog.Trace.Println("Document Metadata=>", string(docmd))
-			if len(docmd) != 0 {
-				if err = json.Unmarshal(docmd, &docmeta); err != nil {
-					goLog.Error.Println(docmd, docmeta, err)
-					return "", err
-				}
-			} else if statusCode == 404 {
-				goLog.Warning.Printf("Document %s is not found", pathname)
-				return "", errors.New("Document not found")
-			} else {
-				goLog.Warning.Printf("Document's %s metadata is missing", pathname)
-				return "", errors.New("Document metadata is missing")
-			}
-		} else {
-			goLog.Error.Println(err)
-			return "", err
-		}
-	*/
 	if err = docmeta.GetMetadata(bnsRequest, pathname); err != nil {
 		//  Compute pages ranges based on the action value
 		pagesranges = docmeta.GetPagesRanges(action)
@@ -134,7 +113,7 @@ func BuildSubPagesRanges(action string, bnsRequest *bns.HttpRequest, pathname st
 func main() {
 
 	flag.Usage = usage
-	flag.StringVar(&action, "action", "", "<getPageMeta> <getPageType> <getDocumentMeta> <getDocumentType> <agesRange>")
+	flag.StringVar(&action, "action", "", "<getPageMeta> <getPageType> <getDocumentMeta> <getDocumentType> <PagesRanges> <Subpages>")
 	flag.StringVar(&config, "config", "moses-dev", "Config file")
 	flag.StringVar(&env, "env", "", "Environment")
 	flag.StringVar(&trace, "trace", "0", "Trace")   // Trace
@@ -145,6 +124,7 @@ func main() {
 	flag.StringVar(&pn, "pn", "", "Publication number")
 	flag.StringVar(&page, "page", "1", "page number")
 	flag.StringVar(&pagesranges, "pagesranges", "", "multiple pages ranges")
+	flag.StringVar(&subpages, "subpages", "biblio", "multiple pages ranges")
 	flag.StringVar(&media, "media", "tiff", "media type: tiff/png/pdf")
 	flag.StringVar(&outDir, "outDir", "", "output directory")
 

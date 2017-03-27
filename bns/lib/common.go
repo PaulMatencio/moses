@@ -4,11 +4,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	goLog "moses/user/goLog"
 	"net/http"
 	"os"
 	"strconv"
-
-	goLog "moses/user/goLog"
 
 	hostpool "github.com/bitly/go-hostpool"
 )
@@ -124,8 +123,29 @@ func (docmeta *DocumentMetadata) Decode(filename string) error {
 	}
 }
 
+// Get total number of pages of a document
+func (usermd *DocumentMetadata) GetPageNumber() (int, error) {
+	if page := usermd.TotalPage; page > 0 {
+		return usermd.TotalPage, nil
+	} else {
+		return 0, errors.New("Page number invalid")
+	}
+}
+
+// Get  the publication date of a document
+func (usermd *DocumentMetadata) GetPubDate() (Date, error) {
+	date := Date{}
+	err := error(nil)
+	if usermd.PubDate != "" {
+		date, err = ParseDate(usermd.PubDate)
+	} else {
+		err = errors.New("no Publication date")
+	}
+	return date, err
+}
+
 func (docmeta *DocumentMetadata) GetPagesRanges(section string) string {
-	var pagesranges string /* px:py,Pa:pb,Pc:pd */
+	var pagesranges string
 	switch section {
 	case "Abstract":
 		for _, ranges := range docmeta.AbsRangePageNumber {

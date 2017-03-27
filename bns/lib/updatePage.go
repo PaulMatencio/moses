@@ -11,12 +11,14 @@ import (
 	hostpool "github.com/bitly/go-hostpool"
 )
 
-//func UpdatePage(client *http.Client, path string, img *bytes.Buffer, usermd []byte) (error, time.Duration) {
 func UpdatePage(hspool hostpool.HostPool, client *http.Client, path string, img *bytes.Buffer, putheader map[string]string) (error, time.Duration) {
-	err := error(nil)
-	var resp *http.Response
-	start := time.Now()
-	var elapse time.Duration
+
+	var (
+		err    = error(nil)
+		resp   *http.Response
+		start  = time.Now()
+		elapse time.Duration
+	)
 	// defer resp.Body.Close()
 	if resp, err = sproxyd.UpdObject(hspool, client, path, img.Bytes(), putheader); err != nil {
 		goLog.Error.Println(err)
@@ -41,17 +43,13 @@ func UpdatePage(hspool hostpool.HostPool, client *http.Client, path string, img 
 }
 
 func Updatepage(hspool hostpool.HostPool, client *http.Client, path string, img *bytes.Buffer, putheader map[string]string) (error, time.Duration) {
-	/*
-		putheader := map[string]string{
-			"Usermd":       encoded_usermd := base64.Encode64(usermd),
-			"Content-Type": "image/tiff",
-		}
-	*/
-	// url:= base_url+string(pub)+docid+string(kc)+"_"+string(pagenum)
-	err := error(nil)
-	var resp *http.Response
-	start := time.Now()
-	var elapse time.Duration
+
+	var (
+		err    = error(nil)
+		resp   *http.Response
+		start  = time.Now()
+		elapse time.Duration
+	)
 
 	if resp, err = sproxyd.UpdObject(hspool, client, path, img.Bytes(), putheader); err != nil {
 		goLog.Error.Println(err)
@@ -77,10 +75,15 @@ func Updatepage(hspool hostpool.HostPool, client *http.Client, path string, img 
 
 func AsyncHttpUpdates(hspool hostpool.HostPool, urls []string, bufa [][]byte, headera []map[string]string) []*sproxyd.HttpResponse {
 
-	ch := make(chan *sproxyd.HttpResponse)
-	responses := []*sproxyd.HttpResponse{}
-	treq := 0
-	client := &http.Client{}
+	var (
+		ch        = make(chan *sproxyd.HttpResponse)
+		responses = []*sproxyd.HttpResponse{}
+		treq      = 0
+		client    = &http.Client{
+			Timeout: sproxyd.WriteTimeout,
+		}
+	)
+
 	for k, url := range urls {
 
 		if len(url) == 0 {

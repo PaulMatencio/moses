@@ -25,11 +25,16 @@ import (
 
 func AsyncUpdatePns(pns []string, srcEnv string, targetEnv string) []*CopyResponse {
 
-	SetCPU("100%")
-	pid := os.Getpid()
-	hostname, _ := os.Hostname()
-	start := time.Now()
-	media := "binary"
+	var (
+		pid           = os.Getpid()
+		hostname, _   = os.Hostname()
+		start         = time.Now()
+		media         = "binary"
+		ch            = make(chan *CopyResponse)
+		copyResponses = []*CopyResponse{}
+		treq          = 0
+	)
+
 	if len(srcEnv) == 0 {
 		srcEnv = sproxyd.Env
 	}
@@ -37,23 +42,21 @@ func AsyncUpdatePns(pns []string, srcEnv string, targetEnv string) []*CopyRespon
 		targetEnv = sproxyd.TargetEnv
 	}
 
-	ch := make(chan *CopyResponse)
-	copyResponses := []*CopyResponse{}
-	treq := 0
+	SetCPU("100%")
 
-	//  launch concurrent requets
 	for _, pn := range pns {
 
-		srcPath := srcEnv + "/" + pn
-		dstPath := targetEnv + "/" + pn
-		srcUrl := srcPath
-		dstUrl := dstPath
-
-		bnsRequest := HttpRequest{
-			Hspool: sproxyd.HP, // source sproxyd servers IP address and ports
-			Client: &http.Client{},
-			Media:  media,
-		}
+		var (
+			srcPath    = srcEnv + "/" + pn
+			dstPath    = targetEnv + "/" + pn
+			srcUrl     = srcPath
+			dstUrl     = dstPath
+			bnsRequest = HttpRequest{
+				Hspool: sproxyd.HP, // source sproxyd servers IP address and ports
+				Client: &http.Client{},
+				Media:  media,
+			}
+		)
 
 		go func(srcUrl string, dstUrl string) {
 
@@ -125,7 +128,7 @@ func AsyncUpdatePns(pns []string, srcEnv string, targetEnv string) []*CopyRespon
 			getHeader["Content-Type"] = "application/binary"
 			for i := 0; i < num; i++ {
 				urls[i] = srcPath + "/p" + strconv.Itoa(i+1)
-				// dstUrls[i] = dstPath + "/p" + strconv.Itoa(i+1)
+
 			}
 			bnsRequest.Urls = urls
 			bnsRequest.Hspool = sproxyd.HP // Set source sproxyd servers

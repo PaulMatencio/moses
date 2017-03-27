@@ -47,6 +47,8 @@ var (
 	defaultConfig                                 string = "moses-dev"
 	start, start0                                 time.Time
 	numloop, Numpns, NumpnsDone                   int = 0, 0, 0
+	usr, _                                            = user.Current()
+	homeDir                                           = usr.HomeDir
 )
 
 func usage() {
@@ -107,11 +109,10 @@ func main() {
 	sproxyd.Test, _ = strconv.ParseBool(test)
 	Doconly, _ = strconv.ParseBool(doconly)
 	Cpn, _ = strconv.Atoi(cpn)
-	usr, _ := user.Current()
-	homeDir := usr.HomeDir
 
 	// Check input parameters
 	if runname == "" {
+		runname = action + "_"
 		runname += time.Now().Format("2006-01-02:15:04:05.00")
 	}
 	runname += string(os.PathSeparator)
@@ -130,7 +131,7 @@ func main() {
 	if Config, err = sproxyd.InitConfig(config); err != nil {
 		os.Exit(12)
 	}
-
+	logPath = path.Join(homeDir, Config.GetLogPath())
 	fmt.Printf("INFO: Logs Path=>%s", logPath)
 
 	// init logging
@@ -141,10 +142,12 @@ func main() {
 		defer erf.Close()
 	}
 
-	pna := strings.Split(pns, ",")
-	start0 := time.Now()
-	start := start0
-	stop := false
+	var (
+		pna    = strings.Split(pns, ",")
+		start0 = time.Now()
+		start  = start0
+		stop   = false
+	)
 
 	if len(pns) == 0 {
 		for !stop {

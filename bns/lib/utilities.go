@@ -225,45 +225,6 @@ func CopyBlobTest(bnsRequest *HttpRequest, url string, buf []byte, header map[st
 }
 */
 
-// UPdate blob
-
-func UpdateBlob(bnsRequest *HttpRequest, url string, buf []byte, header map[string]string) {
-
-	pid := os.Getpid()
-	hostname, _ := os.Hostname()
-	action := "UpdateBlob"
-	result := AsyncHttpUpdateBlob(bnsRequest, url, buf, header)
-	if sproxyd.Test {
-		goLog.Trace.Printf("URL => %s \n", result.Url)
-		return
-	}
-	if result.Err != nil {
-		goLog.Trace.Printf("%s %d %s status: %s\n", hostname, pid, result.Url, result.Err)
-		return
-	}
-	resp := result.Response
-	if resp != nil {
-		goLog.Trace.Printf("%s %d %s status: %s\n", hostname, pid, url,
-			result.Response.Status)
-	} else {
-		goLog.Error.Printf("%s %d %s %s %s", hostname, pid, url, action, "failed")
-	}
-
-	switch resp.StatusCode {
-	case 200:
-		goLog.Trace.Println(hostname, pid, url, resp.Status, resp.Header["X-Scal-Ring-Key"])
-
-	case 412:
-		goLog.Warning.Println(hostname, pid, url, resp.Status, "key=", resp.Header["X-Scal-Ring-Key"], "does not exist")
-
-	case 422:
-		goLog.Error.Println(hostname, pid, url, resp.Status, resp.Header["X-Scal-Ring-Status"])
-	default:
-		goLog.Warning.Println(hostname, pid, url, resp.Status)
-	}
-	resp.Body.Close()
-}
-
 func BuildBnsResponse(resp *http.Response, contentType string, body *[]byte) BnsResponse {
 
 	bnsResponse := BnsResponse{}

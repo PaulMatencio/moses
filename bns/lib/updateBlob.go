@@ -5,25 +5,67 @@ package bns
 import (
 	"fmt"
 	sproxyd "moses/sproxyd/lib"
+	goLog "moses/user/goLog"
 	"net/http"
+	"os"
 	"time"
 
 	// hostpool "github.com/bitly/go-hostpool"
 )
 
+// UPdate blob
+
+func UpdateBlob(bnsRequest *HttpRequest, url string, buf []byte, header map[string]string) {
+
+	var (
+		pid         = os.Getpid()
+		action      = "UpdateBlob"
+		hostname, _ = os.Hostname()
+		result      = AsyncHttpUpdateBlob(bnsRequest, url, buf, header)
+	)
+
+	if sproxyd.Test {
+		goLog.Trace.Printf("URL => %s \n", result.Url)
+		return
+	}
+	if result.Err != nil {
+		goLog.Trace.Printf("%s %d %s status: %s\n", hostname, pid, result.Url, result.Err)
+		return
+	}
+	resp := result.Response
+	if resp != nil {
+		goLog.Trace.Printf("%s %d %s status: %s\n", hostname, pid, url, result.Response.Status)
+	} else {
+		goLog.Error.Printf("%s %d %s %s %s", hostname, pid, url, action, "failed")
+	}
+
+	switch resp.StatusCode {
+	case 200:
+		goLog.Trace.Println(hostname, pid, url, resp.Status, resp.Header["X-Scal-Ring-Key"])
+
+	case 412:
+		goLog.Warning.Println(hostname, pid, url, resp.Status, "key=", resp.Header["X-Scal-Ring-Key"], "does not exist")
+
+	case 422:
+		goLog.Error.Println(hostname, pid, url, resp.Status, resp.Header["X-Scal-Ring-Status"])
+	default:
+		goLog.Warning.Println(hostname, pid, url, resp.Status)
+	}
+	resp.Body.Close()
+}
+
 func AsyncHttpUpdateBlob(bnsRequest *HttpRequest, url string, buf []byte, header map[string]string) *sproxyd.HttpResponse {
 
-	ch := make(chan *sproxyd.HttpResponse)
-	// create a sproxyd request response
-	sproxydResponse := &sproxyd.HttpResponse{}
-
-	// create a sproxyd request structure
-	sproxydRequest := sproxyd.HttpRequest{
-		Hspool:    bnsRequest.Hspool,
-		Client:    bnsRequest.Client,
-		Path:      url,
-		ReqHeader: header,
-	}
+	var (
+		ch              = make(chan *sproxyd.HttpResponse)
+		sproxydResponse = &sproxyd.HttpResponse{}
+		sproxydRequest  = sproxyd.HttpRequest{
+			Hspool:    bnsRequest.Hspool,
+			Client:    bnsRequest.Client,
+			Path:      url,
+			ReqHeader: header,
+		}
+	)
 
 	// asynchronously write the object
 	go func(url string) {
@@ -54,17 +96,20 @@ func AsyncHttpUpdateBlob(bnsRequest *HttpRequest, url string, buf []byte, header
 
 func AsyncHttpUpdateBlobs(bnsResponses []BnsResponse) []*sproxyd.HttpResponse {
 
-	ch := make(chan *sproxyd.HttpResponse)
-	sproxydResponses := []*sproxyd.HttpResponse{}
-
-	treq := 0
+	var (
+		ch               = make(chan *sproxyd.HttpResponse)
+		sproxydResponses = []*sproxyd.HttpResponse{}
+		treq             = 0
+	)
 	for k, v := range bnsResponses {
 		treq += 1
 		url := sproxyd.TargetEnv + "/" + v.BnsId + "/" + v.PageNumber
 		image := bnsResponses[k].Image
 		usermd := bnsResponses[k].Usermd
 		pagemd := bnsResponses[k].Pagemd
-		client := &http.Client{}
+		client := &http.Client{
+			Timeout: sproxyd.WriteTimeout,
+		}
 		go func(url string, image []byte, usermd string, pagemd []byte) {
 			var err error
 			var resp *http.Response

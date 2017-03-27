@@ -3,14 +3,10 @@ package bns
 
 import (
 	"encoding/json"
-	"errors"
+
 	"io/ioutil"
 	goLog "moses/user/goLog"
-	// "net/http"
-	// "strconv"
 	"strings"
-
-	// hostpool "github.com/bitly/go-hostpool"
 )
 
 func GetPageMetadata(bnsRequest *HttpRequest, url string) ([]byte, error, int) {
@@ -20,31 +16,6 @@ func GetPageMetadata(bnsRequest *HttpRequest, url string) ([]byte, error, int) {
 func GetDocMetadata(bnsRequest *HttpRequest, url string) ([]byte, error, int) {
 	return GetMetadata(bnsRequest, url)
 }
-
-// Get total number of pages of a document
-
-func (usermd *DocumentMetadata) GetPageNumber() (int, error) {
-	return usermd.TotalPage, nil
-
-}
-
-// Get  the publication date of a document
-func (usermd *DocumentMetadata) GetPubDate() (Date, error) {
-	date := Date{}
-	err := error(nil)
-	if usermd.PubDate != "" {
-		date, err = ParseDate(usermd.PubDate)
-	} else {
-		err = errors.New("no Publication date")
-	}
-	return date, err
-}
-
-/*
-func (usermd *Documentmeta) GetDrawUpDate() string {
-	return usermd.
-}
-*/
 
 func BuildSubtable(content string, index string) []int {
 	page_tab := make([]int, 0, Max_page)

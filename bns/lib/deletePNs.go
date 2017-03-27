@@ -18,27 +18,25 @@ import (
 
 func AsyncDeletePns(pns []string, targetEnv string) []*CopyResponse {
 
-	pid := os.Getpid()
-	hostname, _ := os.Hostname()
-	SetCPU("100%")
 	var (
-		media      = "binary"
-		statusCode int
-		treq       = 0
+		pid           = os.Getpid()
+		hostname, _   = os.Hostname()
+		ch            = make(chan *CopyResponse)
+		copyResponses = []*CopyResponse{}
+		media         = "binary"
+		statusCode    int
+		treq          = 0
 	)
 
 	if len(targetEnv) == 0 {
 		targetEnv = sproxyd.TargetEnv
 	}
-
-	ch := make(chan *CopyResponse)
-	copyResponses := []*CopyResponse{}
+	SetCPU("100%")
 
 	//  launch concurrent requets
 	for _, pn := range pns {
 		targetPath := targetEnv + "/" + pn
 		targetUrl := targetPath
-
 		//
 		//  Read the PN 's metadata  from the source RING
 		//  The SOURCE RING may be the same as the DESTINATION RING
@@ -54,7 +52,6 @@ func AsyncDeletePns(pns []string, targetEnv string) []*CopyResponse {
 		goLog.Info.Println("Deleting", targetUrl)
 
 		go func(targetUrl string) {
-
 			var (
 				docmd                                         []byte
 				encoded_docmd                                 string
@@ -103,8 +100,6 @@ func AsyncDeletePns(pns []string, targetEnv string) []*CopyResponse {
 				return
 			}
 
-			// urls := make([]string, num, num)
-
 			//  DELETE THE DOCUMENT ON THE TARGET ENVIRONMENT
 
 			bnsRequest = HttpRequest{}
@@ -118,7 +113,6 @@ func AsyncDeletePns(pns []string, targetEnv string) []*CopyResponse {
 			for i := 0; i < num; i++ {
 				bnsRequest.Urls[i] = targetUrl + "/p" + strconv.Itoa(i+1)
 			}
-			// fmt.Println(bnsRequest.Urls)
 
 			sproxydResponses := AsyncHttpDeleteBlobs(&bnsRequest)
 			bnsResponses := make([]BnsResponse, num, num)

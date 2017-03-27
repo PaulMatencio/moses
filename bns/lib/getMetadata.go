@@ -9,10 +9,7 @@ import (
 	"time"
 )
 
-// new function
 func GetMetadata(bnsRequest *HttpRequest, url string) ([]byte, error, int) {
-	// client := &http.Client{}
-	// getHeader := map[string]string{}
 
 	var (
 		usermd []byte

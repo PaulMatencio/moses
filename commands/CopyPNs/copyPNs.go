@@ -18,10 +18,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	/*
-		"io"
-		"io/ioutil"
-	*/
 	bns "moses/bns/lib"
 	sproxyd "moses/sproxyd/lib"
 	file "moses/user/files/lib"
@@ -32,8 +28,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	// hostpool "github.com/bitly/go-hostpool"
 )
 
 var (
@@ -44,12 +38,14 @@ var (
 	pid, Cpn                                      int
 	timeout, duration                             time.Duration
 	scanner                                       *bufio.Scanner
-	action, application                           string = "CopyPNs", "Moses"
-	numloop, Numpns, NumpnsDone                   int    = 0, 0, 0
+	action, application                           = "CopyPNs", "Moses"
+	numloop, Numpns, NumpnsDone                   = 0, 0, 0
 	Config                                        sproxyd.Configuration
 	err                                           error
-	defaultConfig                                 string = "moses-dev"
+	defaultConfig                                 = "moses-dev"
 	start, start0                                 time.Time
+	usr, _                                        = user.Current()
+	homeDir                                       = usr.HomeDir
 )
 
 func usage() {
@@ -115,11 +111,10 @@ func main() {
 	sproxyd.Test, _ = strconv.ParseBool(test)
 	Doconly, _ = strconv.ParseBool(doconly)
 	Cpn, _ = strconv.Atoi(cpn)
-	usr, _ := user.Current()
-	homeDir := usr.HomeDir
 
 	// Check input parameters
 	if runname == "" {
+		runname = action + "_"
 		runname += time.Now().Format("2006-01-02:15:04:05.00")
 	}
 	runname += string(os.PathSeparator)
@@ -137,26 +132,25 @@ func main() {
 	if Config, err = sproxyd.InitConfig(config); err != nil {
 		os.Exit(12)
 	}
-
+	logPath = path.Join(homeDir, Config.GetLogPath())
 	fmt.Printf("INFO: Logs Path=>%s", logPath)
 
 	if len(outDir) == 0 {
 		outDir = path.Join(homeDir, Config.GetOutputDir())
 	}
-	logPath = path.Join(homeDir, Config.GetLogPath())
 
 	// init logging
-
 	if defaut, trf, inf, waf, erf := goLog.InitLog(logPath, runname, application, action, Trace); !defaut {
 		defer trf.Close()
 		defer inf.Close()
 		defer waf.Close()
 		defer erf.Close()
 	}
-
-	pna := strings.Split(pns, ",")
-	start0 = time.Now()
-	stop := false
+	var (
+		pna    = strings.Split(pns, ",")
+		start0 = time.Now()
+		stop   = false
+	)
 
 	if len(pns) == 0 {
 		//  Take  the PNs from a file

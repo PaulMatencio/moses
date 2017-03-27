@@ -13,25 +13,22 @@ import (
 	// hostpool "github.com/bitly/go-hostpool"
 )
 
-// new function
-
 func GetBlob(sproxydRequest *sproxyd.HttpRequest) (*http.Response, error) {
 	sproxydRequest.ReqHeader = map[string]string{}
 	return sproxyd.Getobject(sproxydRequest)
 }
 
-// new function
-
 func AsyncHttpGetBlobs(bnsRequest *HttpRequest, getHeader map[string]string) []*sproxyd.HttpResponse {
 
-	ch := make(chan *sproxyd.HttpResponse)
-	sproxydResponses := []*sproxyd.HttpResponse{}
-	sproxydRequest := sproxyd.HttpRequest{
-		Hspool:    bnsRequest.Hspool,
-		ReqHeader: getHeader,
-	}
-
-	treq := 0
+	var (
+		ch               = make(chan *sproxyd.HttpResponse)
+		sproxydResponses = []*sproxyd.HttpResponse{}
+		sproxydRequest   = sproxyd.HttpRequest{
+			Hspool:    bnsRequest.Hspool,
+			ReqHeader: getHeader,
+		}
+		treq = 0
+	)
 	fmt.Printf("\n")
 	for _, url := range bnsRequest.Urls {
 		/* just in case, the requested page number is beyond the max number of pages */
@@ -57,11 +54,10 @@ func AsyncHttpGetBlobs(bnsRequest *HttpRequest, getHeader map[string]string) []*
 			ch <- &sproxyd.HttpResponse{url, resp, &body, err}
 		}(url)
 	}
-	// wait for http response  message
+	// wait for  response  message
 	for {
 		select {
 		case r := <-ch:
-			// fmt.Printf("%s was fetched\n", r.url)
 			sproxydResponses = append(sproxydResponses, r)
 			if len(sproxydResponses) == treq /*len(urls)*/ {
 				return sproxydResponses

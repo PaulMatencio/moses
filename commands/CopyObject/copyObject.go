@@ -34,10 +34,17 @@ import (
 )
 
 var (
-	action, config, srcEnv, targetEnv, logPath, outDir, application, testname, hostname, pn, page, trace, test, meta, image, media, doconly string
-	Trace, Meta, Image, CopyObject, Test, Doconly                                                                                           bool
-	pid                                                                                                                                     int
-	timeout                                                                                                                                 time.Duration
+	config, srcEnv, targetEnv, logPath, outDir, testname,
+	pn, page, trace, test, meta, image, media, doconly string
+	Trace, Meta, Image, CopyObject, Test, Doconly bool
+	timeout                                       time.Duration
+	action                                        = "CopyObject"
+	application                                   = "copyObject"
+	defaultConfig                                 = "moses-dev"
+	pid                                           = os.Getpid()
+	hostname, _                                   = os.Hostname()
+	usr, _                                        = user.Current()
+	homeDir                                       = usr.HomeDir
 )
 
 func usage() {
@@ -55,7 +62,6 @@ func usage() {
 		"\nThe <default config file name>:<" + default_config + "> can be changed via the -config parm  "
 
 	fmt.Println(what, usage)
-
 	flag.PrintDefaults()
 	os.Exit(2)
 }
@@ -77,7 +83,7 @@ func checkOutdir(outDir string) (err error) {
 }
 
 func main() {
-	defaultConfig := "moses-dev"
+
 	flag.Usage = usage
 	flag.StringVar(&config, "config", defaultConfig, "Config file")
 	flag.StringVar(&srcEnv, "srcEnv", "", "Environment")
@@ -95,16 +101,11 @@ func main() {
 	sproxyd.Test = Test
 	Doconly, _ = strconv.ParseBool(doconly)
 
-	action = "CopyObject"
-	application = "copyObject"
 	if len(pn) == 0 {
 		fmt.Println("Error:\n-pn <DocumentId> is missing, what Document objects do you want to copy ?")
 		usage()
 	}
-	pid := os.Getpid()
-	hostname, _ := os.Hostname()
-	usr, _ := user.Current()
-	homeDir := usr.HomeDir
+
 	if testname != "" {
 		testname += string(os.PathSeparator)
 	}

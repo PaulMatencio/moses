@@ -18,15 +18,17 @@ import (
 
 func AsyncCopyPns(pns []string, srcEnv string, targetEnv string) []*CopyResponse {
 	var (
-		duration time.Duration
-		media    string = "binary"
-		treq     int    = 0
+		duration      time.Duration
+		media         string = "binary"
+		treq          int    = 0
+		ch                   = make(chan *CopyResponse)
+		copyResponses        = []*CopyResponse{}
+		pid                  = os.Getpid()
+		hostname, _          = os.Hostname()
+		start                = time.Now()
 	)
 
 	SetCPU("100%")
-	pid := os.Getpid()
-	hostname, _ := os.Hostname()
-	start := time.Now()
 
 	if len(srcEnv) == 0 {
 		srcEnv = sproxyd.Env
@@ -35,27 +37,22 @@ func AsyncCopyPns(pns []string, srcEnv string, targetEnv string) []*CopyResponse
 		targetEnv = sproxyd.TargetEnv
 	}
 
-	ch := make(chan *CopyResponse)
-	copyResponses := []*CopyResponse{}
-
 	//  launch concurrent requets
 	for _, pn := range pns {
 
-		srcPath := srcEnv + "/" + pn
-		dstPath := targetEnv + "/" + pn
-		srcUrl := srcPath
-		dstUrl := dstPath
-
-		bnsRequest := HttpRequest{
-			Hspool: sproxyd.HP, // source sproxyd servers IP address and ports
-			Client: &http.Client{},
-			Media:  media,
-		}
-
+		var (
+			srcPath    = srcEnv + "/" + pn
+			dstPath    = targetEnv + "/" + pn
+			srcUrl     = srcPath
+			dstUrl     = dstPath
+			bnsRequest = HttpRequest{
+				Hspool: sproxyd.HP, // source sproxyd servers IP address and ports
+				Client: &http.Client{},
+				Media:  media,
+			}
+		)
 		go func(srcUrl string, dstUrl string) {
-
 			treq++
-
 			var (
 				docmd                                         []byte
 				encoded_docmd                                 string
@@ -90,6 +87,7 @@ func AsyncCopyPns(pns []string, srcEnv string, targetEnv string) []*CopyResponse
 			// convert the PN  metadata into a go structure
 			docmeta := DocumentMetadata{}
 			// docmd := bytes.Replace(docmd1, []byte(`"\n  "`), []byte(`{}`), -1)
+
 			if err := json.Unmarshal(docmd, &docmeta); err != nil {
 				goLog.Error.Println("Document metadata is invalid ", srcUrl, err)
 				goLog.Error.Println(string(docmd), docmeta)
@@ -106,29 +104,25 @@ func AsyncCopyPns(pns []string, srcEnv string, targetEnv string) []*CopyResponse
 				CopyBlob(&bnsRequest, dstUrl, buf0, header)
 			}
 
-			// num = docmeta.TotalPage
-
-			if num = docmeta.TotalPage; num <= 0 {
-				err := errors.New(pn + " Number of pages is invalid. Document Metada may be updated without pages updated")
+			if num, err = docmeta.GetPageNumber(); err != nil {
 				ch <- &CopyResponse{err, pn, num, num200}
-				return
 			}
 
-			if num = docmeta.TotalPage; num <= 0 {
-				err := errors.New(pn + " Number of pages is invalid. Document metadata is copied without pages")
-				ch <- &CopyResponse{err, pn, num, num200}
-				return
-			}
+			var (
+				urls      = make([]string, num, num)
+				getHeader = map[string]string{
+					"Content-Type": "application/binary",
+				}
+			)
 
-			urls := make([]string, num, num)
-			getHeader := map[string]string{}
-			getHeader["Content-Type"] = "application/binary"
 			for i := 0; i < num; i++ {
 				urls[i] = srcPath + "/p" + strconv.Itoa(i+1)
 			}
 			bnsRequest.Urls = urls
 			bnsRequest.Hspool = sproxyd.HP // Set source sproxyd servers
-			bnsRequest.Client = &http.Client{}
+			bnsRequest.Client = &http.Client{
+				Timeout: sproxyd.ReadTimeout,
+			}
 			// Get all the pages from the source Ring
 			sproxydResponses := AsyncHttpGetBlobs(&bnsRequest, getHeader)
 			// Build a response array of BnsResponse array to be used to update the pages  of  destination sproxyd servers
@@ -140,9 +134,7 @@ func AsyncCopyPns(pns []string, srcEnv string, targetEnv string) []*CopyResponse
 					body := *sproxydResponse.Body                                           // http response
 					bnsResponse := BuildBnsResponse(resp, getHeader["Content-Type"], &body) // bnsResponse is a Go structure
 					bnsResponses[i] = bnsResponse
-
 					resp.Body.Close() // Close the connection after BuildBnsResponse()
-
 				}
 			}
 			duration = time.Since(start)

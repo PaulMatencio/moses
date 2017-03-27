@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-	// "strings"
 
 	"bufio"
 	directory "moses/directory/lib"
@@ -25,11 +24,14 @@ import (
 )
 
 var (
-	action, lim, prefix, marker, pubdate, count, config, debug, delimiter, force, test, concurrent string
-	prefixs, markers                                                                               []string
-	Count, Debug, Delimiter, Concurrent                                                            bool
-	//Test       bool
+	lim, prefix, marker, pubdate, count, config, debug,
+	delimiter, force, test, concurrent string
+	prefixs, markers                           []string
+	Count, Debug, Delimiter, Concurrent        bool
 	maxinput, bulkindex, keys, iIndex, logPath string
+	action                                     = "GetPrefix"
+	usr, _                                     = user.Current()
+	homeDir                                    = usr.HomeDir
 )
 
 func usage() {
@@ -55,6 +57,11 @@ func main() {
 	flag.StringVar(&count, "count", "false", "Count the number")
 	flag.StringVar(&config, "config", "moses-dev", "Default Config file")
 	flag.Parse()
+	var (
+		Limit, _      = strconv.Atoi(lim)
+		Concurrent, _ = strconv.ParseBool(concurrent)
+	)
+	Count, _ = strconv.ParseBool(count)
 	if len(prefix) == 0 {
 		usage()
 	}
@@ -79,7 +86,7 @@ func main() {
 	// rotated.
 	// MaxBackups is the maximum number of old log files to retain
 	// Make sure the directory of the log file exists and the application has the write autorization
-	action := "GetPrefix"
+
 	logfile := logPath + string(os.PathSeparator) + action + "_" + iIndex + ".log"
 	l := &lumberjack.Logger{
 		Filename:   logfile,
@@ -97,9 +104,6 @@ func main() {
 		goLog.Init(os.Stdout, l, l, os.Stderr)
 	}
 
-	Limit, _ := strconv.Atoi(lim)
-	Count, _ = strconv.ParseBool(count)
-	Concurrent, _ := strconv.ParseBool(concurrent)
 	sindexd.Debug = Debug
 	sindexd.Delimiter = "/"
 	directory.Action = action
@@ -107,29 +111,26 @@ func main() {
 	if err := directory.SetCPU("100%"); err != nil {
 		goLog.Error.Println(err)
 	}
+	var (
+		start      = time.Now()
+		Ind_Specs  = directory.GetIndexSpec(iIndex)
+		response   *directory.HttpResponse
+		Nextmarker = true
 
-	start := time.Now()
-	Ind_Specs := directory.GetIndexSpec(iIndex)
-	var response *directory.HttpResponse
-	Nextmarker := true
+		pref    = "Prefixs"
+		filedir = path.Join(homeDir, pref)
+	)
 
-	usr, _ := user.Current()
-	homeDir := usr.HomeDir
-	pref := "Prefixs"
-	filedir := path.Join(homeDir, pref)
 	if !files.Exist(filedir) {
 		_ = os.MkdirAll(filedir, 0755)
 	}
 	filename := filedir + "/" + prefix
-
 	f, _ := os.Create(filename)
-
 	w := bufio.NewWriter(f)
 	for Nextmarker {
-		fmt.Println(markers)
+		//fmt.Println(markers)
 		response = directory.GetSerialPrefix(iIndex, prefix, delimiter, marker, Limit, Ind_Specs)
 		keys, nextMarker := directory.GetResponse(response)
-
 		for _, v := range keys {
 			v = v + "\n"
 			if _, err := w.WriteString(v); err != nil {
@@ -145,7 +146,6 @@ func main() {
 		marker = nextMarker
 	}
 	w.Flush()
-
 	goLog.Info.Println("Concurrent:", Concurrent, "Elasped:", time.Since(start))
 	sindexd.HP.Close()
 }
