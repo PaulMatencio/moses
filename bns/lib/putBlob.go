@@ -62,7 +62,9 @@ func AsyncHttpPutBlobs(bnsResponses []BnsResponse) []*sproxyd.HttpResponse {
 		image := bnsResponses[k].Image
 		usermd := bnsResponses[k].Usermd
 		pagemd := bnsResponses[k].Pagemd
-		client := &http.Client{}
+		client := &http.Client{
+			Timeout: sproxyd.WriteTimeout,
+		}
 		go func(url string, image []byte, usermd string, pagemd []byte) {
 			var err error
 			var resp *http.Response

@@ -186,7 +186,7 @@ func main() {
 	targetPath := targetEnv + "/" + pn
 	SrcPath := srcEnv + "/" + pn
 
-	if encoded_docmd, err = bns.GetEncodedMetadata(&bnsRequest, SrcPath); err == nil {
+	if encoded_docmd, err, _ = bns.GetEncodedMetadata(&bnsRequest, SrcPath); err == nil {
 		if docmd, err = base64.Decode64(encoded_docmd); err != nil {
 			goLog.Error.Println(err)
 			os.Exit(2)

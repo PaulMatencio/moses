@@ -39,7 +39,7 @@ var (
 
 func usage() {
 
-	usage := "DocumentGet: \n -action <action> -config  <config>, sproxyd configfile;default file is [$HOME/sproxyd/storage]\n" +
+	usage := "DocumentGet: \n -action <action> -config  <config>, sproxyd configfile;default file is [$HOME/sproxyd/moses-dev]\n" +
 		"-pn pn -page page"
 
 	fmt.Println(usage)
@@ -103,39 +103,32 @@ func BuildSubPagesRanges(action string, bnsRequest *bns.HttpRequest, pathname st
 	)
 	/* Get the meta data of the document */
 	docmeta := bns.DocumentMetadata{}
-	if docmd, err, statusCode := bns.GetDocMetadata(bnsRequest, pathname); err == nil {
-		goLog.Trace.Println("Document Metadata=>", string(docmd))
-		if len(docmd) != 0 {
-			if err = json.Unmarshal(docmd, &docmeta); err != nil {
-				goLog.Error.Println(docmd, docmeta, err)
-				return "", err
+	/*
+		if docmd, err, statusCode := bns.GetDocMetadata(bnsRequest, pathname); err == nil {
+			goLog.Trace.Println("Document Metadata=>", string(docmd))
+			if len(docmd) != 0 {
+				if err = json.Unmarshal(docmd, &docmeta); err != nil {
+					goLog.Error.Println(docmd, docmeta, err)
+					return "", err
+				}
+			} else if statusCode == 404 {
+				goLog.Warning.Printf("Document %s is not found", pathname)
+				return "", errors.New("Document not found")
+			} else {
+				goLog.Warning.Printf("Document's %s metadata is missing", pathname)
+				return "", errors.New("Document metadata is missing")
 			}
-		} else if statusCode == 404 {
-			goLog.Warning.Printf("Document %s is not found", pathname)
-			return "", errors.New("Document not found")
 		} else {
-			goLog.Warning.Printf("Document's %s metadata is missing", pathname)
-			return "", errors.New("Document metadata is missing")
+			goLog.Error.Println(err)
+			return "", err
 		}
-	} else {
-		goLog.Error.Println(err)
-		return "", err
+	*/
+	if err = docmeta.GetMetadata(bnsRequest, pathname); err != nil {
+		//  Compute pages ranges based on the action value
+		pagesranges = docmeta.GetPagesRanges(action)
 	}
 
-	//  Compute pages ranges based on the action value
-	switch action {
-	case "Abstract":
-		for _, ranges := range docmeta.AbsRangePageNumber {
-			pagesranges += fmt.Sprintf("%s:%s,", strconv.Itoa(ranges.Start), strconv.Itoa(ranges.End))
-		}
-	case "Biblio":
-		for _, ranges := range docmeta.AbsRangePageNumber {
-			pagesranges += fmt.Sprintf("%s:%s,", strconv.Itoa(ranges.Start), strconv.Itoa(ranges.End))
-		}
-	default:
-	}
-
-	return pagesranges[0 : len(pagesranges)-1], err
+	return pagesranges, err
 }
 
 func main() {
@@ -173,6 +166,7 @@ func main() {
 
 	// Check input parameters
 	if runname == "" {
+		runname = action + "_" + env + "_"
 		runname += time.Now().Format("2006-01-02:15:04:05.00")
 	}
 	runname += string(os.PathSeparator)
@@ -181,13 +175,11 @@ func main() {
 	if Config, err = sproxyd.InitConfig(config); err != nil {
 		os.Exit(12)
 	}
-
-	fmt.Printf("INFO: Logs Path=>%s", logPath)
-
 	if len(outDir) == 0 {
 		outDir = path.Join(homeDir, Config.GetOutputDir())
 	}
 	logPath = path.Join(homeDir, Config.GetLogPath())
+	fmt.Printf("INFO: Logs Path=>%s", logPath)
 
 	// init logging
 
@@ -206,7 +198,6 @@ func main() {
 		env = sproxyd.Env
 	}
 	pathname := env + "/" + pn
-
 	bnsRequest := bns.HttpRequest{
 		Hspool: sproxyd.HP,
 		Client: client,
@@ -250,26 +241,10 @@ func main() {
 
 	case "getDocumentType":
 		docmeta := bns.DocumentMetadata{}
-
-		if docmd, err, statusCode := bns.GetDocMetadata(&bnsRequest, pathname); err == nil {
-			goLog.Trace.Println("Document Metadata=>", string(docmd))
-			if len(docmd) != 0 {
-				if err := json.Unmarshal(docmd, &docmeta); err != nil {
-					goLog.Error.Println(docmd, docmeta, err)
-					os.Exit(2)
-				} else {
-					writeMeta(outDir, "", docmd)
-				}
-			} else if statusCode == 404 {
-				goLog.Warning.Printf("Document %s is not found", pathname)
-			} else {
-				goLog.Warning.Printf("Document's %s metadata is missing", pathname)
-			}
-		} else {
+		if err = docmeta.GetMetadata(&bnsRequest, pathname); err != nil {
 			goLog.Error.Println(err)
 			os.Exit(2)
 		}
-
 		// build []urls of pages  of the document to be fecthed
 		num := docmeta.TotalPage
 

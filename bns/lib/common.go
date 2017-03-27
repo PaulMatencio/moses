@@ -2,8 +2,13 @@ package bns
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
 	"os"
+	"strconv"
+
+	goLog "moses/user/goLog"
 
 	hostpool "github.com/bitly/go-hostpool"
 )
@@ -97,7 +102,6 @@ type Range struct {
 }
 
 func (docmeta *DocumentMetadata) Encode(filename string) error {
-
 	file, err := os.Create(filename)
 	if err == nil {
 		defer file.Close()
@@ -108,6 +112,7 @@ func (docmeta *DocumentMetadata) Encode(filename string) error {
 	}
 }
 
+/* Read the content of a file and convert it into a Document metadata structure   */
 func (docmeta *DocumentMetadata) Decode(filename string) error {
 	file, err := os.Open(filename)
 	if err == nil {
@@ -117,6 +122,80 @@ func (docmeta *DocumentMetadata) Decode(filename string) error {
 	} else {
 		return err
 	}
+}
+
+func (docmeta *DocumentMetadata) GetPagesRanges(section string) string {
+	var pagesranges string /* px:py,Pa:pb,Pc:pd */
+	switch section {
+	case "Abstract":
+		for _, ranges := range docmeta.AbsRangePageNumber {
+			pagesranges += fmt.Sprintf("%s:%s,", strconv.Itoa(ranges.Start), strconv.Itoa(ranges.End))
+		}
+	case "Amendement":
+		for _, ranges := range docmeta.AmdRangePageNumber {
+			pagesranges += fmt.Sprintf("%s:%s,", strconv.Itoa(ranges.Start), strconv.Itoa(ranges.End))
+		}
+
+	case "Biblio":
+		for _, ranges := range docmeta.BibliRangePageNumber {
+			pagesranges += fmt.Sprintf("%s:%s,", strconv.Itoa(ranges.Start), strconv.Itoa(ranges.End))
+		}
+	case "Claims":
+		for _, ranges := range docmeta.ClaimsRangePageNumber {
+			pagesranges += fmt.Sprintf("%s:%s,", strconv.Itoa(ranges.Start), strconv.Itoa(ranges.End))
+		}
+	case "Desc":
+		for _, ranges := range docmeta.DescRangePageNumber {
+			pagesranges += fmt.Sprintf("%s:%s,", strconv.Itoa(ranges.Start), strconv.Itoa(ranges.End))
+		}
+	case "Draw":
+		for _, ranges := range docmeta.DrawRangePageNumber {
+			pagesranges += fmt.Sprintf("%s:%s,", strconv.Itoa(ranges.Start), strconv.Itoa(ranges.End))
+		}
+	case "SearchRep":
+		for _, ranges := range docmeta.SearchRepRangePageNumber {
+			pagesranges += fmt.Sprintf("%s:%s,", strconv.Itoa(ranges.Start), strconv.Itoa(ranges.End))
+		}
+	case "DnaSequence":
+		for _, ranges := range docmeta.DnaSequenceRangePageNumber {
+			pagesranges += fmt.Sprintf("%s:%s,", strconv.Itoa(ranges.Start), strconv.Itoa(ranges.End))
+		}
+	case "Citation":
+		for _, ranges := range docmeta.ApplicantCitationsRangePageNumber {
+			pagesranges += fmt.Sprintf("%s:%s,", strconv.Itoa(ranges.Start), strconv.Itoa(ranges.End))
+		}
+
+	default:
+	}
+	return pagesranges[0 : len(pagesranges)-1]
+}
+
+func (docmeta *DocumentMetadata) GetMetadata(bnsRequest *HttpRequest, pathname string) error {
+	var (
+		err        error
+		docmd      []byte
+		statusCode int
+	)
+	if docmd, err, statusCode = GetDocMetadata(bnsRequest, pathname); err == nil {
+		goLog.Trace.Println("Document Metadata=>", string(docmd))
+		if len(docmd) != 0 {
+			if err = json.Unmarshal(docmd, &docmeta); err != nil {
+				goLog.Error.Println(docmd, docmeta, err)
+
+			}
+		} else if statusCode == 404 {
+			goLog.Warning.Printf("Document %s is not found", pathname)
+			err = errors.New("Document not found")
+		} else {
+			goLog.Warning.Printf("Document's %s metadata is missing", pathname)
+			err = errors.New("Document metadata is missing")
+		}
+	} else {
+		goLog.Error.Println(err)
+
+	}
+	return err
+
 }
 
 type Pagemeta struct {

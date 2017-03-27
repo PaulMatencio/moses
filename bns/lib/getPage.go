@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	sproxyd "moses/sproxyd/lib"
-	goLog "moses/user/goLog"
+	// goLog "moses/user/goLog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -29,7 +29,7 @@ func GetPageType(bnsRequest *HttpRequest, url string) (*http.Response, error) {
 		err    error
 		resp   *http.Response
 	)
-
+	// fmt.Printf("\nMeta fetching %s", url)
 	usermd, err, _ = GetMetadata(bnsRequest, url)
 	if err != nil {
 		return nil, errors.New("Page metadata is missing or invalid")
@@ -60,24 +60,22 @@ func GetPageType(bnsRequest *HttpRequest, url string) (*http.Response, error) {
 				start := strconv.Itoa(pagemeta.TiffOffset.Start)
 				end := strconv.Itoa(pagemeta.TiffOffset.End)
 				sproxydRequest.ReqHeader["Range"] = "bytes=" + start + "-" + end
-				goLog.Trace.Println(sproxydRequest.ReqHeader)
-				// resp, err = sproxyd.GetObject(hspool, client, path, getHeader)
+				//goLog.Trace.Println(sproxydRequest.Path,sproxydRequest.ReqHeader)
 				resp, err = sproxyd.Getobject(sproxydRequest)
-
+				// goLog.Trace.Println("Object fetched ", resp.Request.URL.Path, resp.StatusCode, err)
 			case "image/png":
 				start := strconv.Itoa(pagemeta.PngOffset.Start)
 				end := strconv.Itoa(pagemeta.PngOffset.End)
 				sproxydRequest.ReqHeader["Range"] = "bytes=" + start + "-" + end
-				goLog.Trace.Println(sproxydRequest.ReqHeader)
-				// resp, err = sproxyd.GetObject(hspool, client, path, getHeader)
+				//goLog.Trace.Println(sproxydRequest.Path, sproxydRequest.ReqHeader)
 				resp, err = sproxyd.Getobject(sproxydRequest)
-
+				//goLog.Trace.Println(resp.Request.URL.Path, resp.StatusCode, err)
 			case "image/pdf":
 				if pagemeta.PdfOffset.Start > 0 {
 					start := strconv.Itoa(pagemeta.PdfOffset.Start)
 					end := strconv.Itoa(pagemeta.PdfOffset.End)
 					sproxydRequest.ReqHeader["Range"] = "bytes=" + start + "-" + end
-					goLog.Trace.Println(sproxydRequest.ReqHeader)
+					// goLog.Trace.Println(sproxydRequest.ReqHeader)
 					resp, err = sproxyd.Getobject(sproxydRequest)
 				} else {
 					resp = nil
@@ -98,8 +96,9 @@ func AsyncHttpGetpageType(bnsRequest *HttpRequest) []*sproxyd.HttpResponse {
 	ch := make(chan *sproxyd.HttpResponse)
 	sproxydResponses := []*sproxyd.HttpResponse{}
 	treq := 0
-	// fmt.Printf("\n")
-	bnsRequest.Client = &http.Client{} // one http connection for all requests
+	bnsRequest.Client = &http.Client{
+		Timeout: sproxyd.ReadTimeout,
+	} // one http connection for all requests
 
 	for _, url := range bnsRequest.Urls {
 		/* just in case, the requested page number is beyond the max number of pages */
@@ -110,6 +109,7 @@ func AsyncHttpGetpageType(bnsRequest *HttpRequest) []*sproxyd.HttpResponse {
 		}
 
 		go func(url string) {
+			// fmt.Printf("\nFetching %s %d\n", url, treq)
 			resp, err := GetPageType(bnsRequest, url)
 			defer resp.Body.Close()
 			var body []byte
@@ -117,17 +117,15 @@ func AsyncHttpGetpageType(bnsRequest *HttpRequest) []*sproxyd.HttpResponse {
 				body, _ = ioutil.ReadAll(resp.Body)
 			}
 			ch <- &sproxyd.HttpResponse{url, resp, &body, err}
-
 		}(url)
 	}
 	// wait for http response  message
 	for {
 		select {
 		case r := <-ch:
-			// fmt.Printf("%s was fetched\n", r.Url)
+			// fmt.Printf("\n%s was fetched %d\n", r.Url, len(sproxydResponses))
 			sproxydResponses = append(sproxydResponses, r)
-			if len(sproxydResponses) == treq /*len(urls)*/ {
-				// fmt.Println(responses)
+			if len(sproxydResponses) == treq {
 				return sproxydResponses
 			}
 		case <-time.After(100 * time.Millisecond):
