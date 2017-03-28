@@ -1,6 +1,8 @@
 package sindexd
 
 import (
+	"net"
+	"net/http"
 	"time"
 
 	hostpool "github.com/bitly/go-hostpool"
@@ -28,7 +30,15 @@ var (
 	HP            hostpool.HostPool
 	TargetHP      hostpool.HostPool
 	Timeout       = time.Duration(30 * time.Second)
+	ReadTimeout   = time.Duration(30 * time.Second)
 	DeleteTimeout = time.Duration(3 * time.Minute)
+	Transport     = &http.Transport{
+		Dial: (&net.Dialer{
+			Timeout:   100 * time.Millisecond, // connection timeout
+			KeepAlive: 20 * time.Second,
+		}).Dial,
+		TLSHandshakeTimeout: 10 * time.Second,
+	}
 )
 
 type Index_spec struct {

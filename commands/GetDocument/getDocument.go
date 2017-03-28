@@ -171,7 +171,6 @@ func main() {
 	}
 
 	directory.SetCPU("100%")
-	client := &http.Client{}
 	start := time.Now()
 	page = "p" + page
 	if len(env) == 0 {
@@ -180,15 +179,17 @@ func main() {
 	pathname := env + "/" + pn
 	bnsRequest := bns.HttpRequest{
 		Hspool: sproxyd.HP,
-		Client: client,
-		Media:  media,
+		Client: &http.Client{
+			Timeout:   sproxyd.ReadTimeout,
+			Transport: sproxyd.Transport,
+		},
+		Media: media,
 	}
 	n := 0
 	switch action {
 	case "getPageMeta":
 		Meta = true
 		pathname = pathname + "/" + page
-		// bnsRequest.Path = pathname
 		if pagemd, err, _ := bns.GetPageMetadata(&bnsRequest, pathname); err == nil {
 			writeMeta(outDir, page, pagemd)
 		} else {
@@ -220,13 +221,22 @@ func main() {
 		n++
 
 	case "getDocumentType":
+		var (
+			num  int
+			err  error
+			Page string
+		)
 		docmeta := bns.DocumentMetadata{}
 		if err = docmeta.GetMetadata(&bnsRequest, pathname); err != nil {
 			goLog.Error.Println(err)
 			os.Exit(2)
 		}
 		// build []urls of pages  of the document to be fecthed
-		num := docmeta.TotalPage
+		//num := docmeta.TotalPage
+		if num, err = docmeta.GetPageNumber(); err != nil {
+			fmt.Println(err)
+			os.Exit(2)
+		}
 
 		urls := make([]string, num, num)
 
@@ -248,24 +258,36 @@ func main() {
 				body := *v.Body
 				bnsResponse := bns.BuildBnsResponseLi(resp, getHeader["Content-Type"], &body)
 				bnsResponses[i] = bnsResponse
-				page := bnsResponse.Page
-				Page := "p" + strconv.Itoa(page)
-				if Image {
-					writeImage(outDir, Page, media, bnsResponse.Image)
-				}
-				if Meta {
-					writeMeta(outDir, Page, bnsResponse.Pagemd)
-				}
-				defer resp.Body.Close()
+				/*
+					page := bnsResponse.Page
 
+						Page := "p" + strconv.Itoa(page)
+						if Image {
+							writeImage(outDir, Page, media, bnsResponse.Image)
+						}
+						if Meta {
+							writeMeta(outDir, Page, bnsResponse.Pagemd)
+						}
+				*/
+				defer resp.Body.Close()
 			}
 		}
 		// Sort the bnsResponse array by page number
+
 		slice.Sort(bnsResponses[:], func(i, j int) bool {
 			return bnsResponses[i].Page < bnsResponses[j].Page
 		})
-	case "PagesRanges", "Abstract", "Descrition", "Claims", "Drawings", "Citations", "DNASequence", "Biblio":
+		for _, bnsResponse := range bnsResponses {
+			Page = "p" + strconv.Itoa(bnsResponse.Page)
+			if Image {
+				writeImage(outDir, Page, media, bnsResponse.Image)
+			}
+			if Meta {
+				writeMeta(outDir, Page, bnsResponse.Pagemd)
+			}
+		}
 
+	case "PagesRanges", "Abstract", "Descrition", "Claims", "Drawings", "Citations", "DNASequence", "Biblio":
 		var (
 			Page   string
 			pagesa []string
@@ -288,6 +310,7 @@ func main() {
 
 		bnsRequest.Urls = urls
 		sproxyResponses := bns.AsyncHttpGetpageType(&bnsRequest)
+
 		bnsResponses := make([]bns.BnsResponseLi, num, num)
 
 		for i, v := range sproxyResponses {
@@ -297,18 +320,7 @@ func main() {
 				body := *v.Body
 				bnsResponse := bns.BuildBnsResponseLi(resp, getHeader["Content-Type"], &body)
 				bnsResponses[i] = bnsResponse
-				//page = bnsResponse.Page
-				// Page = "p" + strconv.Itoa(page)
-				/*
-					if Image {
-						writeImage(outDir, Page, media, bnsResponse.Image)
-					}
-					if Meta {
-						writeMeta(outDir, Page, bnsResponse.Pagemd)
-					}
-				*/
 				defer resp.Body.Close()
-
 			}
 		}
 		// Sort the bnsResponse array by page number
@@ -331,9 +343,9 @@ func main() {
 			encoded_docmd string
 			docmd         []byte
 			statusCode    int
+			url           = pathname
 		)
 		media = "binary"
-		url := pathname
 
 		// Get the document metadata
 		if encoded_docmd, err, statusCode = bns.GetEncodedMetadata(&bnsRequest, url); err == nil {
@@ -344,9 +356,9 @@ func main() {
 				}
 				goLog.Trace.Println("Document Metadata=>", string(docmd))
 			} else if statusCode == 404 {
-				goLog.Error.Printf("Document %s is not found", pathname)
+				goLog.Error.Printf("Document %s is not found/n", pathname)
 			} else {
-				goLog.Error.Printf("Document's %s metadata is missing", pathname)
+				goLog.Error.Printf("Document's %s metadata is missing/n", pathname)
 			}
 
 		} else {
@@ -356,17 +368,20 @@ func main() {
 
 		docmeta := bns.DocumentMetadata{}
 		if err := json.Unmarshal(docmd, &docmeta); err != nil {
-			goLog.Error.Println("Metadata is invalid ", pathname)
+			goLog.Error.Printf("Metadata is of %s invalid /n", pathname)
 			goLog.Error.Println(string(docmd), docmeta, err)
 			os.Exit(2)
 		} else {
 			writeMeta(outDir, "", docmd)
 		}
 
-		num := docmeta.TotalPage
-		urls := make([]string, num, num)
-		getHeader := map[string]string{}
-		getHeader["Content-Type"] = "application/binary"
+		var (
+			num       = docmeta.TotalPage
+			urls      = make([]string, num, num)
+			getHeader = map[string]string{
+				"Content-Type": "application/binary",
+			}
+		)
 
 		for i := 0; i < num; i++ {
 			urls[i] = pathname + "/p" + strconv.Itoa(i+1)
@@ -375,7 +390,7 @@ func main() {
 		bnsRequest.Hspool = sproxyd.HP
 		sproxyResponses := bns.AsyncHttpGetBlobs(&bnsRequest, getHeader)
 		bnsResponses := make([]bns.BnsResponse, num, num)
-		bnsRequest.Client = &http.Client{}
+
 		for i, v := range sproxyResponses {
 
 			if err := v.Err; err == nil { //
@@ -398,11 +413,8 @@ func main() {
 	case "getPageType":
 
 		pathname = pathname + "/" + page
-		getHeader := map[string]string{}
-		getHeader["Content-Type"] = "image/" + strings.ToLower(media)
-		bnsRequest := bns.HttpRequest{
-			Hspool: sproxyd.HP,
-			Client: client,
+		getHeader := map[string]string{
+			"Content-Type": "image/" + strings.ToLower(media),
 		}
 		bnsRequest.Media = media
 		if resp, err := bns.GetPageType(&bnsRequest, pathname); err == nil {
@@ -421,6 +433,6 @@ func main() {
 		goLog.Info.Println("-action <action value> is missing")
 	}
 	duration := time.Since(start)
-	fmt.Println("Total get elapsed time:", duration, " to get ", n, " pages")
-	goLog.Info.Println("Total get elapsed time:", duration, " to get ", n, " pages")
+	fmt.Println("Total Get pages elapsed", duration, " for ", n, " pages ")
+	goLog.Info.Println("Total Get pages elapsed", duration, " for ", n, " pages ")
 }

@@ -108,7 +108,8 @@ func AsyncHttpUpdateBlobs(bnsResponses []BnsResponse) []*sproxyd.HttpResponse {
 		usermd := bnsResponses[k].Usermd
 		pagemd := bnsResponses[k].Pagemd
 		client := &http.Client{
-			Timeout: sproxyd.WriteTimeout,
+			Timeout:   sproxyd.WriteTimeout,
+			Transport: sproxyd.Transport,
 		}
 		go func(url string, image []byte, usermd string, pagemd []byte) {
 			var err error
@@ -120,7 +121,7 @@ func AsyncHttpUpdateBlobs(bnsResponses []BnsResponse) []*sproxyd.HttpResponse {
 			sproxydRequest.Hspool = sproxyd.TargetHP
 			sproxydRequest.Client = client
 			sproxydRequest.Path = url
-			// fmt.Println("PATH+META+IMAGE>", url, string(pagemd), len(image))
+
 			resp, err = sproxyd.Updobject(&sproxydRequest, image)
 			if resp != nil {
 				resp.Body.Close()

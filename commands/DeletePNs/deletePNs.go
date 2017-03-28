@@ -158,8 +158,8 @@ func main() {
 
 				duration = time.Since(start)
 				for _, copyResponse := range copyResponses {
-					fmt.Printf("Source Url=%s,Error=%v,#Input=%d, #Ouput=%d, Duration %v", copyResponse.SrcUrl, copyResponse.Err, copyResponse.Num, copyResponse.Num200, duration)
-					goLog.Info.Printf("Source Url=%s,Error=%v,#Input=%d, #Ouput=%d, Duration %v", copyResponse.SrcUrl, copyResponse.Err, copyResponse.Num, copyResponse.Num200, duration)
+					fmt.Printf("\nSource Url=%s,Error=%v,#Input=%d, #Ouput=%d, Duration %v", copyResponse.SrcUrl, copyResponse.Err, copyResponse.Num, copyResponse.Num200, duration)
+					goLog.Info.Printf("\nSource Url=%s,Error=%v,#Input=%d, #Ouput=%d, Duration %v", copyResponse.SrcUrl, copyResponse.Err, copyResponse.Num, copyResponse.Num200, duration)
 					if copyResponse.Num > 0 && copyResponse.Num == copyResponse.Num200 {
 						NumpnsDone++
 					}
@@ -179,14 +179,14 @@ func main() {
 		Numpns = len(pna)
 		duration = time.Since(start)
 		for _, copyResponse := range copyResponses {
-			fmt.Printf("Source Url=%s,Error=%v,#Input=%d, #Ouput=%d, Duration %v", copyResponse.SrcUrl, copyResponse.Err, copyResponse.Num, copyResponse.Num200, duration)
-			goLog.Info.Printf("Source Url=%s,Error=%v,#Input=%d, #Ouput=%d, Duration %v", copyResponse.SrcUrl, copyResponse.Err, copyResponse.Num, copyResponse.Num200, duration)
+			fmt.Printf("\nSource Url=%s,Error=%v,#Input=%d, #Ouput=%d, Duration %v", copyResponse.SrcUrl, copyResponse.Err, copyResponse.Num, copyResponse.Num200, duration)
+			goLog.Info.Printf("\nSource Url=%s,Error=%v,#Input=%d, #Ouput=%d, Duration %v", copyResponse.SrcUrl, copyResponse.Err, copyResponse.Num, copyResponse.Num200, duration)
 			if copyResponse.Num > 0 && copyResponse.Num == copyResponse.Num200 {
 				NumpnsDone++
 			}
 		}
 	}
 
-	fmt.Printf("Total Elapsed Time %v \nNumber of PN's completed %d / Number of PN's", time.Since(start0), NumpnsDone, Numpns)
-	goLog.Info.Printf("Total Elapsed Time %v \nNumber of PN's completed %d / Number of PN's", time.Since(start0), NumpnsDone, Numpns)
+	fmt.Printf("\nTotal Elapsed Time %v \nNumber of PN's completed %d / Number of PN's", time.Since(start0), NumpnsDone, Numpns)
+	goLog.Info.Printf("\nTotal Elapsed Time %v \nNumber of PN's completed %d / Number of PN's", time.Since(start0), NumpnsDone, Numpns)
 }

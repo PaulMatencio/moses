@@ -97,8 +97,9 @@ func AsyncHttpGetpageType(bnsRequest *HttpRequest) []*sproxyd.HttpResponse {
 	sproxydResponses := []*sproxyd.HttpResponse{}
 	treq := 0
 	bnsRequest.Client = &http.Client{
-		Timeout: sproxyd.ReadTimeout,
-	} // one http connection for all requests
+		Timeout:   sproxyd.ReadTimeout,
+		Transport: sproxyd.Transport,
+	}
 
 	for _, url := range bnsRequest.Urls {
 		/* just in case, the requested page number is beyond the max number of pages */
@@ -109,7 +110,7 @@ func AsyncHttpGetpageType(bnsRequest *HttpRequest) []*sproxyd.HttpResponse {
 		}
 
 		go func(url string) {
-			// fmt.Printf("\nFetching %s %d\n", url, treq)
+
 			resp, err := GetPageType(bnsRequest, url)
 			defer resp.Body.Close()
 			var body []byte

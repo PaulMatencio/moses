@@ -53,8 +53,11 @@ func AsyncUpdatePns(pns []string, srcEnv string, targetEnv string) []*CopyRespon
 			dstUrl     = dstPath
 			bnsRequest = HttpRequest{
 				Hspool: sproxyd.HP, // source sproxyd servers IP address and ports
-				Client: &http.Client{},
-				Media:  media,
+				Client: &http.Client{
+					Timeout:   sproxyd.WriteTimeout,
+					Transport: sproxyd.Transport,
+				},
+				Media: media,
 			}
 		)
 
@@ -107,32 +110,37 @@ func AsyncUpdatePns(pns []string, srcEnv string, targetEnv string) []*CopyRespon
 				}
 				buf0 := make([]byte, 0)
 				bnsRequest.Hspool = sproxyd.TargetHP // Set Target sproxyd servers
-
 				// Copy the document metadata to the destination with buffer size = 0 byte
 				// we could  update the meta data : TODO
 				UpdateBlob(&bnsRequest, dstUrl, buf0, header)
 
 			}
 
-			if num = docmeta.TotalPage; num <= 0 {
-				err := errors.New(pn + " Number of pages is invalid. Document Metada may be updated without pages updated")
+			if num, err = docmeta.GetPageNumber(); err != nil {
 				ch <- &CopyResponse{err, pn, num, num200}
 				return
 			}
-
 			// COPY EVERY PAGES ASYNCHRONOUSLY
-			var duration time.Duration
-			urls := make([]string, num, num)
-			// dstUrls := make([]string, num, num)
-			getHeader := map[string]string{}
-			getHeader["Content-Type"] = "application/binary"
+			var (
+				duration  time.Duration
+				urls      = make([]string, num, num)
+				getHeader = map[string]string{
+					"Content-Type": "application/binary",
+				}
+			)
+
 			for i := 0; i < num; i++ {
 				urls[i] = srcPath + "/p" + strconv.Itoa(i+1)
 
 			}
 			bnsRequest.Urls = urls
 			bnsRequest.Hspool = sproxyd.HP // Set source sproxyd servers
-			bnsRequest.Client = &http.Client{}
+			/*
+				bnsRequest.Client = &http.Client{
+					Timeout:   sproxyd.ReadTimeout,
+					Transport: sproxyd.Transport,
+				}
+			*/
 			// Get all the pages from the source Ring
 			sproxyResponses := AsyncHttpGetBlobs(&bnsRequest, getHeader)
 
@@ -186,7 +194,7 @@ func AsyncUpdatePns(pns []string, srcEnv string, targetEnv string) []*CopyRespon
 					goLog.Warning.Printf("Host name:%s,Pid:%d,Publication:%s,Ins:%d,Outs:%d,Notfound:%d,Existed:%d,Other:%d", hostname, pid, pn, num, num200, num404, num412, numOther)
 					err = errors.New("Pages outs < Page ins")
 				} else {
-					goLog.Warning.Printf("Host name:%s,Pid:%d,Publication:%s,Ins:%d,Outs:%d,Notfound:%d,Existed:%d,Other:%d", hostname, pid, pn, num, num200, num404, num412, numOther)
+					goLog.Info.Printf("Host name:%s,Pid:%d,Publication:%s,Ins:%d,Outs:%d,Notfound:%d,Existed:%d,Other:%d", hostname, pid, pn, num, num200, num404, num412, numOther)
 				}
 			}
 			ch <- &CopyResponse{err, pn, num, num200}

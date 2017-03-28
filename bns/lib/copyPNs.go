@@ -47,8 +47,11 @@ func AsyncCopyPns(pns []string, srcEnv string, targetEnv string) []*CopyResponse
 			dstUrl     = dstPath
 			bnsRequest = HttpRequest{
 				Hspool: sproxyd.HP, // source sproxyd servers IP address and ports
-				Client: &http.Client{},
-				Media:  media,
+				Client: &http.Client{
+					Timeout:   sproxyd.WriteTimeout,
+					Transport: sproxyd.Transport,
+				},
+				Media: media,
 			}
 		)
 		go func(srcUrl string, dstUrl string) {
@@ -60,7 +63,7 @@ func AsyncCopyPns(pns []string, srcEnv string, targetEnv string) []*CopyResponse
 				statusCode                                    int
 				num, num200, num412, num422, num404, numOther int = 0, 0, 0, 0, 0, 0
 			)
-			// Get the PN metadata ( Table of Content)
+			// Get the  Table of Content
 			if encoded_docmd, err, statusCode = GetEncodedMetadata(&bnsRequest, srcUrl); err == nil {
 				if len(encoded_docmd) > 0 {
 
@@ -121,7 +124,8 @@ func AsyncCopyPns(pns []string, srcEnv string, targetEnv string) []*CopyResponse
 			bnsRequest.Urls = urls
 			bnsRequest.Hspool = sproxyd.HP // Set source sproxyd servers
 			bnsRequest.Client = &http.Client{
-				Timeout: sproxyd.ReadTimeout,
+				Timeout:   sproxyd.ReadTimeout,
+				Transport: sproxyd.Transport,
 			}
 			// Get all the pages from the source Ring
 			sproxydResponses := AsyncHttpGetBlobs(&bnsRequest, getHeader)
@@ -171,10 +175,10 @@ func AsyncCopyPns(pns []string, srcEnv string, targetEnv string) []*CopyResponse
 					resp.Body.Close()
 				}
 				if num200 < num {
-					goLog.Warning.Printf("Host name:%s,Pid:%d,Publication:%s,Ins:%d,Outs:%d,Notfound:%d,Existed:%d,Other:%d", hostname, pid, pn, num, num200, num404, num412, numOther)
+					goLog.Warning.Printf("\nHost name:%s,Pid:%d,Publication:%s,Ins:%d,Outs:%d,Notfound:%d,Existed:%d,Other:%d", hostname, pid, pn, num, num200, num404, num412, numOther)
 					err = errors.New("Pages outs < Page ins")
 				} else {
-					goLog.Warning.Printf("Host name:%s,Pid:%d,Publication:%s,Ins:%d,Outs:%d,Notfound:%d,Existed:%d,Other:%d", hostname, pid, pn, num, num200, num404, num412, numOther)
+					goLog.Info.Printf("\nHost name:%s,Pid:%d,Publication:%s,Ins:%d,Outs:%d,Notfound:%d,Existed:%d,Other:%d", hostname, pid, pn, num, num200, num404, num412, numOther)
 				}
 
 			}

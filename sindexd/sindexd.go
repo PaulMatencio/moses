@@ -144,7 +144,8 @@ func main() {
 		Max, _        = strconv.Atoi(maxinput)
 		Concurrent, _ = strconv.ParseBool(concurrent)
 		client        = &http.Client{
-			Timeout: sindexd.Timeout,
+			Timeout:   sindexd.ReadTimeout,
+			Transport: sindexd.Transport,
 		}
 		resp  *http.Response
 		err   error

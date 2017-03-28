@@ -26,9 +26,14 @@ func AsyncHttpGetBlobs(bnsRequest *HttpRequest, getHeader map[string]string) []*
 		sproxydRequest   = sproxyd.HttpRequest{
 			Hspool:    bnsRequest.Hspool,
 			ReqHeader: getHeader,
+			Client: &http.Client{
+				Timeout:   sproxyd.ReadTimeout,
+				Transport: sproxyd.Transport,
+			},
 		}
 		treq = 0
 	)
+	// sproxydRequest.Client = &http.Client{}
 	fmt.Printf("\n")
 	for _, url := range bnsRequest.Urls {
 		/* just in case, the requested page number is beyond the max number of pages */
@@ -38,7 +43,7 @@ func AsyncHttpGetBlobs(bnsRequest *HttpRequest, getHeader map[string]string) []*
 			treq += 1
 		}
 
-		sproxydRequest.Client = &http.Client{}
+		// sproxydRequest.Client = &http.Client{}
 
 		go func(url string) {
 			sproxydRequest.Path = url
@@ -62,7 +67,7 @@ func AsyncHttpGetBlobs(bnsRequest *HttpRequest, getHeader map[string]string) []*
 			if len(sproxydResponses) == treq /*len(urls)*/ {
 				return sproxydResponses
 			}
-		case <-time.After(100 * time.Millisecond):
+		case <-time.After(50 * time.Millisecond):
 			fmt.Printf("r")
 		}
 	}

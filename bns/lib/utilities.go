@@ -13,6 +13,8 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+
+	// "github.com/bradfitz/slice"
 )
 
 func ST33toFiles(inputFile string, outputusermdDir string, outputTiffDir string, outputContainerDir string, combine bool) error {
@@ -307,6 +309,7 @@ func BuildPagesRanges(pagesranges string) ([]string, error) {
 	return strings.Split(out[0:len(out)-1], ","), err
 
 }
+
 func SetCPU(cpu string) error {
 	var numCPU int
 

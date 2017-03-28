@@ -45,8 +45,11 @@ func AsyncDeletePns(pns []string, targetEnv string) []*CopyResponse {
 
 		bnsRequest := HttpRequest{
 			Hspool: sproxyd.TargetHP, // <<<<<<  sproxyd.TargetHP is the Destination RING
-			Client: &http.Client{},
-			Media:  media,
+			Client: &http.Client{
+				Timeout:   sproxyd.ReadTimeout,
+				Transport: sproxyd.Transport,
+			},
+			Media: media,
 		}
 
 		goLog.Info.Println("Deleting", targetUrl)
@@ -94,8 +97,7 @@ func AsyncDeletePns(pns []string, targetEnv string) []*CopyResponse {
 				return
 			}
 
-			if num = docmeta.TotalPage; num <= 0 {
-				err := errors.New(targetUrl + " Number of pages is invalid. Pages are not deleted")
+			if num, err = docmeta.GetPageNumber(); err != nil {
 				ch <- &CopyResponse{err, targetUrl, num, num200}
 				return
 			}
@@ -107,7 +109,7 @@ func AsyncDeletePns(pns []string, targetEnv string) []*CopyResponse {
 			fmt.Println("len => ", num)
 			bnsRequest.Hspool = sproxyd.TargetHP // set target sproxyd servers ( Destination RING)
 			bnsRequest.Urls = make([]string, num, num)
-			bnsRequest.Client = &http.Client{}
+			//  bnsRequest.Client = &http.Client{}
 			//  DELETE ALL THE PAGES FIRST
 
 			for i := 0; i < num; i++ {
@@ -160,8 +162,11 @@ func AsyncDeletePns(pns []string, targetEnv string) []*CopyResponse {
 			if num == num200 {
 				bnsRequest := HttpRequest{
 					Hspool: sproxyd.TargetHP,
-					Client: &http.Client{},
-					Media:  media,
+					Client: &http.Client{
+						Timeout:   sproxyd.ReadTimeout,
+						Transport: sproxyd.Transport,
+					},
+					Media: media,
 				}
 				if err, statusCode := DeleteBlob(&bnsRequest, targetUrl); err != nil {
 					goLog.Error.Println("Error deleting PN", targetUrl, " Error:", err, "Status Code:", statusCode)

@@ -25,6 +25,7 @@ func DeleteBlob(bnsRequest *HttpRequest, url string) (error, int) {
 	// if resp, err = sproxyd.DeleteObject(hspool, client, path); err != nil {
 	if resp, err = sproxyd.Deleteobject(&sproxydRequest); err != nil {
 		goLog.Error.Println(err)
+		return err, 0
 	} else {
 		elapse = time.Since(start)
 		switch resp.StatusCode {

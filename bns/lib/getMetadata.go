@@ -38,6 +38,8 @@ func GetMetadata(bnsRequest *HttpRequest, url string) ([]byte, error, int) {
 		default:
 			goLog.Info.Println(resp.Request.URL.Path, resp.Status)
 		}
+	} else {
+		return usermd, err, -1
 	}
 	/* the resp,Body is closed by sproxyd.getMetadata */
 	return usermd, err, resp.StatusCode
@@ -72,8 +74,9 @@ func GetEncodedMetadata(bnsRequest *HttpRequest, url string) (string, error, int
 		default:
 			goLog.Info.Println(resp.Request.URL.Path, resp.Status)
 		}
+	} else {
+		return encoded_usermd, err, -1
 	}
-	/* the resp,Body is closed by sproxyd.getMetadata */
 	return encoded_usermd, err, resp.StatusCode
 }
 
