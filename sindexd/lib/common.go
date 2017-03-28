@@ -1,6 +1,8 @@
 package sindexd
 
 import (
+	"time"
+
 	hostpool "github.com/bitly/go-hostpool"
 )
 
@@ -14,17 +16,19 @@ const (
 )
 
 var (
-	Debug        bool
-	Maxinput     int64
-	Test         bool
-	Memstat      bool
-	Delimiter    string
-	Host         []string
-	TargetHost   []string
-	Driver       string
-	TargetDriver string
-	HP           hostpool.HostPool
-	TargetHP     hostpool.HostPool
+	Debug         bool
+	Maxinput      int64
+	Test          bool
+	Memstat       bool
+	Delimiter     string
+	Host          []string
+	TargetHost    []string
+	Driver        string
+	TargetDriver  string
+	HP            hostpool.HostPool
+	TargetHP      hostpool.HostPool
+	Timeout       = time.Duration(30 * time.Second)
+	DeleteTimeout = time.Duration(3 * time.Minute)
 )
 
 type Index_spec struct {

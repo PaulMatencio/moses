@@ -2,10 +2,6 @@
 package bns
 
 import (
-	"encoding/json"
-
-	"io/ioutil"
-	goLog "moses/user/goLog"
 	"strings"
 )
 
@@ -26,35 +22,4 @@ func BuildSubtable(content string, index string) []int {
 		}
 	}
 	return page_tab
-}
-
-func (docmeta *DocumentMetadata) SetDocmd(filename string) error {
-	var (
-		buf []byte
-		err error
-	)
-	if buf, err = ioutil.ReadFile(filename); err != nil {
-		goLog.Warning.Println(err, "Reading", filename)
-		return err
-	} else if err = json.Unmarshal(buf, &docmeta); err != nil {
-		goLog.Warning.Println(err, "Unmarshalling", filename)
-		return err
-	}
-	return err
-}
-
-func (pagemeta *Pagemeta) SetPagemd(filename string) error {
-	//* USE Encode
-	var (
-		buf []byte
-		err error
-	)
-	if buf, err = ioutil.ReadFile(filename); err != nil {
-		goLog.Warning.Println(err, "Reading", filename)
-		return err
-	} else if err = json.Unmarshal(buf, &pagemeta); err != nil {
-		goLog.Warning.Println(err, "Unmarshalling", filename)
-		return err
-	}
-	return err
 }

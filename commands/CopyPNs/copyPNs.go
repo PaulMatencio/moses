@@ -139,7 +139,7 @@ func main() {
 		outDir = path.Join(homeDir, Config.GetOutputDir())
 	}
 
-	// init logging
+	// Init logging
 	if defaut, trf, inf, waf, erf := goLog.InitLog(logPath, runname, application, action, Trace); !defaut {
 		defer trf.Close()
 		defer inf.Close()

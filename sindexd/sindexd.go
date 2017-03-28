@@ -22,9 +22,10 @@ import (
 )
 
 var (
-	action, lim, prefix, marker, pubdate, count, config, debug, delimiter, force, test, concurrent, memstat, reset, lo string
-	prefixs, markers                                                                                                   []string
-	Count, Debug, Delimiter, Force, Memstat                                                                            bool
+	action, lim, prefix, marker, pubdate, count, config, debug,
+	delimiter, force, test, concurrent, memstat, reset, lo string
+	prefixs, markers                        []string
+	Count, Debug, Delimiter, Force, Memstat bool
 	//Test       bool
 	maxinput, bulkindex, keys, iIndex, inputFile, outputDir, logPath string
 )
@@ -134,17 +135,28 @@ func main() {
 		hlist := strings.Split(sindexd.Url, ",")
 		sindexd.HP = hostpool.NewEpsilonGreedy(hlist, 0, &hostpool.LinearEpsilonValueCalculator{})
 	*/
+
+	var (
+		Limit, _      = strconv.Atoi(lim)
+		Reset, _      = strconv.Atoi(reset)
+		Lowlevel, _   = strconv.Atoi(lo)
+		Bulk, _       = strconv.Atoi(bulkindex)
+		Max, _        = strconv.Atoi(maxinput)
+		Concurrent, _ = strconv.ParseBool(concurrent)
+		client        = &http.Client{
+			Timeout: sindexd.Timeout,
+		}
+		resp  *http.Response
+		err   error
+		f     string
+		start = time.Now()
+	)
+
 	keys = strings.TrimSpace(keys)
-	Limit, _ := strconv.Atoi(lim)
-	Reset, _ := strconv.Atoi(reset)
-	Lowlevel, _ := strconv.Atoi(lo)
-	Bulk, _ := strconv.Atoi(bulkindex)
-	Max, _ := strconv.Atoi(maxinput)
 	sindexd.Maxinput = int64(Max)
 	Memstat, _ = strconv.ParseBool(memstat)
 	Force, _ = strconv.ParseBool(force)
 	Count, _ = strconv.ParseBool(count)
-	Concurrent, _ := strconv.ParseBool(concurrent)
 	sindexd.Debug = Debug
 	sindexd.Delimiter = "/"
 	directory.PubDate = pubdate
@@ -154,13 +166,6 @@ func main() {
 	if err := directory.SetCPU("100%"); err != nil {
 		goLog.Error.Println(err)
 	}
-	client := &http.Client{}
-	var (
-		resp *http.Response
-		err  error
-		f    string
-	)
-	start := time.Now()
 
 	//
 	// Buid the index Specification based on the country code
@@ -182,6 +187,7 @@ func main() {
 
 	case "Di":
 		f = "Drop directory" + iIndex
+		client.Timeout = sindexd.DeleteTimeout
 		for _, v := range Ind_Specs {
 			index := v
 			if Debug {
@@ -215,6 +221,7 @@ func main() {
 			specs     map[string][]string
 			aKey      []string
 			responses []*directory.HttpResponse
+			start     = time.Now()
 		)
 		if aKey = strings.Split(keys, ","); len(keys) > 0 && len(aKey) > 0 {
 			// sort the array of string
@@ -230,10 +237,8 @@ func main() {
 			if Ind_Specs[index] == nil {
 				index = "OTHER"
 			}
-			// specs[index] = append(specs[index], aKey[i])
 			specs[index] = append(specs[index], v)
 		}
-		start := time.Now()
 
 		if !Concurrent {
 			responses = directory.GetSerialKeys(specs, Ind_Specs)

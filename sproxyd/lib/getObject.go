@@ -7,6 +7,7 @@ import (
 func Getobject(sproxydRequest *HttpRequest) (*http.Response, error) {
 	// hspool hostpool.HostPool, client *http.Client, path string, getHeader map[string]string
 	//url := DummyHost + url
+	// net.Dialer.Timeout = 100 * time.Millisecond
 	req, _ := http.NewRequest("GET", DummyHost+sproxydRequest.Path, nil)
 	if Range, ok := sproxydRequest.ReqHeader["Range"]; ok {
 		req.Header.Add("Range", Range)
