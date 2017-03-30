@@ -118,11 +118,11 @@ func AsyncDeletePns(pns []string, targetEnv string) []*CopyResponse {
 
 			sproxydResponses := AsyncHttpDeleteBlobs(&bnsRequest)
 			bnsResponses := make([]BnsResponse, num, num)
-			for i, sproxydResponse := range sproxydResponses {
-				if err := sproxydResponse.Err; err == nil { //
-					resp := sproxydResponse.Response               /* http response */ // http response
+			for k, v := range sproxydResponses {
+				if err := v.Err; err == nil { //
+					resp := v.Response                             /* http response */ // http response
 					bnsResponse := BuildBnsResponse(resp, "", nil) // bnsResponse is a Go structure
-					bnsResponses[i] = bnsResponse
+					bnsResponses[k] = bnsResponse
 				}
 			}
 

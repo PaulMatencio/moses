@@ -109,7 +109,7 @@ func main() {
 	directory.Action = action
 
 	if err := directory.SetCPU("100%"); err != nil {
-		goLog.Error.Println(err)
+		goLog.Error.Printf("Error %v", err)
 	}
 	var (
 		start      = time.Now()
@@ -132,13 +132,13 @@ func main() {
 		response = directory.GetSerialPrefix(iIndex, prefix, delimiter, marker, Limit, Ind_Specs)
 		keys, nextMarker := directory.GetResponse(response)
 		for _, v := range keys {
-			v = v + "\n"
+			v += "\n"
 			if _, err := w.WriteString(v); err != nil {
-				goLog.Error.Println("Error writing file", filename, err)
+				goLog.Error.Printf("\nError writing file %s : %v", filename, err)
 				os.Exit(10)
 			}
 		}
-		fmt.Println("Next =>", nextMarker, len(keys))
+		fmt.Printf("\nNext => %s %d", nextMarker, len(keys))
 
 		if len(nextMarker) == 0 {
 			Nextmarker = false
@@ -152,7 +152,7 @@ func main() {
 
 func check(f string, start time.Time, resp *http.Response, err error) {
 	if err != nil {
-		goLog.Error.Println("Function:", f, err)
+		goLog.Error.Printf("\nFunction: %s %v", f, err)
 	} else {
 		response := sindexd.GetResponse(resp)
 		goLog.Info.Println("Function:", f, "sindexd.Response:", response.Status, response.Reason, "Duration:", time.Since(start))

@@ -147,18 +147,18 @@ func AsyncUpdatePns(pns []string, srcEnv string, targetEnv string) []*CopyRespon
 			// Build a response array from the BnsResponse array to update the pages  at the  destination Ring
 			bnsResponses := make([]BnsResponse, num, num)
 
-			for i, sproxydResponse := range sproxyResponses {
-				if err := sproxydResponse.Err; err == nil { //
-					resp := sproxydResponse.Response                                        /* http response */ // http response
-					body := *sproxydResponse.Body                                           // http response                                                          /* copy of the body */ // http body response
+			for k, v := range sproxyResponses {
+				if err := v.Err; err == nil { //
+					resp := v.Response                                                      /* http response */ // http response
+					body := *v.Body                                                         // http response                                                          /* copy of the body */ // http body response
 					bnsResponse := BuildBnsResponse(resp, getHeader["Content-Type"], &body) // bnsResponse is a Go structure
-					bnsResponses[i] = bnsResponse
+					bnsResponses[k] = bnsResponse
 					resp.Body.Close()
 				}
 			}
 			duration = time.Since(start)
-			fmt.Println("Get elapsed time:", duration)
-			goLog.Info.Println("Get elapsed time:", duration)
+			fmt.Println("Elapsed Get time:", duration)
+			goLog.Info.Println("Elapsed Get time:", duration)
 
 			// var sproxydResponses []*sproxyd.HttpResponse
 			//   new &http.Client{}  and hosts pool are set to the target by the AsyncHttpCopyBlobs

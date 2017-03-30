@@ -299,10 +299,13 @@ func main() {
 			pagesranges, _ = BuildSubPagesRanges(action, &bnsRequest, pathname)
 			pagesa, _ = bns.BuildPagesRanges(pagesranges)
 		}
-		num := len(pagesa)
-		urls := make([]string, num, num)
-		getHeader := map[string]string{}
-		getHeader["Content-Type"] = "image/" + strings.ToLower(media)
+		var (
+			num       = len(pagesa)
+			urls      = make([]string, num, num)
+			getHeader = map[string]string{
+				"Content-Type": "image/" + strings.ToLower(media),
+			}
+		)
 
 		for i, page := range pagesa {
 			urls[i] = pathname + "/p" + page
@@ -313,13 +316,13 @@ func main() {
 
 		bnsResponses := make([]bns.BnsResponseLi, num, num)
 
-		for i, v := range sproxyResponses {
+		for k, v := range sproxyResponses {
 			if err := v.Err; err == nil {
 				n++
 				resp := v.Response
 				body := *v.Body
 				bnsResponse := bns.BuildBnsResponseLi(resp, getHeader["Content-Type"], &body)
-				bnsResponses[i] = bnsResponse
+				bnsResponses[k] = bnsResponse
 				defer resp.Body.Close()
 			}
 		}
@@ -327,13 +330,14 @@ func main() {
 		slice.Sort(bnsResponses[:], func(i, j int) bool {
 			return bnsResponses[i].Page < bnsResponses[j].Page
 		})
-		for _, bnsResponse := range bnsResponses {
-			Page = "p" + strconv.Itoa(bnsResponse.Page)
+
+		for _, v := range bnsResponses {
+			Page = "p" + strconv.Itoa(v.Page)
 			if Image {
-				writeImage(outDir, Page, media, bnsResponse.Image)
+				writeImage(outDir, Page, media, v.Image)
 			}
 			if Meta {
-				writeMeta(outDir, Page, bnsResponse.Pagemd)
+				writeMeta(outDir, Page, v.Pagemd)
 			}
 		}
 
@@ -391,7 +395,7 @@ func main() {
 		sproxyResponses := bns.AsyncHttpGetBlobs(&bnsRequest, getHeader)
 		bnsResponses := make([]bns.BnsResponse, num, num)
 
-		for i, v := range sproxyResponses {
+		for k, v := range sproxyResponses {
 
 			if err := v.Err; err == nil { //
 				n++
@@ -406,7 +410,7 @@ func main() {
 				if Meta {
 					writeMeta(outDir, page, bnsResponse.Pagemd)
 				}
-				bnsResponses[i] = bnsResponse
+				bnsResponses[k] = bnsResponse
 			}
 		}
 
