@@ -2,22 +2,21 @@
 package main
 
 import (
+	"bufio"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
+	directory "moses/directory/lib"
+	sindexd "moses/sindexd/lib"
+	files "moses/user/files/lib"
 	goLog "moses/user/goLog"
 	"net/http"
 	"os"
-	"strconv"
-
-	"bufio"
-	directory "moses/directory/lib"
-	files "moses/user/files/lib"
 	"os/user"
 	"path"
+	"strconv"
 	"time"
-
-	sindexd "moses/sindexd/lib"
 
 	hostpool "github.com/bitly/go-hostpool"
 	lumberjack "gopkg.in/natefinch/lumberjack.v2"
@@ -66,7 +65,7 @@ func main() {
 		usage()
 	}
 
-	if len(config) != 0 {
+	if len(config) != 0 { // always different than
 
 		if Config, err := sindexd.GetParmConfig(config); err == nil {
 			logPath = Config.GetLogPath()
@@ -78,6 +77,10 @@ func main() {
 			sindexd.HP = hostpool.NewEpsilonGreedy(sindexd.Host, 0, &hostpool.LinearEpsilonValueCalculator{})
 			fmt.Println(err, "WARNING: Using default Hosts:", sindexd.Host)
 		}
+	} else {
+		err := errors.New("Config file is missing")
+		sindexd.HP = hostpool.NewEpsilonGreedy(sindexd.Host, 0, &hostpool.LinearEpsilonValueCalculator{})
+		fmt.Println(err, "WARNING: Using default Hosts:", sindexd.Host)
 	}
 
 	// Filename is the file to write logs to.  Backup log files will be retained

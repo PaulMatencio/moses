@@ -64,6 +64,7 @@ func GetParmConfig(c_file string) (Configuration, error) {
 	err = decoder.Decode(&configuration)
 	return configuration, err
 }
+
 func SetNewHost(Config Configuration) {
 	HP = hostpool.NewEpsilonGreedy(Config.Hosts, 0, &hostpool.LinearEpsilonValueCalculator{})
 	TargetHP = hostpool.NewEpsilonGreedy(Config.TargetHosts, 0, &hostpool.LinearEpsilonValueCalculator{})
