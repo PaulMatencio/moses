@@ -18,7 +18,7 @@ type Config struct {
 	Config   interface{} `json:"config"`
 }
 
-func GetConfig(client *http.Client) (*http.Response, error) {
+func GetSindexdConfig(client *http.Client) (*http.Response, error) {
 	/*
 	   [{ "hello":{ "protocol": "sindexd-1"} },
 	   {"config": { }} ]

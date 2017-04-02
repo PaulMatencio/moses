@@ -30,16 +30,12 @@ func InitConfig(config string) (Configuration, error) {
 		Config Configuration
 	)
 	if Config, err = GetConfig(config); err == nil {
-
-		// logPath = path.Join(homeDir, Config.GetLogPath())
-
 		SetNewProxydHost(Config)
 		Driver = Config.GetDriver()
 		Env = Config.GetEnv()
 		SetNewTargetProxydHost(Config)
 		TargetDriver = Config.GetTargetDriver()
 		TargetEnv = Config.GetTargetEnv()
-
 		fmt.Println("INFO: Using config Hosts=>", Host, Driver, Env)
 		fmt.Println("INFO: Using config target Hosts=>", TargetHost, TargetDriver, TargetEnv)
 
@@ -54,15 +50,23 @@ func InitConfig(config string) (Configuration, error) {
 
 func GetConfig(c_file string) (Configuration, error) {
 
-	usr, _ := user.Current()
-	configdir := path.Join(usr.HomeDir, "sproxyd/config")
-	configfile := path.Join(configdir, c_file)
-	cfile, err := os.Open(configfile)
-	defer cfile.Close()
+	var (
+		usr, _     = user.Current()
+		config     = "sproxyd/config"
+		configfile = path.Join(path.Join(usr.HomeDir, config), c_file)
+		cfile, err = os.Open(configfile)
+	)
 	if err != nil {
-		fmt.Println("sproxyd.GetConfig", err)
-		os.Exit(2)
+		fmt.Println("sproxyd.GetConfig:", err)
+		fmt.Println("Trying /etc/moses/" + config)
+		configfile = path.Join(path.Join("/etc/moses", config), c_file)
+		if cfile, err = os.Open(configfile); err != nil {
+			fmt.Println("sproxyd.GetConfig:", err)
+			os.Exit(2)
+		}
 	}
+	defer cfile.Close()
+
 	decoder := json.NewDecoder(cfile)
 	configuration := Configuration{}
 	err = decoder.Decode(&configuration)
@@ -71,9 +75,7 @@ func GetConfig(c_file string) (Configuration, error) {
 
 func SetProxydHost(config string) (err error) {
 	if Config, err := GetConfig(config); err == nil {
-
 		HP = hostpool.NewEpsilonGreedy(Config.Sproxyd, 0, &hostpool.LinearEpsilonValueCalculator{})
-		// for compatibility with old setProxydHost but Host[]
 		Host = Host[:0]
 		Host = Config.GetProxyd()[0:]
 	}

@@ -67,7 +67,7 @@ func main() {
 
 	if len(config) != 0 { // always different than
 
-		if Config, err := sindexd.GetParmConfig(config); err == nil {
+		if Config, err := sindexd.GetConfig(config); err == nil {
 			logPath = Config.GetLogPath()
 			// hostpool.NewEpsilonGreedy is set by the SetNewHost method as following
 			// HP = hostpool.NewEpsilonGreedy(Config.Hosts, 0, &hostpool.LinearEpsilonValueCalculator{})

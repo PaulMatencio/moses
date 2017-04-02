@@ -10,7 +10,6 @@ import (
 	hostpool "github.com/bitly/go-hostpool"
 )
 
-// var Host = []string{"http://luo001t.internal.epo.org:81/proxy/chord/", "http://luo002t.internal.epo.org:81/proxy/chord/", "http://luo003t.internal.epo.org:81/proxy/chord/"}
 type Configuration struct {
 	Hosts        []string `json:"hosts"`
 	TargetHosts  []string `json:"targetHosts"`
@@ -47,18 +46,24 @@ func (c Configuration) GetLogPath() string {
 	return c.Log
 }
 
-func GetParmConfig(c_file string) (Configuration, error) {
-
-	usr, _ := user.Current()
-	configdir := path.Join(usr.HomeDir, "sindexd")
-	configdir = path.Join(configdir, "config")
-	configfile := path.Join(configdir, c_file)
-	cfile, err := os.Open(configfile)
-	defer cfile.Close()
+func GetConfig(c_file string) (Configuration, error) {
+	var (
+		config     = "sindexd/config"
+		usr, _     = user.Current()
+		configfile = path.Join(path.Join(usr.HomeDir, config), c_file)
+		cfile, err = os.Open(configfile)
+	)
 	if err != nil {
 		fmt.Println("sindexd.GetParmConfig:", err)
-		os.Exit(2)
+		fmt.Println("Trying /etc/moses/" + config)
+		configfile = path.Join(path.Join("/etc/moses", config), c_file)
+		if cfile, err = os.Open(configfile); err != nil {
+			fmt.Println("sproxyd.GetConfig:", err)
+			os.Exit(2)
+		}
+
 	}
+	defer cfile.Close()
 	decoder := json.NewDecoder(cfile)
 	configuration := Configuration{}
 	err = decoder.Decode(&configuration)

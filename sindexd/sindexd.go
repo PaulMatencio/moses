@@ -92,7 +92,7 @@ func main() {
 	}
 	if len(config) != 0 {
 
-		if Config, err := sindexd.GetParmConfig(config); err == nil {
+		if Config, err := sindexd.GetConfig(config); err == nil {
 			logPath = Config.GetLogPath()
 			// hostpool.NewEpsilonGreedy is set by the SetNewHost method as following
 			// HP = hostpool.NewEpsilonGreedy(Config.Hosts, 0, &hostpool.LinearEpsilonValueCalculator{})
@@ -177,12 +177,12 @@ func main() {
 	case "Ci":
 		f = "Create directory" + iIndex
 		for _, v := range Ind_Specs {
-			index := v
+			// index := v
 			if Debug {
 				goLog.Info.Println("Create id:", v.Index_id, v.Vol_id, v.Specific, v.Cos)
 			}
 
-			resp, err = directory.Create(client, index)
+			resp, err = directory.Create(client, v)
 			check(f, start, resp, err)
 		}
 
@@ -190,11 +190,11 @@ func main() {
 		f = "Drop directory" + iIndex
 		client.Timeout = sindexd.DeleteTimeout
 		for _, v := range Ind_Specs {
-			index := v
+			// index := v
 			if Debug {
 				goLog.Info.Println("Delete id:", v.Index_id, v.Vol_id, v.Specific, v.Cos)
 			}
-			resp, err = directory.Drop(client, index, Force, true)
+			resp, err = directory.Drop(client, v, Force, true)
 			check(f, start, resp, err)
 		}
 
@@ -307,7 +307,7 @@ func main() {
 
 	case "Gc":
 		f = "Get_Config"
-		if resp, err = sindexd.GetConfig(client); err != nil {
+		if resp, err = sindexd.GetSindexdConfig(client); err != nil {
 			goLog.Error.Println(f, err)
 		} else {
 			sindexd.PrintConfig(f, resp)

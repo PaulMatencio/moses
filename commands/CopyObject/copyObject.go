@@ -35,7 +35,7 @@ import (
 
 var (
 	config, srcEnv, targetEnv, logPath, outDir, testname,
-	pn, page, trace, test, meta, image, media, doconly string
+	pn, page, media, doconly string
 	Trace, Meta, Image, CopyObject, Test, Doconly bool
 	timeout                                       time.Duration
 	action                                        = "CopyObject"
@@ -48,7 +48,7 @@ var (
 )
 
 func usage() {
-	default_config := "moses-dev"
+	// default_config := "moses-dev"
 	usage := "\n\nUsage:\n\nCopyObject  -config  <config>, sproxyd configfile;default file is [$HOME/sproxyd/storage]" +
 		"\n -pn <Patent number>  \n -srcEnv <Source environment> \n -targEnv <Target environment> \n -t <trace 0/1>  \n -test <test mode 0/1>"
 
@@ -59,7 +59,7 @@ func usage() {
 		"\n      GET The Object  from the source Ring" +
 		"\n      PUT the object  to the source Ring" +
 		"\n\nCheck the config file $HOME/sproxyd/conf/<default config file name> moses-dev for more detail regarding source and destination Rings before running this program" +
-		"\nThe <default config file name>:<" + default_config + "> can be changed via the -config parm  "
+		"\nThe <default config file name>:<" + defaultConfig + "> can be changed via the -config parm  "
 
 	fmt.Println(what, usage)
 	flag.PrintDefaults()
@@ -88,16 +88,18 @@ func main() {
 	flag.StringVar(&config, "config", defaultConfig, "Config file")
 	flag.StringVar(&srcEnv, "srcEnv", "", "Environment")
 	flag.StringVar(&targetEnv, "targetEnv", "", "Target Environment")
-	flag.StringVar(&trace, "t", "0", "Trace")     // Trace
+	flag.BoolVar(&Trace, "t", false, "Trace")     // Trace
 	flag.StringVar(&testname, "T", "copyDoc", "") // Test name
 	flag.StringVar(&pn, "pn", "", "Publication number")
-	flag.StringVar(&test, "test", "0", "Run copy in test mode")
+	flag.BoolVar(&Test, "test", false, "Run copy in test mode")
 	flag.StringVar(&doconly, "doconly", "0", "Only update the document meta")
 	flag.Parse()
-	Trace, _ = strconv.ParseBool(trace)
-	Meta, _ = strconv.ParseBool(meta)
-	Image, _ = strconv.ParseBool(image)
-	Test, _ = strconv.ParseBool(test)
+	// Trace, _ = strconv.ParseBool(trace)
+	/*
+		Meta, _ = strconv.ParseBool(meta)
+		Image, _ = strconv.ParseBool(image)
+	*/
+	// Test, _ = strconv.ParseBool(test)
 	sproxyd.Test = Test
 	Doconly, _ = strconv.ParseBool(doconly)
 
@@ -164,7 +166,7 @@ func main() {
 			goLog.Warning.Println(err1, err2, err3, err3)
 			goLog.Warning.Println(hostname, pid, "Using default logging")
 		} else {
-			if trace == "0" {
+			if !Trace {
 				goLog.Init(ioutil.Discard, io.Writer(inf), io.Writer(waf), io.Writer(erf))
 
 			} else {

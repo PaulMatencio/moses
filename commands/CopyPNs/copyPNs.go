@@ -68,9 +68,7 @@ func usage() {
 		"\n" +
 		"\n\nCheck the config file $HOME/sproxyd/conf/<default config file name> moses-dev for more detail regarding source and destination Rings before running this program" +
 		"\nThe <default config file name>:<" + default_config + "> can be changed via the -config parm  "
-
 	fmt.Println(what, usage)
-
 	flag.PrintDefaults()
 	os.Exit(2)
 }
@@ -97,23 +95,19 @@ func main() {
 	flag.StringVar(&config, "config", defaultConfig, "Config file")
 	flag.StringVar(&srcEnv, "srcEnv", "", "Environment")
 	flag.StringVar(&targetEnv, "targetEnv", "", "Target Environment")
-	flag.StringVar(&trace, "trace", "0", "Trace") // Trace
-	flag.StringVar(&runname, "runname", "", "")   // Test name
+	flag.BoolVar(&Trace, "trace", false, "Trace")       // Trace
+	flag.StringVar(&runname, "runname", "", "Run name") // Test name
 	flag.StringVar(&pns, "pns", "", "Publication numbers -pns PN1,PN2,PN3,PN4")
 	flag.StringVar(&pnfile, "pnfile", "", "File of publication numbers, one PN per line  -pnfile filename")
 	flag.StringVar(&cpn, "cpn", "10", "Concurrent number of PN's reading from -pnfile")
-	flag.StringVar(&test, "test", "0", "Run copy in test mode")
-	flag.StringVar(&doconly, "doconly", "0", "Copy  only the document meta")
+	flag.BoolVar(&Test, "test", false, "Run copy in test mode")
+	flag.BoolVar(&Doconly, "doconly", false, "Copy only the document meta")
 	flag.Parse()
-	Trace, _ = strconv.ParseBool(trace)
-	Meta, _ = strconv.ParseBool(meta)
-	Image, _ = strconv.ParseBool(image)
-	sproxyd.Test, _ = strconv.ParseBool(test)
-	Doconly, _ = strconv.ParseBool(doconly)
+	sproxyd.Test = Test
 	Cpn, _ = strconv.Atoi(cpn)
 
 	// Check input parameters
-	if runname == "" {
+	if len(runname) == 0 {
 		runname = action + "_"
 		runname += time.Now().Format("2006-01-02:15:04:05.00")
 	}

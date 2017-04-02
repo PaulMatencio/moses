@@ -34,8 +34,8 @@ import (
 
 var (
 	config, srcEnv, targetEnv, logPath, outDir,
-	runname, hostname, pns, cpn, pnfile, page, trace, test,
-	meta, image, media, doconly string
+	runname, hostname, pns, cpn, pnfile, page,
+	media, doconly string
 	Trace, Meta, Image, CopyObject, Test, Doconly bool
 	pid, Cpn                                      int
 	timeout, duration                             time.Duration
@@ -95,23 +95,25 @@ func main() {
 	flag.StringVar(&config, "config", defaultConfig, "Config file")
 	flag.StringVar(&srcEnv, "srcEnv", "", "Environment")
 	flag.StringVar(&targetEnv, "targetEnv", "", "Target Environment")
-	flag.StringVar(&trace, "trace", "0", "Trace") // Trace
+	flag.BoolVar(&Trace, "trace", false, "Trace") // Trace
 	flag.StringVar(&runname, "runname", "", "")   // Test name
 	flag.StringVar(&pns, "pns", "", "Publication numbers")
 	flag.StringVar(&pnfile, "pnfile", "", "Publication numbers")
 	flag.StringVar(&cpn, "cpn", "10", "Concurrent PN number")
-	flag.StringVar(&test, "test", "0", "Run copy in test mode")
-	flag.StringVar(&doconly, "doconly", "0", "Only update the document meta")
+	flag.BoolVar(&Test, "test", false, "Run copy in test mode")
+	flag.BoolVar(&Doconly, "doconly", false, "Only update the document meta")
 	flag.Parse()
-	Trace, _ = strconv.ParseBool(trace)
-	Meta, _ = strconv.ParseBool(meta)
-	Image, _ = strconv.ParseBool(image)
-	sproxyd.Test, _ = strconv.ParseBool(test)
-	Doconly, _ = strconv.ParseBool(doconly)
+	/*
+		Trace, _ = strconv.ParseBool(trace)
+		Meta, _ = strconv.ParseBool(meta)
+		Image, _ = strconv.ParseBool(image)
+	*/
+	sproxyd.Test = Test
+
 	Cpn, _ = strconv.Atoi(cpn)
 
 	// Check input parameters
-	if runname == "" {
+	if len(runname) == 0 {
 		runname = action + "_"
 		runname += time.Now().Format("2006-01-02:15:04:05.00")
 	}

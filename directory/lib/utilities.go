@@ -3,7 +3,6 @@ package directory
 import (
 	"encoding/json"
 	"errors"
-	// "fmt"
 	sindexd "moses/sindexd/lib"
 	goLog "moses/user/goLog"
 	"net/http"
@@ -170,16 +169,16 @@ func SetCPU(cpu string) error {
 	return nil
 }
 
+/*
 func BuildIndexSpec(id_spec map[string][]string) map[string]*sindexd.Index_spec {
 	m := make(map[string]*sindexd.Index_spec)
 	for k, v := range id_spec {
 
-		id := v[0]
 		cos, _ := strconv.Atoi(v[1])
 		volid, _ := strconv.Atoi(v[2])
 		specific, _ := strconv.Atoi(v[3])
 		m[k] = &sindexd.Index_spec{
-			Index_id: id,
+			Index_id: v[0],
 			Cos:      cos,
 			Vol_id:   volid,
 			Specific: specific,
@@ -187,17 +186,7 @@ func BuildIndexSpec(id_spec map[string][]string) map[string]*sindexd.Index_spec 
 	}
 	return m
 }
-
-func GetIndexSpec(iIndex string) map[string]*sindexd.Index_spec {
-	switch iIndex {
-	case "PN":
-		return BuildIndexSpec(PnoidSpec)
-	case "PD":
-		return BuildIndexSpec(PdoidSpec)
-	default:
-		return nil
-	}
-}
+*/
 
 func GetAsyncPrefixs(iIndex string, prefixs []string, delimiter string, markers []string, Limit int, Ind_Specs map[string]*sindexd.Index_spec) []*HttpResponse {
 

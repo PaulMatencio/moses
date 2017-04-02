@@ -89,13 +89,13 @@ func main() {
 	flag.StringVar(&config, "config", "storage", "Config file")
 	flag.StringVar(&srcEnv, "srcEnv", "prod", "Environment")
 	flag.StringVar(&targetEnv, "targetEnv", "moses-prod", "Environment")
-	flag.StringVar(&trace, "t", "0", "Trace")       // Trace
+	flag.BoolVar(&Trace, "trace", false, "Trace")   // Trace
 	flag.StringVar(&testname, "T", "deleteDoc", "") // Test name
 	flag.StringVar(&pn, "pn", "", "Publication number")
-	flag.StringVar(&test, "test", "0", "Run copy in test mode")
+	flag.BoolVar(&Test, "test", false, "Run copy in test mode")
 	flag.Parse()
-	Trace, _ = strconv.ParseBool(trace)
-	sproxyd.Test, _ = strconv.ParseBool(test)
+
+	sproxyd.Test = Test
 
 	action = "DeleteObject"
 	application = "deleteObject"
@@ -103,11 +103,13 @@ func main() {
 		fmt.Println("-pn <DocumentId> is missing")
 	}
 
-	pid := os.Getpid()
-	hostname, _ := os.Hostname()
+	var (
+		pid         = os.Getpid()
+		hostname, _ = os.Hostname()
 
-	usr, _ := user.Current()
-	homeDir := usr.HomeDir
+		usr, _  = user.Current()
+		homeDir = usr.HomeDir
+	)
 
 	if testname != "" {
 		testname += string(os.PathSeparator)

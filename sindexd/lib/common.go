@@ -50,6 +50,14 @@ type Index_spec struct {
 	Admin     int    `json:"admin,omitempty"`
 }
 
+type IndexTab struct {
+	Country  string `json:"country"`
+	Index_id string `json:"index_id"`
+	Cos      int    `json:"cos"`
+	Volid    uint32 `json:"volid"`
+	Specific uint8  `json:"specific"`
+}
+
 type Load struct {
 	Index_spec `json:"load"`
 	Version    int `json:"version,omitempty"`
