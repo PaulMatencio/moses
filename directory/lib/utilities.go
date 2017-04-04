@@ -105,10 +105,12 @@ func GetResponse(response *HttpResponse) ([]string, string) {
 
 		keys, nextMarker = iresponse.GetFetchedKeys()
 
+		if iresponse.Next_marker != "" {
+			goLog.Info.Printf("Next marker: %s\n", iresponse.Next_marker)
+		} else {
+			goLog.Info.Printf("No more marker\n")
+		}
 		/*
-			if iresponse.Next_marker != "" {
-				goLog.Info.Println("Next marker:", iresponse.Next_marker)
-			}
 			if len(iresponse.Not_found) != 0 {
 				iresponse.PrintNotFound()
 			}

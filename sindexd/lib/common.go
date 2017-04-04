@@ -39,6 +39,8 @@ var (
 		}).Dial,
 		TLSHandshakeTimeout: 10 * time.Second,
 	}
+	PnOidSpec = "/etc/moses/sindexd/config/sindexd-prod-pn.json"
+	PdOidSpec = "/etc/moses/sindexd/config/sindexd-prod-pd.json"
 )
 
 type Index_spec struct {

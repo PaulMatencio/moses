@@ -4,8 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	sindexd "moses/sindexd/lib"
-
 	files "moses/user/files/lib"
+	goLog "moses/user/goLog"
+	"os"
 )
 
 var (
@@ -89,9 +90,10 @@ var (
 			}
 		)
 	*/
-
-	PnoidSpec = "/etc/moses/sindexd-prod-pn.json"
-	PdoidSpec = "/etc/moses/sindexd-prod-pd.json"
+	/*
+		PnoidSpec = "/etc/moses/sindexd-prod-pn.json"
+		PdoidSpec = "/etc/moses/sindexd-prod-pd.json"
+	*/
 )
 
 type HttpResponse struct { // used for get prefix
@@ -104,12 +106,15 @@ const (
 	Limit = 500
 )
 
+// input json file containing sindex object id
+// output an array of Index_spec structure
+// called by GetIndexSpec
 func BuildIndexspec(file string) map[string]*sindexd.Index_spec {
-
 	m := make(map[string]*sindexd.Index_spec)
 	if scanner, err := files.Scanner(file); err != nil {
-		fmt.Println(scanner, err)
-	} else if linea, err := files.ScanLines(scanner, 100); err == nil {
+		goLog.Error.Println(scanner, err)
+		os.Exit(2)
+	} else if linea, err := files.ScanLines(scanner, 200); err == nil {
 		index := sindexd.IndexTab{}
 		for _, v := range linea {
 			if err = json.Unmarshal([]byte(v), &index); err == nil {
@@ -132,10 +137,10 @@ func GetIndexSpec(iIndex string) map[string]*sindexd.Index_spec {
 	switch iIndex {
 	case "PN":
 		// return BuildIndexSpec(PnoidSpec)
-		return BuildIndexspec(PnoidSpec)
+		return BuildIndexspec(sindexd.PnOidSpec)
 	case "PD":
 		// return BuildIndexSpec(PdoidSpec)
-		return BuildIndexspec(PdoidSpec)
+		return BuildIndexspec(sindexd.PdOidSpec)
 	default:
 		return nil
 	}

@@ -79,7 +79,7 @@ func main() {
 	flag.StringVar(&outputDir, "outputDir", "", "Output directory for spliiting")
 	flag.StringVar(&concurrent, "C", "true", "Use Goroutine when it is possible")
 	flag.StringVar(&count, "count", "false", "Count the number")
-	flag.StringVar(&config, "config", "s11", "Default Config file")
+	flag.StringVar(&config, "config", "moses-prod", "Default Config file")
 	flag.Parse()
 	if len(action) == 0 {
 		usage()
@@ -96,11 +96,18 @@ func main() {
 			logPath = Config.GetLogPath()
 			// hostpool.NewEpsilonGreedy is set by the SetNewHost method as following
 			// HP = hostpool.NewEpsilonGreedy(Config.Hosts, 0, &hostpool.LinearEpsilonValueCalculator{})
+			if pnOidSpec := Config.GetPnOidSpec(); len(pnOidSpec) != 0 {
+				sindexd.PnOidSpec = pnOidSpec
+			}
+			if pdOidSpec := Config.GetPnOidSpec(); len(pdOidSpec) != 0 {
+				sindexd.PdOidSpec = pdOidSpec
+			}
 			sindexd.SetNewHost(Config)
 			fmt.Println("INFO: Using config Hosts", sindexd.Host, logPath)
 		} else {
 			sindexd.HP = hostpool.NewEpsilonGreedy(sindexd.Host, 0, &hostpool.LinearEpsilonValueCalculator{})
-			fmt.Println(err, "WARNING: Using default Hosts:", sindexd.Host)
+			fmt.Printf("errors %s parsing Config file %s", err, config)
+			os.Exit(1)
 		}
 	}
 

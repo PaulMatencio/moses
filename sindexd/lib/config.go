@@ -16,24 +16,30 @@ type Configuration struct {
 	Driver       string   `json:"driver,omitempty"`
 	TargetDriver string   `json:"targetDriver,omitempty"`
 	Log          string   `json:"logpath"`
+	PnOidSpec    string   `json:pnOidSpec,omitempty`
+	PdOidSpec    string   `json:pdOidSpec,omitempty`
 }
 
-func (c *Configuration) SetParmConfig(filename string) error {
+/*
+func (c *Configuration) SetConfig(filename string) error {
 
 	usr, _ := user.Current()
 	configdir := path.Join(usr.HomeDir, "sindexd")
 	configfile := path.Join(configdir, filename)
 	cfile, err := os.Open(configfile)
-	defer cfile.Close()
+
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(2)
 	}
+
+	defer cfile.Close()
 	decoder := json.NewDecoder(cfile)
 	err = decoder.Decode(&c)
 	return err
 }
 
+*/
 func (c Configuration) GetHost() []string {
 	return c.Hosts
 }
@@ -46,19 +52,30 @@ func (c Configuration) GetLogPath() string {
 	return c.Log
 }
 
+func (c Configuration) GetPnOidSpec() string {
+	return c.PnOidSpec
+}
+
+func (c Configuration) GetPdOidSpec() string {
+	return c.PdOidSpec
+
+}
+
 func GetConfig(c_file string) (Configuration, error) {
 	var (
-		config     = "sindexd/config"
+		config     = path.Join("sindexd", "config")
 		usr, _     = user.Current()
 		configfile = path.Join(path.Join(usr.HomeDir, config), c_file)
 		cfile, err = os.Open(configfile)
 	)
+
 	if err != nil {
-		fmt.Println("sindexd.GetParmConfig:", err)
-		fmt.Println("Trying /etc/moses/" + config)
-		configfile = path.Join(path.Join("/etc/moses", config), c_file)
+		pg := "sindexd.GetConfig:"
+		fmt.Println(pg, err)
+		configfile = path.Join(path.Join("/etc/moses/", config), c_file)
+		fmt.Println(pg, "Try ", configfile)
 		if cfile, err = os.Open(configfile); err != nil {
-			fmt.Println("sproxyd.GetConfig:", err)
+			fmt.Println(pg, err)
 			os.Exit(2)
 		}
 

@@ -71,11 +71,19 @@ func main() {
 			logPath = Config.GetLogPath()
 			// hostpool.NewEpsilonGreedy is set by the SetNewHost method as following
 			// HP = hostpool.NewEpsilonGreedy(Config.Hosts, 0, &hostpool.LinearEpsilonValueCalculator{})
+			if pnOidSpec := Config.GetPnOidSpec(); len(pnOidSpec) != 0 {
+				sindexd.PnOidSpec = pnOidSpec
+			}
+			if pdOidSpec := Config.GetPnOidSpec(); len(pdOidSpec) != 0 {
+				sindexd.PdOidSpec = pdOidSpec
+			}
+
 			sindexd.SetNewHost(Config)
 			fmt.Println("INFO: Using config Hosts", sindexd.Host, logPath)
 		} else {
 			sindexd.HP = hostpool.NewEpsilonGreedy(sindexd.Host, 0, &hostpool.LinearEpsilonValueCalculator{})
 			fmt.Println(err, "WARNING: Using default Hosts:", sindexd.Host)
+			os.Exit(2)
 		}
 	} else {
 		err := errors.New("Config file is missing")

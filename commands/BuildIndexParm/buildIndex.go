@@ -14,7 +14,7 @@ import (
 	files "moses/user/files/lib"
 	hexa "moses/user/hexa"
 	"os"
-	"os/user"
+	// "os/user"
 	"path"
 	"strconv"
 	"strings"
@@ -29,7 +29,7 @@ func usage() {
 
 func main() {
 	var (
-		usr, _                  = user.Current()
+		// usr, _                  = user.Current()
 		indextab                = sindexd.IndexTab{}
 		index_id, input, output string
 		cwd, _                  = os.Getwd()
@@ -43,7 +43,7 @@ func main() {
 		fmt.Println("input file is  missing")
 		usage()
 	}
-	sindexdTables := path.Join(usr.HomeDir, input)
+	sindexdTables := path.Join(cwd, input)
 	output = input + ".json"
 	Output := path.Join(cwd, output)
 	fmt.Printf("The output file  is > %s\n", Output)
