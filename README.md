@@ -6,16 +6,24 @@ This application is to `store`, `update`, `delete`, `list` and retrieve scanned 
 
 
 ## Table of Content
+
 The Table of Content is only meta data that describes the lyaout of the document :  `page`, `subpart`  
 
 ## Page
-A pageof a patent document is an object with metadata and data contaning a tiff and png images, and optionally a pdf or video 
+
+A page of a patent document is an object with metadata and data contaning a tiff and png images, and optionally a pdf or video 
 of this page. The page's metadata describe the content of the page.
 
+## Subpage
+
+Specific tiff, png , pdf image and the metatadat of a page 
+
 ## Subpart 
-Subpart of a patent document is one or multiple range of pages that contains the Bibliographie, Description, Abstract, Draws, Claims, Citations, DNA sequences, etc ... of a patent.
+
+Subpart of a patent document is one or multiple range of pages that contains the Bibliographie, Description, Abstract, Draws, Claims, Citations, DNA sequences, etc .. pages  of a patent.
 
 ## Access
+
 Document, pages and subparts are accessed by path name using Scality Ring Sproxyd Driver ( low level object storage restful API)
 
 
@@ -46,31 +54,39 @@ The application is composed of 4 main libraries
 
 ## Other libraries
 
+`user`
 
-## extenal librries
+## extenal libraries
 
 
 
 ## Moses commands Line
 
-Publication number: 
+Patent Publication number's Path name
 
-	TOC ( one per Publication Number )
-	Pages  (a few to thousands pages)
+	TOC (one per Publication Number ). Object path name : CC/PN/KC. This object contain only metadata. 
+	Page (from a  few to thousands pages). Object path name : CC/PN/KC/px , x is the number of the page. Thsi object contain both metadata en data 
 
 `CopyObject`:   Copy a Publication Number (TOC + Pages) from one Ring to another Ring ( or the same Ring)
-`CopyPNs` : Copy list of Publication Numbers (ROC + Pages) from one Ring to another Ring ( or the same Ring)
-`DeleteObject`: Delete a Publication Number (TOC + Pages) from one Ring to another Ring ( or the same Ring)
-`DeletePNs`: Delete list of Publication Numbers (ROC + Pages) from one Ring to another Ring ( or the same Ring)
-`UpdateObject`: Update a Publication Number (TOC + Pages) from one Ring to another Ring ( or the same Ring)
-`UpdatePNs`: Delete list of Publication Numbers (ROC + Pages) from one Ring to another Ring ( or the same Ring)
 
-`GetDocument`: Retrieve document object data and metadata, document type (tiff/png/pdf),  pages, range of pages, subparts ( Claims, Biblio, Description, etc )
+`CopyPNs` : Copy list of Publication Numbers (TOC + Pages) from one Ring to another Ring ( or the same Ring)
+
+`DeleteObject`: Delete a Publication Number (TOC + Pages) from one Ring to another Ring ( or the same Ring)
+
+`DeletePNs`: Delete list of Publication Numbers (TOC + Pages) from one Ring to another Ring ( or the same Ring)
+
+`UpdateObject`: Update a Publication Number (TOC + Pages) from one Ring to another Ring ( or the same Ring)
+
+`UpdatePNs`: Delete list of Publication Numbers (TOC + Pages) from one Ring to another Ring ( or the same Ring)
+
+
+`GetDocument`: Retrieve document object ( TOC + Pages) data and metadata, a specific document type (TOC + tiff/png/pdf sub page),  one or multiple pages, one a multiple ranges of pages, one or multiple subparts ( Claims, Biblio, Description, etc )
 
 `Sindexd`  :
-`GetPrefix`
-`BuildIndexparm` 
 
+`GetPrefix`
+
+`BuildIndexparm` 
 
 
 
