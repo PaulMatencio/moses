@@ -52,7 +52,7 @@ func GetConfig(c_file string) (Configuration, error) {
 
 	var (
 		usr, _     = user.Current()
-		config     = "sproxyd/config"
+		config     = path.Join("sproxyd", "config")
 		configfile = path.Join(path.Join(usr.HomeDir, config), c_file)
 		cfile, err = os.Open(configfile)
 	)

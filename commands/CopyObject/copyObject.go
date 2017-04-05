@@ -108,7 +108,7 @@ func main() {
 		usage()
 	}
 
-	if testname != "" {
+	if len(testname) != 0 {
 		testname += string(os.PathSeparator)
 	}
 

@@ -22,11 +22,10 @@ import (
 )
 
 var (
-	action, lim, prefix, marker, pubdate, count, config, debug,
-	delimiter, force, test, concurrent, memstat, reset, lo string
-	prefixs, markers                        []string
-	Count, Debug, Delimiter, Force, Memstat bool
-	//Test       bool
+	action, lim, prefix, marker, pubdate, config,
+	delimiter, reset, lo string
+	prefixs, markers                                                 []string
+	Count, Debug, Test, Delimiter, Force, Memstat, Concurrent        bool
 	maxinput, bulkindex, keys, iIndex, inputFile, outputDir, logPath string
 )
 
@@ -63,22 +62,22 @@ func main() {
 	flag.StringVar(&lim, "limit", "500", "Limit the number of fetched keys per Get Prefix")
 	flag.StringVar(&marker, "marker", "", "Start with this Marker (Key) for the Get Prefix ")
 	flag.StringVar(&pubdate, "pd", "18000101", "Default Publication date")
-	flag.StringVar(&debug, "debug", "false", "Debug mode")
+	flag.BoolVar(&Debug, "debug", false, "Debug mode")
 	flag.StringVar(&delimiter, "delimiter", "", "Delimiter value")
-	flag.StringVar(&memstat, "S", "false", "Print memory used stats")
+	flag.BoolVar(&Memstat, "memstat", false, "Print memory used stats")
 	flag.StringVar(&reset, "reset", "0", "Reset the sindexd stats counter")
 	flag.StringVar(&lo, "lo", "0", "Provide sindexd Low level stats")
-	flag.StringVar(&force, "force", "false", "Drop the directory even if it is not empty")
+	flag.BoolVar(&Force, "force", false, "Drop the directory even if it is not empty")
 	flag.StringVar(&maxinput, "max", "10000", "maximum number of keys to index; 0 => no limit")
 	flag.StringVar(&bulkindex, "bulk", "1000", "number of indexes per Add/Update indexes operations")
 	flag.StringVar(&prefix, "prefix", "", "Prefix Key")
-	flag.StringVar(&test, "test", "false", "Test mode")
+	flag.BoolVar(&Test, "test", false, "Test mode")
 	flag.StringVar(&keys, "key", "", "Keys <seprated by comma>  to be fetched")
 	flag.StringVar(&iIndex, "index", "", "Index Table <PN or PD>")
 	flag.StringVar(&inputFile, "input", "", "Input file for indexing or Splitting")
 	flag.StringVar(&outputDir, "outputDir", "", "Output directory for spliiting")
-	flag.StringVar(&concurrent, "C", "true", "Use Goroutine when it is possible")
-	flag.StringVar(&count, "count", "false", "Count the number")
+	flag.BoolVar(&Concurrent, "con", true, "Use Goroutine when it is possible")
+	flag.BoolVar(&Count, "count", false, "Count the number")
 	flag.StringVar(&config, "config", "moses-prod", "Default Config file")
 	flag.Parse()
 	if len(action) == 0 {
@@ -131,26 +130,20 @@ func main() {
 	}
 	log.SetOutput(l)
 	// Create  Log categories : Trace, Info, Warning, Error
-	Debug, _ = strconv.ParseBool(debug)
+
 	if Debug {
 		goLog.Init(os.Stdout, os.Stdout, os.Stdout, os.Stderr)
 	} else {
 		goLog.Init(os.Stdout, l, l, os.Stderr)
 	}
-	//  Create hosts pool
-	/*
-		hlist := strings.Split(sindexd.Url, ",")
-		sindexd.HP = hostpool.NewEpsilonGreedy(hlist, 0, &hostpool.LinearEpsilonValueCalculator{})
-	*/
 
 	var (
-		Limit, _      = strconv.Atoi(lim)
-		Reset, _      = strconv.Atoi(reset)
-		Lowlevel, _   = strconv.Atoi(lo)
-		Bulk, _       = strconv.Atoi(bulkindex)
-		Max, _        = strconv.Atoi(maxinput)
-		Concurrent, _ = strconv.ParseBool(concurrent)
-		client        = &http.Client{
+		Limit, _    = strconv.Atoi(lim)
+		Reset, _    = strconv.Atoi(reset)
+		Lowlevel, _ = strconv.Atoi(lo)
+		Bulk, _     = strconv.Atoi(bulkindex)
+		Max, _      = strconv.Atoi(maxinput)
+		client      = &http.Client{
 			Timeout:   sindexd.ReadTimeout,
 			Transport: sindexd.Transport,
 		}
@@ -162,15 +155,13 @@ func main() {
 
 	keys = strings.TrimSpace(keys)
 	sindexd.Maxinput = int64(Max)
-	Memstat, _ = strconv.ParseBool(memstat)
-	Force, _ = strconv.ParseBool(force)
-	Count, _ = strconv.ParseBool(count)
+
 	sindexd.Debug = Debug
 	sindexd.Delimiter = "/"
 	directory.PubDate = pubdate
 	directory.Action = action
 	sindexd.Memstat = Memstat
-	sindexd.Test, _ = strconv.ParseBool(test)
+	sindexd.Test = Test
 	if err := directory.SetCPU("100%"); err != nil {
 		goLog.Error.Println(err)
 	}
@@ -213,11 +204,9 @@ func main() {
 		)
 		start = time.Now()
 		f = "Add/Update keys"
-
 		pn := strings.Split(inputFile, "/")
 		key = pn[len(pn)-1]
 		index := Ind_Specs[key]
-
 		if index == nil {
 			goLog.Warning.Println("Could not find the Index Specication for key:", key)
 			os.Exit(3)

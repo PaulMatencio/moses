@@ -105,6 +105,7 @@ func main() {
 	flag.Parse()
 	sproxyd.Test = Test
 	Cpn, _ = strconv.Atoi(cpn)
+	cwd, _ := os.Getwd()
 
 	// Check input parameters
 	if len(runname) == 0 {
@@ -113,8 +114,11 @@ func main() {
 	}
 	runname += string(os.PathSeparator)
 	if len(pnfile) > 0 {
-		pnfile = path.Join(homeDir, pnfile)
+		if pnfile[0:1] != string(os.PathSeparator) {
+			pnfile = path.Join(cwd, pnfile)
+		}
 		if scanner, err = file.Scanner(pnfile); err != nil {
+			fmt.Println(err)
 			os.Exit(10)
 		}
 	} else if len(pns) == 0 {
@@ -124,6 +128,7 @@ func main() {
 
 	/* INIT CONFIG */
 	if Config, err = sproxyd.InitConfig(config); err != nil {
+		fmt.Println(err)
 		os.Exit(12)
 	}
 	logPath = path.Join(homeDir, Config.GetLogPath())

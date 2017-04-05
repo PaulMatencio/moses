@@ -72,7 +72,7 @@ func GetConfig(c_file string) (Configuration, error) {
 	if err != nil {
 		pg := "sindexd.GetConfig:"
 		fmt.Println(pg, err)
-		configfile = path.Join(path.Join("/etc/moses/", config), c_file)
+		configfile = path.Join(path.Join("/etc/moses/", config), c_file) // to do for windows
 		fmt.Println(pg, "Try ", configfile)
 		if cfile, err = os.Open(configfile); err != nil {
 			fmt.Println(pg, err)

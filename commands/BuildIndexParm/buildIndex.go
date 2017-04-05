@@ -21,7 +21,7 @@ import (
 )
 
 func usage() {
-	usage := "Buildindex -input <File containers the index id (Object keys) > -v <verbose>"
+	usage := "BuildIndexParm -input <File containers the index id (Object keys) > -v <verbose>"
 	fmt.Println(usage)
 	flag.PrintDefaults()
 	os.Exit(2)
@@ -30,26 +30,33 @@ func usage() {
 func main() {
 	var (
 		// usr, _                  = user.Current()
-		indextab                = sindexd.IndexTab{}
-		index_id, input, output string
-		cwd, _                  = os.Getwd()
-		V                       bool
+		indextab                             = sindexd.IndexTab{}
+		index_id, input, output, indexTables string
+		cwd, _                               = os.Getwd()
+		V                                    bool
 	)
 	flag.Usage = usage
 	flag.StringVar(&input, "input", "", "Input file containing the index ids")
 	flag.BoolVar(&V, "v", false, "Verbose")
 	flag.Parse()
+
 	if len(input) == 0 {
-		fmt.Println("input file is  missing")
+		fmt.Println("The input file is missing")
 		usage()
 	}
-	sindexdTables := path.Join(cwd, input)
-	output = input + ".json"
+
+	if input[0:1] != string(os.PathSeparator) {
+		indexTables = path.Join(cwd, input)
+	} else {
+		indexTables = input
+	}
+
+	output = path.Base(indexTables) + ".json"
 	Output := path.Join(cwd, output)
-	fmt.Printf("The output file  is > %s\n", Output)
+	fmt.Printf("The output file is > %s\n", Output)
 	f, err := os.Create(Output)
 	files.Check(err)
-	if scanner, err := files.Scanner(sindexdTables); err != nil {
+	if scanner, err := files.Scanner(indexTables); err != nil {
 		fmt.Println(scanner, err)
 	} else if linea, err := files.ScanLines(scanner, 40); err == nil {
 

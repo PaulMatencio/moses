@@ -101,10 +101,13 @@ func main() {
 	flag.BoolVar(&Test, "test", false, "Run copy in test mode")
 	flag.BoolVar(&Doconly, "doconly", false, "Copy  only the document meta")
 	flag.Parse()
+	var (
+		usr, _  = user.Current()
+		homeDir = usr.HomeDir
+		cwd, _  = os.Getwd()
+	)
 	sproxyd.Test = Test
 	Cpn, _ = strconv.Atoi(cpn)
-	usr, _ := user.Current()
-	homeDir := usr.HomeDir
 
 	if len(runname) == 0 {
 		runname += time.Now().Format("2006-01-02:15:04:05.00")
@@ -113,7 +116,9 @@ func main() {
 	// Check input parameter
 
 	if len(pnfile) > 0 {
-		pnfile = path.Join(homeDir, pnfile)
+		if pnfile[0:1] != string(os.PathSeparator) {
+			pnfile = path.Join(cwd, pnfile)
+		}
 		if scanner, err = file.Scanner(pnfile); err != nil {
 			fmt.Println(err)
 			os.Exit(10)
@@ -126,6 +131,7 @@ func main() {
 
 	/* INIT CONFIG */
 	if Config, err = sproxyd.InitConfig(config); err != nil {
+		fmt.Println(err)
 		os.Exit(12)
 	}
 
