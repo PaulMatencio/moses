@@ -181,7 +181,7 @@ func main() {
 			}
 
 			resp, err = directory.Create(client, v)
-			check(f, start, resp, err)
+			_ = Check(f, start, resp, err)
 		}
 
 	case "Di":
@@ -193,7 +193,7 @@ func main() {
 				goLog.Info.Println("Delete id:", v.Index_id, v.Vol_id, v.Specific, v.Cos)
 			}
 			resp, err = directory.Drop(client, v, Force, true)
-			check(f, start, resp, err)
+			_ = Check(f, start, resp, err)
 		}
 
 	case "AMe", "UMe":
@@ -322,12 +322,17 @@ func main() {
 	sindexd.HP.Close()
 }
 
-func check(f string, start time.Time, resp *http.Response, err error) {
+func Check(f string, start time.Time, resp *http.Response, err error) error {
+	var (
+		err1     error
+		response *sindexd.Response
+	)
 	if err != nil {
 		goLog.Error.Println("Function:", f, err)
 	} else {
-		response := sindexd.GetResponse(resp)
-		goLog.Info.Println("Function:", f, "sindexd.Response:", response.Status, response.Reason, "Duration:", time.Since(start))
-
+		if response, err1 = sindexd.GetResponse(resp); err1 == nil {
+			goLog.Info.Println("Function:", f, "sindexd.Response:", response.Status, response.Reason, "Duration:", time.Since(start))
+		}
 	}
+	return err1
 }

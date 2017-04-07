@@ -15,7 +15,8 @@ import (
 func PostRequest(client *http.Client, d []byte) (*http.Response, error) {
 
 	var (
-		resp  *http.Response
+		resp *http.Response
+		// response *Response
 		err   error
 		r     int
 		hpool hostpool.HostPoolResponse
@@ -30,7 +31,7 @@ func PostRequest(client *http.Client, d []byte) (*http.Response, error) {
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Content-Length", strconv.Itoa(query.Len()))
 		if Debug {
-			goLog.Info.Println(r, "REQUEST_HEADER:> ", req.Header, "REQUEST_URL:>", req.URL, "REQUEST_BODY:> ", req.Body)
+			goLog.Trace.Println(r, "REQUEST_HEADER:> ", req.Header, "REQUEST_URL:>", req.URL, "REQUEST_BODY:> ", req.Body)
 		}
 		// execute the request
 		resp, err = client.Do(req)
@@ -47,6 +48,15 @@ func PostRequest(client *http.Client, d []byte) (*http.Response, error) {
 			}
 
 		} else {
+			/*
+				if response, err = GetResponse(resp); err == nil {
+					if response.Status == 200 {
+						hpool.Mark(nil)
+						break
+					} else {
+						hpool.Mark(err)
+					}
+				}*/
 			hpool.Mark(err)
 			break
 		}

@@ -11,7 +11,7 @@ import (
 	sindexd "moses/sindexd/lib"
 	files "moses/user/files/lib"
 	goLog "moses/user/goLog"
-	"net/http"
+	// "net/http"
 	"os"
 	"os/user"
 	"path"
@@ -149,24 +149,15 @@ func main() {
 				os.Exit(10)
 			}
 		}
-		fmt.Printf("\nNext => %s %d", nextMarker, len(keys))
+		fmt.Printf("\nNext => %s %d\n", nextMarker, len(keys))
 
 		if len(nextMarker) == 0 {
 			Nextmarker = false
 		}
+
 		marker = nextMarker
 	}
 	w.Flush()
 	goLog.Info.Println("Concurrent:", Concurrent, "Elasped:", time.Since(start))
 	sindexd.HP.Close()
-}
-
-func check(f string, start time.Time, resp *http.Response, err error) {
-	if err != nil {
-		goLog.Error.Printf("\nFunction: %s %v", f, err)
-	} else {
-		response := sindexd.GetResponse(resp)
-		goLog.Info.Println("Function:", f, "sindexd.Response:", response.Status, response.Reason, "Duration:", time.Since(start))
-
-	}
 }

@@ -2,6 +2,7 @@ package sindexd
 
 import (
 	"encoding/json"
+
 	"fmt"
 	"io/ioutil"
 	goLog "moses/user/goLog"
@@ -31,16 +32,23 @@ func (r *Response) GetStatus() int {
 	return r.Status
 }
 
-func GetResponse(resp *http.Response) *Response {
+func (r *Response) GetReason() string {
+	return r.Reason
+}
 
-	response := new(Response)
+func GetResponse(resp *http.Response) (*Response, error) {
+
+	var (
+		response = new(Response)
+		err      error
+	)
 	if resp != nil {
 		body := GetBody(resp)
-		if err := json.Unmarshal(body, &response); err != nil {
+		if err = json.Unmarshal(body, &response); err != nil {
 			goLog.Error.Println(err)
 		}
 	}
-	return response
+	return response, err
 }
 
 func GetBody(resp *http.Response) []byte {

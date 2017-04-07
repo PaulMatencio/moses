@@ -2,14 +2,14 @@
 
 Multimedia Object Storage 
 
-## Application functions overview
+## Overview
 
-This purpose of this application is to `store`, `update`, `delete`, `list` and `retrieve` scanned Patent Documents. A single patent document is stored in multiple objects, an object to describe the document itself ( a ind of Table of Content) and one object per page of the document. Each page contain subpage section:s tiff, png imags and optionally a pdf image. Documents are objects stored in the Scality Ring Object storage using the sproxyd restful API ( low level Object storage API) and are indexed with the sindexd key/value storage of Scality 
+This purpose of this application is to `store`, `update`, `delete`, `list` and `retrieve` scanned patent documents. A patent document is stored in multiple objects, one object to describe the document itself (a Table of Content) and one object per page of the document. Each page contain metadata and sections such as tiff, png images and optionally a pdf image. Documents are stored as objects in the Scality Ring's' Object Storage using the sproxyd restful API ( low level Object storage API), then   indexed with the sindexd key/value store of the Scality Ring's Software Defined Storage  
 
 
 ## Table of Content
 
-The Table of Content is only meta data that describes the layout of a document :  `page`, `subpart`, etc .  Below is a go structure that define the structure of a TOC
+The Table of Content (ToC) conrains only meta data which describes the layout of a document :  `page`, `section`, etc .  Below is a go structure that defines the TOC of a document. 
 
 	type DocumentMetadata struct {
 	PubId struct {
@@ -94,12 +94,33 @@ The Table of Content is only meta data that describes the layout of a document :
 	Classification []string `json:"classification,omitempty"`
 }
 
+## Section 
+
+A document has multiple sections. Ecah section is one to multiple range of pages of a document. Following is the list of sections: Bibliographie, Description, Abstract, Draws, Claims, Citations, DNA sequences, etc .. pages  of a patent. 
+
+Example of sections of a document : AbsRangePageNumber (abstract), AmdRangePageNumber, etc  (amendement)
+
+	AbsRangePageNumber []struct {
+		Start int `json:"start"`
+		End   int `json:"end"`
+	} `json:"absRangePageNumber,omitempty"`
+
+	AmdRangePageNumber []struct {
+		Start int `json:"start"`
+		End   int `json:"end"`
+	} `json:"amdRangePageNumber,omitempty"`
+
+	BibliRangePageNumber []struct {
+		Start int `json:"start"`
+		End   int `json:"end"`
+	} `json:"bibliRangePageNumber,omitempty"`
 
 
 ## Page
 
-A page of a patent document is an object with metadata and data contaning a tiff and png images, and optionally a pdf or video 
-of this page. The page's metadata describe the content of the page.
+A page of a patent document is an object with metadata which describe ist contents and data contaning subpages. Subpages are  tiff and png images, and optionally a pdf or video. 
+
+Below is a go structure which describes the content of a page 
 
 	type Pagemeta struct {
 	PubId struct {
@@ -145,7 +166,7 @@ of this page. The page's metadata describe the content of the page.
 
 ## Subpage
 
-Specific tiff, png , pdf image and the metatadat of a page. Example of subpage : Tiff, Png 
+Subpage is a range of bytes of the object taht contains images such tiff,png and optionally pdf and video. Example of subpage : Tiff, Png 
 
 	TiffOffset    struct {
 		Start int `json:"start"`
@@ -157,43 +178,45 @@ Specific tiff, png , pdf image and the metatadat of a page. Example of subpage :
 		End   int `json:"end"`
 	} `json:"pngOffset,omitempty"`
 
-## Subpart 
-
-Subpart of a patent document is one or multiple range of pages that contains the Bibliographie, Description, Abstract, Draws, Claims, Citations, DNA sequences, etc .. pages  of a patent. Example of subparts : AbsRangePageNumber (abstract), AmdRangePageNumber, etc  (amendement)
-
-	AbsRangePageNumber []struct {
-		Start int `json:"start"`
-		End   int `json:"end"`
-	} `json:"absRangePageNumber,omitempty"`
-
-	AmdRangePageNumber []struct {
-		Start int `json:"start"`
-		End   int `json:"end"`
-	} `json:"amdRangePageNumber,omitempty"`
-
-	BibliRangePageNumber []struct {
-		Start int `json:"start"`
-		End   int `json:"end"`
-	} `json:"bibliRangePageNumber,omitempty"`
 
 
 	
 ## Access
 
-Whole Document, pages and subparts are accessed by path name using Scality Ring Sproxyd Driver ( low level object storage restful API)
+The document, pages and subparts are accessed by `pathname` using the Scality Ring Sproxyd Driver (a low level object storage restful API)
  
-Example of pathname : 
+Example of `pathname`: 
 
 	US/4000000/A2    US is the Country code, 4000000 is the Publication number and A2 is the kind code
 	US/4000000/A2/p20   Page 20 of the PID  US/4000000/A2
 
 ## Indexing
 
-Documents are indexed with the Scality Ring Sindexd, a key/value distributed storage. Currently all documents are indexed by Publication Id ( key = CC+PN+KC) and Publication dat ( key = CC+YYYYMMDD)
+The documents ( Table of Content ) object are indexed with the Scality Ring Sindexd, a key/value distributed store. Currently documents are indexed by Publication Id (key = CC+PN+KC) and Publication dat ( key = CC+YYYYMMDD). The value contain information such publication date, unique document id , etc ... Moreover, there are one index table per main country. Small countries are grouped in a separate index table
+
+
+## Index tables
+
+`Example of index tables`
+
+	{"country":"CN","index_id":"148B0FD1AE4E918F84792B45C2FA0E0300002A20","cos":2,"volid":1170405902,"specific":42}
+	{"country":"CA","index_id":"7B43BD0E90E3F64EF3B3D57883AC120300002A20","cos":2,"volid":2021895186,"specific":42}
+	{"country":"DE","index_id":"58FE9CABF4E51CCFB7E33B3DB61C380300002A20","cos":2,"volid":1035344952,"specific":42}
+	{"country":"EP","index_id":"4E598DFF1578EBE87CCDD066546F5F0300002A20","cos":2,"volid":1716809567,"specific":42}
+	{"country":"FR","index_id":"A0458B6E535B0084ECF6C2EA189B640300002A20","cos":2,"volid":3927481188,"specific":42}
+	{"country":"GB","index_id":"BEDE61296BEC137879AE67B7BF2E710300002A20","cos":2,"volid":3082759793,"specific":42}
+
+### INDEX_SPEC:  Compound argument composed of the index_id, cos, volid, and specific arguments.
+
+#### index_id: Part of the INDEX_SPEC argument that designates the RING ID for the index. A 40-character hexadecimal number.
+#### cos Part: of the INDEX_SPEC argument that designates the class of service for index chunks in the RING.  
+#### volid: Part of the INDEX_SPEC argument that designates the volume ID for index chunks in the RING.  
+#### specific: Part of the INDEX_SPEC argument that designates the specific ID for index chunks in the RING
 
 ## Document Publication ID
 
-CC/PN/KC  ( as for instance US/40000000/A2)
+Foramt of a piblication ID : CC/PN/KC  ( as for instance US/40000000/A2)
+
 CC : Country code. It's 2 characters long as for instance  'US','JP','KR','DE','FR','CH','GB' 
 PN : Publication Number. It's naximum 15 characters long
 KC : Kind Code. It's maximum 2 characters long , 1 char + 1 digit. Digit may be ommited.
@@ -242,11 +265,26 @@ Patent Publication number's Path name
 
 `GetDocument`: Retrieve document object ( TOC + Pages) data and metadata, a specific document type (TOC + tiff/png/pdf sub page),  one or multiple pages, one a multiple ranges of pages, one or multiple subparts ( Claims, Biblio, Description, etc )
 
-`Sindexd`  :
+`Sindexd`  : Tool to 
+
+	Create and Drop indexes tables. 
+	Add and Delete indexes entries 
+	Retrieve indexes entries
+	List indexes entries
+	Retrieve the configuration of the key/value store (sindexd)
+	Retrieve the statistics regarding the key/value store (sindexd)
+	
 
 `GetPrefix`
 
+	scan index(es) entries 
+
 `BuildIndexparm` 
+
+	Build the Index specification json file . This json file contains the index speficication ( index table definition) per main conutry. Small countries are grouped into a specific Index table  
+	
+	{"country":"CN","index_id":"148B0FD1AE4E918F84792B45C2FA0E0300002A20","cos":2,"volid":1170405902,"specific":42}
+	{"country":"CA","index_id":"7B43BD0E90E3F64EF3B3D57883AC120300002A20","cos":2,"volid":2021895186,"specific":42} 
 
 
 

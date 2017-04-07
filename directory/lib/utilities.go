@@ -74,7 +74,6 @@ func CountResponse(responses []*HttpResponse) (map[string]int, string) {
 		)
 		pref = responses[i].Pref
 		err = responses[i].Err
-		//index_id := responses[i].indexId
 		if err == nil {
 			iresponse = *responses[i].Response
 			m[pref] = len(iresponse.Fetched)
@@ -102,23 +101,19 @@ func GetResponse(response *HttpResponse) ([]string, string) {
 
 	if err == nil {
 		iresponse = *response.Response
-
-		keys, nextMarker = iresponse.GetFetchedKeys()
-
-		if iresponse.Next_marker != "" {
-			goLog.Info.Printf("Next marker: %s\n", iresponse.Next_marker)
+		if iresponse.Status == 200 {
+			keys, nextMarker = iresponse.GetFetchedKeys()
+			if sindexd.Debug {
+				goLog.Trace.Println(iresponse)
+			}
+			if iresponse.Next_marker != "" {
+				goLog.Info.Printf("Next marker: %s\n", iresponse.Next_marker)
+			} else {
+				goLog.Info.Printf("No more marker\n")
+			}
 		} else {
-			goLog.Info.Printf("No more marker\n")
+			goLog.Error.Printf("Sindexd Status: %d  Sindexd Reason: %s", iresponse.Status, iresponse.Reason)
 		}
-		/*
-			if len(iresponse.Not_found) != 0 {
-				iresponse.PrintNotFound()
-			}
-			if len(iresponse.Common_prefix) != 0 {
-				iresponse.PrintCommonPrefix()
-			}
-		*/
-		// return keys, nextMarker
 	} else {
 		goLog.Error.Println(pref, err)
 	}
@@ -223,7 +218,7 @@ func GetAsyncPrefixs(iIndex string, prefixs []string, delimiter string, markers 
 				client := &http.Client{}
 				if resp, err = GetPrefix(client, index, pref, delimiter, marker, Limit); err == nil {
 					if resp.StatusCode == 200 {
-						iresponse = sindexd.GetResponse(resp)
+						iresponse, err = sindexd.GetResponse(resp)
 					} else {
 						iresponse = nil
 						err = errors.New(resp.Status)
@@ -283,7 +278,7 @@ func GetSerialPrefixs(iIndex string, prefixs []string, delimiter string, markers
 		if resp, err = GetPrefix(client, index, pref, delimiter, marker, Limit); err == nil {
 			// goLog.Info.Println("Status Code ===>", resp.StatusCode)
 			if resp.StatusCode == 200 {
-				iresponse = sindexd.GetResponse(resp)
+				iresponse, err = sindexd.GetResponse(resp)
 			} else {
 				iresponse = nil
 				err = errors.New(resp.Status)
@@ -323,7 +318,7 @@ func GetSerialPrefix(iIndex string, prefix string, delimiter string, marker stri
 	if resp, err = GetPrefix(client, index, prefix, delimiter, marker, Limit); err == nil {
 		// goLog.Info.Println("Status Code ===>", resp.StatusCode)
 		if resp.StatusCode == 200 {
-			iresponse = sindexd.GetResponse(resp)
+			iresponse, err = sindexd.GetResponse(resp)
 		} else {
 			iresponse = nil
 			err = errors.New(resp.Status)
@@ -339,8 +334,9 @@ func GetSerialKeys(specs map[string][]string, Ind_Specs map[string]*sindexd.Inde
 
 	var (
 		// iresponse *sindexd.Response
-		err  error
-		resp *http.Response
+		err      error
+		resp     *http.Response
+		response *sindexd.Response
 	)
 	responses := []*HttpResponse{}
 	client := &http.Client{}
@@ -353,7 +349,8 @@ func GetSerialKeys(specs map[string][]string, Ind_Specs map[string]*sindexd.Inde
 		} else {
 			resp, err = DeleteKeys(client, index, &AKey)
 		}
-		r := &HttpResponse{"", sindexd.GetResponse(resp), err}
+		response, err = sindexd.GetResponse(resp)
+		r := &HttpResponse{"", response, err}
 		responses = append(responses, r)
 	}
 	return responses
@@ -381,7 +378,7 @@ func GetAsyncKeys(specs map[string][]string, Ind_Specs map[string]*sindexd.Index
 				client := &http.Client{}
 				if resp, err = GetKeys(client, index, &AKey); err == nil {
 					if resp.StatusCode == 200 {
-						iresponse = sindexd.GetResponse(resp)
+						iresponse, err = sindexd.GetResponse(resp)
 					} else {
 						iresponse = nil
 						err = errors.New(resp.Status)
