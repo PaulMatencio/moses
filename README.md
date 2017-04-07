@@ -208,10 +208,10 @@ The documents ( Table of Content ) object are indexed with the Scality Ring Sind
 
 ### INDEX_SPEC:  Compound argument composed of the index_id, cos, volid, and specific arguments.
 
-#### index_id: Part of the INDEX_SPEC argument that designates the RING ID for the index. A 40-character hexadecimal number.
-#### cos Part: of the INDEX_SPEC argument that designates the class of service for index chunks in the RING.  
-#### volid: Part of the INDEX_SPEC argument that designates the volume ID for index chunks in the RING.  
-#### specific: Part of the INDEX_SPEC argument that designates the specific ID for index chunks in the RING
+	index_id: Part of the INDEX_SPEC argument that designates the RING ID for the index. A 40-character hexadecimal number.
+	cos Part: of the INDEX_SPEC argument that designates the class of service for index chunks in the RING.  
+	volid: Part of the INDEX_SPEC argument that designates the volume ID for index chunks in the RING.  
+	specific: Part of the INDEX_SPEC argument that designates the specific ID for index chunks in the RING
 
 ## Document Publication ID
 
@@ -269,15 +269,15 @@ Patent Publication number's Path name
 
 	Create and Drop indexes tables. 
 	Add and Delete indexes entries 
-	Retrieve indexes entries
-	List indexes entries
+	Retrieve specific indexes entries
+	List indexes entries ( with prefixing and delimiters)
 	Retrieve the configuration of the key/value store (sindexd)
 	Retrieve the statistics regarding the key/value store (sindexd)
 	
 
-`GetPrefix`
+`ScanPrefix`
 
-	scan index(es) entries 
+	scan all entries of one or multiple index tables  
 
 `BuildIndexparm` 
 
