@@ -156,7 +156,7 @@ func main() {
 
 	if len(pns) == 0 {
 		for !stop {
-			if linea, err := file.ScanLines(scanner, 5); len(linea) > 0 && err == nil {
+			if linea, err := file.ScanLines(scanner, Cpn); len(linea) > 0 && err == nil {
 
 				start = time.Now()
 				copyResponses := bns.AsyncUpdatePns(linea, srcEnv, targetEnv)

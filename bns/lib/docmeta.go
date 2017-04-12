@@ -165,6 +165,7 @@ func (usermd *DocumentMetadata) GetPubDate() (Date, error) {
 
 func (docmeta *DocumentMetadata) GetPagesRanges(section string) string {
 	var pagesranges string
+
 	switch section {
 	case "Abstract":
 		for _, ranges := range docmeta.AbsRangePageNumber {
@@ -183,11 +184,11 @@ func (docmeta *DocumentMetadata) GetPagesRanges(section string) string {
 		for _, ranges := range docmeta.ClaimsRangePageNumber {
 			pagesranges += fmt.Sprintf("%s:%s,", strconv.Itoa(ranges.Start), strconv.Itoa(ranges.End))
 		}
-	case "Desc":
+	case "Description":
 		for _, ranges := range docmeta.DescRangePageNumber {
 			pagesranges += fmt.Sprintf("%s:%s,", strconv.Itoa(ranges.Start), strconv.Itoa(ranges.End))
 		}
-	case "Draw":
+	case "Drawings":
 		for _, ranges := range docmeta.DrawRangePageNumber {
 			pagesranges += fmt.Sprintf("%s:%s,", strconv.Itoa(ranges.Start), strconv.Itoa(ranges.End))
 		}
@@ -199,14 +200,20 @@ func (docmeta *DocumentMetadata) GetPagesRanges(section string) string {
 		for _, ranges := range docmeta.DnaSequenceRangePageNumber {
 			pagesranges += fmt.Sprintf("%s:%s,", strconv.Itoa(ranges.Start), strconv.Itoa(ranges.End))
 		}
-	case "Citation":
+	case "Citations":
 		for _, ranges := range docmeta.ApplicantCitationsRangePageNumber {
 			pagesranges += fmt.Sprintf("%s:%s,", strconv.Itoa(ranges.Start), strconv.Itoa(ranges.End))
 		}
 
 	default:
 	}
-	return pagesranges[0 : len(pagesranges)-1]
+
+	if len(pagesranges) > 0 {
+		return pagesranges[0 : len(pagesranges)-1]
+	} else {
+		return pagesranges
+	}
+
 }
 
 func (docmeta *DocumentMetadata) GetMetadata(bnsRequest *HttpRequest, pathname string) error {

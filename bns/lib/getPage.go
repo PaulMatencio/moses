@@ -112,10 +112,11 @@ func AsyncHttpGetpageType(bnsRequest *HttpRequest) []*sproxyd.HttpResponse {
 		go func(url string) {
 
 			resp, err := GetPageType(bnsRequest, url)
-			defer resp.Body.Close()
+
 			var body []byte
 			if err == nil {
 				body, _ = ioutil.ReadAll(resp.Body)
+				defer resp.Body.Close()
 			}
 			ch <- &sproxyd.HttpResponse{url, resp, &body, err}
 		}(url)

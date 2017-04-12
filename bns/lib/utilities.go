@@ -295,7 +295,7 @@ func BuildPagesRanges(pagesranges string) ([]string, error) {
 	for _, pagesrange := range PagesRangesa {
 		pa := strings.Split(pagesrange, ":")
 		if Start, err = strconv.Atoi(pa[0]); err != nil {
-			fmt.Printf("Invalid Start pages ranges %s", pa[0])
+			// fmt.Printf("Invalid Start pages ranges %s", pa[0])
 			goLog.Error.Printf("Invalid start pages ranges %s", pa[0])
 		}
 		if End, err = strconv.Atoi(pa[1]); err != nil {

@@ -27,7 +27,7 @@ import (
 
 var (
 	action, config, env, logPath, outDir, runname, subpages,
-	hostname, pn, page, trace, test, meta, image, media, pagesranges string
+	hostname, pn, page, trace, test, meta, image, media, ranges string
 	Trace, Meta, Image, CopyObject, Test bool
 	pid                                  int
 	timeout                              time.Duration
@@ -74,13 +74,19 @@ func writeImage(outDir string, page string, media string, body *[]byte) {
 		return
 	}
 
+	if body == nil {
+		// 404 or something wrong
+		goLog.Error.Printf("Body of %s %s is nil", page, media)
+		return
+	}
+
 	if err := checkOutdir(outDir); err != nil {
 		goLog.Error.Println(err)
 		return
 	}
 
 	myfile := outDir + string(os.PathSeparator) + bns.RemoveSlash(pn) + page + "." + strings.ToLower(media)
-	goLog.Trace.Println("myfile:", myfile)
+	// goLog.Trace.Println("myfile:", myfile)
 	err := ioutil.WriteFile(myfile, *body, 0644)
 	check(err)
 }
@@ -102,11 +108,10 @@ func BuildSubPagesRanges(action string, bnsRequest *bns.HttpRequest, pathname st
 	)
 	/* Get the meta data of the document */
 	docmeta := bns.DocumentMetadata{}
-	if err = docmeta.GetMetadata(bnsRequest, pathname); err != nil {
+	if err = docmeta.GetMetadata(bnsRequest, pathname); err == nil {
 		//  Compute pages ranges based on the action value
 		pagesranges = docmeta.GetPagesRanges(action)
 	}
-
 	return pagesranges, err
 }
 
@@ -123,8 +128,8 @@ func main() {
 	flag.StringVar(&runname, "runname", "", "") // Test name
 	flag.StringVar(&pn, "pn", "", "Publication number")
 	flag.StringVar(&page, "page", "1", "page number")
-	flag.StringVar(&pagesranges, "pagesranges", "", "multiple pages ranges")
-	flag.StringVar(&subpages, "subpages", "biblio", "multiple pages ranges")
+	flag.StringVar(&ranges, "ranges", "", "multiple pages ranges")
+	// flag.StringVar(&subpages, "subpages", "biblio", "multiple pages ranges")
 	flag.StringVar(&media, "media", "tiff", "media type: tiff/png/pdf")
 	flag.StringVar(&outDir, "outDir", "", "output directory")
 
@@ -287,17 +292,29 @@ func main() {
 			}
 		}
 
-	case "PagesRanges", "Abstract", "Descrition", "Claims", "Drawings", "Citations", "DNASequence", "Biblio":
+	case "getPagesRanges", "getAbstract", "getDescription", "getClaims", "getDrawings", "getCitations", "getDNASequence", "getBiblio", "getAmendement":
 		var (
 			Page   string
 			pagesa []string
 		)
-		if action == "getPagesRanges" {
+		section := action[3:]
+		if section == "PagesRanges" {
 			// pagesranges := "5:7,17:25"
-			pagesa, _ = bns.BuildPagesRanges(pagesranges)
+			if len(ranges) != 0 {
+				pagesa, _ = bns.BuildPagesRanges(ranges)
+			} else {
+				goLog.Warning.Println("-ranges is missing")
+				os.Exit(2)
+			}
 		} else {
-			pagesranges, _ = BuildSubPagesRanges(action, &bnsRequest, pathname)
-			pagesa, _ = bns.BuildPagesRanges(pagesranges)
+			fmt.Println("....", section)
+			if ranges, _ = BuildSubPagesRanges(section, &bnsRequest, pathname); len(ranges) > 0 {
+
+				pagesa, _ = bns.BuildPagesRanges(ranges)
+			} else {
+				goLog.Warning.Println("ranges is empty")
+				os.Exit(2)
+			}
 		}
 		var (
 			num       = len(pagesa)
@@ -437,6 +454,6 @@ func main() {
 		goLog.Info.Println("-action <action value> is missing")
 	}
 	duration := time.Since(start)
-	fmt.Println("Total Get pages elapsed", duration, " for ", n, " pages ")
-	goLog.Info.Println("Total Get pages elapsed", duration, " for ", n, " pages ")
+	fmt.Println("\nTotal Get pages elapsed times", duration, " for ", n, " pages ")
+	goLog.Info.Println("Total Get pages elapsed times", duration, " for ", n, " pages ")
 }
