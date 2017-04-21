@@ -108,6 +108,7 @@ func main() {
 	cwd, _ := os.Getwd()
 
 	// Check input parameters
+	action = os.Args[0]
 	if len(runname) == 0 {
 		runname = action + "_"
 		runname += time.Now().Format("2006-01-02:15:04:05.00")
@@ -118,6 +119,7 @@ func main() {
 			pnfile = path.Join(cwd, pnfile)
 		}
 		if scanner, err = file.Scanner(pnfile); err != nil {
+
 			fmt.Println(err)
 			os.Exit(10)
 		}
