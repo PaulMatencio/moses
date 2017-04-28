@@ -15,14 +15,14 @@ import (
 	"time"
 )
 
-func AsyncGetPns(pns []string, srcEnv string, doc404 int) []*OpResponse {
+func AsyncGetPns(pns []string, srcEnv string) ([]*OpResponse, int, int) {
 	var (
-		duration  time.Duration
-		media     string = "binary"
-		treq      int    = 0
-		ch               = make(chan *OpResponse)
-		responses        = []*OpResponse{}
-		start            = time.Now()
+		duration             time.Duration
+		media                string = "binary"
+		treq, doc404, docErr int    = 0, 0, 0
+		ch                          = make(chan *OpResponse)
+		responses                   = []*OpResponse{}
+		start                       = time.Now()
 	)
 
 	SetCPU("100%")
@@ -72,6 +72,7 @@ func AsyncGetPns(pns []string, srcEnv string, doc404 int) []*OpResponse {
 						doc404++
 					} else {
 						err = errors.New("Document metadata is missing for " + srcPath)
+						docErr++
 					}
 					goLog.Warning.Println(err)
 					ch <- &OpResponse{err, pn, num, num200}
@@ -145,11 +146,11 @@ func AsyncGetPns(pns []string, srcEnv string, doc404 int) []*OpResponse {
 		case r := <-ch:
 			responses = append(responses, r)
 			if len(responses) == treq {
-				return responses
+				return responses, doc404, docErr
 			}
 		case <-time.After(sproxyd.CopyTimeout * time.Millisecond):
 			fmt.Printf("r")
 		}
 	}
-	return responses
+	// return responses, num404
 }

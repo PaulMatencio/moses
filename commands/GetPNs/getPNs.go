@@ -7,8 +7,6 @@ package main
 //     For every object ( header+ tiff+ png + pdf) of the document
 //         GET The Object  from the source Ring
 //
-//
-//
 //  Check the config file sproxyd/conf/<default config file> moses-dev for more detail before running this program
 //  The <default config file>  can be changed via the -config parm
 //
@@ -31,38 +29,37 @@ import (
 )
 
 var (
-	config, srcEnv, targetEnv, logPath, outDir, runname,
+	config, env, logPath, outDir, runname,
 	hostname, pns, cpn, pnfile, trace, meta, image,
 	media, doconly string
-	Trace, Meta, Image, CopyObject, Test, Doconly bool
-	pid, Cpn                                      int
-	timeout, duration                             time.Duration
-	scanner                                       *bufio.Scanner
-	action, application                           = "CopyPNs", "Moses"
-	numloop, Numpns, NumpnsDone, Numpns404        = 0, 0, 0, 0
-	Config                                        sproxyd.Configuration
-	err                                           error
-	defaultConfig                                 = "moses-dev"
-	start, start0                                 time.Time
-	usr, _                                        = user.Current()
-	homeDir                                       = usr.HomeDir
+	Trace, Meta, Image, CopyObject, Doconly           bool
+	pid, Cpn                                          int
+	timeout, duration                                 time.Duration
+	scanner                                           *bufio.Scanner
+	action, application                               = "CopyPNs", "Moses"
+	numloop, Numpns, NumpnsDone, Numpns404, NumpnsErr = 0, 0, 0, 0, 0
+	Config                                            sproxyd.Configuration
+	err                                               error
+	defaultConfig                                     = "moses-dev"
+	start, start0                                     time.Time
+	usr, _                                            = user.Current()
+	homeDir                                           = usr.HomeDir
 )
 
 func usage() {
 	default_config := "moses-dev"
-	usage := "\n\nUsage:\n\nCopyPNs -config  <config file>  default is  $HOME/sproxyd/config/moses-dev]" +
-		"\n -pns <List of PN separated by a comma> " +
-		"\n -pnfile <filename> " +
-		"\n -srcEnv <Source environment> \n -targEnv <Target environment> \n -t <trace 0/1>  \n -test <test mode 0/1>"
+	usage := "\n\nUsage:\n\nGetPNs -config  <config file>  default is  $HOME/sproxyd/config/moses-dev]" +
+		"\n -pns <string> [List of PN separated by a comma] " +
+		"\n -pnfile <string> [a filename containing the Pns]" +
+		"\n -cpn <number> [concurrent number of PNs to be procesed form the pnfile]" +
+		"\n -env <string> [the Ring environment]" +
+		"\n -trace <bool> [true/false]"
 
-	what := "\nFunction:\n\nCopy PN's (Publication Numbers)  from one Ring  (Ex:moses-dev) to another Ring (Ex:moses-Prod)" +
-		"\n" +
-		"\nFor every PN { " +
-		"\n     GET he PN's metatada from the source  Ring " +
-		"\n     PUT the PN's metadata  to the destination Ring" +
-		"\n     For every blob ( header+ tiff+ png + pdf) of the PN {" +
-		"\n      	GET The Object  from the source Ring" +
-		"\n      	PUT the object  to thedestination Ring" +
+	what := "\nFunction:\n Get PN's (Publication Numbers) of a specific Ring(Ex:moses-dev))" +
+		"\n For every PN of a list { " +
+		"\n     GET he PN's metatada (TOC) " +
+		"\n     For every object of the TOC {" +
+		"\n      	GET the Object" +
 		"\n		{ " +
 		"\n{ " +
 		"\n" +
@@ -93,8 +90,7 @@ func main() {
 
 	flag.Usage = usage
 	flag.StringVar(&config, "config", defaultConfig, "Config file")
-	flag.StringVar(&srcEnv, "srcEnv", "", "Environment")
-	flag.StringVar(&targetEnv, "targetEnv", "", "Target Environment")
+	flag.StringVar(&env, "envv", "", "Environment")
 	flag.BoolVar(&Trace, "trace", false, "Trace")       // Trace
 	flag.StringVar(&runname, "runname", "", "Run name") // Test name
 	flag.StringVar(&pns, "pns", "", "Publication numbers -pns PN1,PN2,PN3,PN4")
@@ -102,7 +98,6 @@ func main() {
 	flag.StringVar(&cpn, "cpn", "10", "Concurrent number of PN's reading from -pnfile")
 	flag.BoolVar(&Doconly, "doconly", false, "Copy only the document meta")
 	flag.Parse()
-	sproxyd.Test = Test
 	Cpn, _ = strconv.Atoi(cpn)
 	cwd, _ := os.Getwd()
 
@@ -158,17 +153,19 @@ func main() {
 		for !stop {
 			if linea, _ := file.ScanLines(scanner, Cpn); len(linea) > 0 {
 				start = time.Now()
-				r := bns.AsyncGetPns(linea, srcEnv, Numpns404)
+				r, doc404, docErr := bns.AsyncGetPns(linea, env)
+				Numpns404 += doc404
+				NumpnsErr += docErr
 				duration = time.Since(start)
 				for _, v := range r {
-					fmt.Printf("\nSource Url=%s,Error=%v,#Input=%d, #Ouput=%d, Duration %v", v.SrcUrl, v.Err, v.Num, v.Num200, duration)
-					goLog.Info.Printf("\nSource Url=%s,Error=%v,#Input=%d, #Ouput=%d, Duration %v", v.SrcUrl, v.Err, v.Num, v.Num200, duration)
+					fmt.Printf("\nSource Url=%s,Error=%v,#Input=%d, #200=%d,#404= %d,#Err=%d,Duration=%v", v.SrcUrl, v.Err, v.Num, v.Num200, doc404, docErr, duration)
+					goLog.Info.Printf("\nSource Url=%s,Error=%v,#Input=%d,#200=%d,#404=%d,#Err=%d,Duration=%v", v.SrcUrl, v.Err, v.Num, v.Num200, doc404, docErr, duration)
 					if v.Num > 0 && v.Num200 == v.Num {
 						NumpnsDone++
 					}
 				}
 				numloop++
-				Numpns = Numpns + len(linea)
+				Numpns += len(linea)
 			} else {
 				stop = true
 			}
@@ -176,18 +173,20 @@ func main() {
 	} else {
 		// take the PN's from the pna ( -pns PN1,PN2,PN3,PN4 )
 		start = time.Now()
-		r := bns.AsyncGetPns(pna, srcEnv, Numpns404)
+		r, doc404, docErr := bns.AsyncGetPns(pna, env)
 		Numpns = len(pna)
+		Numpns404 += doc404
+		NumpnsErr += docErr
 		duration = time.Since(start)
 		for _, v := range r {
-			fmt.Printf("\nSource Url=%s,Error=%v,#Input=%d, #Ouput=%d, Duration %v", v.SrcUrl, v.Err, v.Num, v.Num200, duration)
-			goLog.Info.Printf("\nSource Url=%s,Error=%v,#Input=%d, #Ouput=%d, Duration %v", v.SrcUrl, v.Err, v.Num, v.Num200, duration)
+			fmt.Printf("\nSource Url=%s,Error=%v,#Pages=%d, #200=%d,#404= %d,#Err=%d,Duration=%v", v.SrcUrl, v.Err, v.Num, v.Num200, doc404, docErr, duration)
+			goLog.Info.Printf("\nSource Url=%s,Error=%v,#Pages=%d, #200=%d,#404=%d,#Err=%d,Duration=%v", v.SrcUrl, v.Err, v.Num, v.Num200, doc404, docErr, duration)
 			if v.Num > 0 && v.Num200 == v.Num {
 				NumpnsDone++
 			}
 		}
 	}
 
-	fmt.Printf("\nTotal Elapsed Time %v \n Total PN: %d/ done: %d / not found: %d", time.Since(start0), Numpns, NumpnsDone, Numpns404)
-	goLog.Info.Printf("\nTotal Elapsed Time %v \n Total PN %d /done: %d / not found", time.Since(start0), Numpns, NumpnsDone, Numpns404)
+	fmt.Printf("\nTotal Elapsed Time %v \n Total PN=%d,Done=%d,404=%d,Err=%d", time.Since(start0), Numpns, NumpnsDone, Numpns404, NumpnsErr)
+	goLog.Info.Printf("\nTotal Elapsed Time %v \n Total PN=%d,Done=%d,404=%d,Err=%d", time.Since(start0), Numpns, NumpnsDone, Numpns404, NumpnsErr)
 }
