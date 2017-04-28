@@ -15,14 +15,14 @@ import (
 	"time"
 )
 
-func AsyncGetPns(pns []string, srcEnv string) []*CopyResponse {
+func AsyncGetPns(pns []string, srcEnv string, doc404 int) []*OpResponse {
 	var (
-		duration      time.Duration
-		media         string = "binary"
-		treq          int    = 0
-		ch                   = make(chan *CopyResponse)
-		copyResponses        = []*CopyResponse{}
-		start                = time.Now()
+		duration  time.Duration
+		media     string = "binary"
+		treq      int    = 0
+		ch               = make(chan *OpResponse)
+		responses        = []*OpResponse{}
+		start            = time.Now()
 	)
 
 	SetCPU("100%")
@@ -31,7 +31,7 @@ func AsyncGetPns(pns []string, srcEnv string) []*CopyResponse {
 		srcEnv = sproxyd.Env
 	}
 
-	//  launch concurrent requets
+	//  launch concurrent get requets
 	for _, pn := range pns {
 
 		var (
@@ -63,22 +63,23 @@ func AsyncGetPns(pns []string, srcEnv string) []*CopyResponse {
 
 					if docmd, err = base64.Decode64(encoded_docmd); err != nil {
 						goLog.Error.Println(err) // Invalid meta data
-						ch <- &CopyResponse{err, pn, num, num200}
+						ch <- &OpResponse{err, pn, num, num200}
 						return
 					}
 				} else {
 					if statusCode == 404 {
 						err = errors.New("Document " + srcPath + " not found")
+						doc404++
 					} else {
-						err = errors.New("Metadata is missing for " + srcPath)
+						err = errors.New("Document metadata is missing for " + srcPath)
 					}
 					goLog.Warning.Println(err)
-					ch <- &CopyResponse{err, pn, num, num200}
+					ch <- &OpResponse{err, pn, num, num200}
 					return
 				}
 			} else {
 				goLog.Error.Println(err)
-				ch <- &CopyResponse{err, pn, num, num200}
+				ch <- &OpResponse{err, pn, num, num200}
 				return
 			}
 			// convert the PN  metadata into a go structure
@@ -88,12 +89,12 @@ func AsyncGetPns(pns []string, srcEnv string) []*CopyResponse {
 			if err := json.Unmarshal(docmd, &docmeta); err != nil {
 				goLog.Error.Println("Document metadata is invalid ", srcUrl, err)
 				goLog.Error.Println(string(docmd), docmeta)
-				ch <- &CopyResponse{err, pn, num, num200}
+				ch <- &OpResponse{err, pn, num, num200}
 				return
 			}
 
 			if num, err = docmeta.GetPageNumber(); err != nil {
-				ch <- &CopyResponse{err, pn, num, num200}
+				ch <- &OpResponse{err, pn, num, num200}
 			}
 
 			var (
@@ -119,7 +120,10 @@ func AsyncGetPns(pns []string, srcEnv string) []*CopyResponse {
 
 			for k, v := range sproxydResponses {
 				if err := v.Err; err == nil { //
-					resp := v.Response                                                      /* http response */ // http response
+					resp := v.Response
+					if resp.StatusCode == 200 {
+						num200++
+					} /* http response */ // http response
 					body := *v.Body                                                         // http response
 					bnsResponse := BuildBnsResponse(resp, getHeader["Content-Type"], &body) // bnsResponse is a Go structure
 					bnsResponses[k] = bnsResponse
@@ -130,7 +134,7 @@ func AsyncGetPns(pns []string, srcEnv string) []*CopyResponse {
 			fmt.Println("Elapsed Get time:", duration)
 			goLog.Info.Println("Elapsed Get time:", duration)
 
-			ch <- &CopyResponse{err, pn, num, num200}
+			ch <- &OpResponse{err, pn, num, num200}
 
 		}(srcUrl)
 	}
@@ -139,13 +143,13 @@ func AsyncGetPns(pns []string, srcEnv string) []*CopyResponse {
 	for {
 		select {
 		case r := <-ch:
-			copyResponses = append(copyResponses, r)
-			if len(copyResponses) == treq {
-				return copyResponses
+			responses = append(responses, r)
+			if len(responses) == treq {
+				return responses
 			}
 		case <-time.After(sproxyd.CopyTimeout * time.Millisecond):
-			fmt.Printf("c")
+			fmt.Printf("r")
 		}
 	}
-	return copyResponses
+	return responses
 }

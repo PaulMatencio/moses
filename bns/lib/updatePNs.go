@@ -23,16 +23,16 @@ import (
 	// hostpool "github.com/bitly/go-hostpool"
 )
 
-func AsyncUpdatePns(pns []string, srcEnv string, targetEnv string) []*CopyResponse {
+func AsyncUpdatePns(pns []string, srcEnv string, targetEnv string) []*OpResponse {
 
 	var (
-		pid           = os.Getpid()
-		hostname, _   = os.Hostname()
-		start         = time.Now()
-		media         = "binary"
-		ch            = make(chan *CopyResponse)
-		copyResponses = []*CopyResponse{}
-		treq          = 0
+		pid         = os.Getpid()
+		hostname, _ = os.Hostname()
+		start       = time.Now()
+		media       = "binary"
+		ch          = make(chan *OpResponse)
+		responses   = []*OpResponse{}
+		treq        = 0
 	)
 
 	if len(srcEnv) == 0 {
@@ -77,7 +77,7 @@ func AsyncUpdatePns(pns []string, srcEnv string, targetEnv string) []*CopyRespon
 				if len(encoded_docmd) > 0 {
 					if docmd, err = base64.Decode64(encoded_docmd); err != nil {
 						goLog.Error.Println(err)
-						ch <- &CopyResponse{err, pn, num, num200}
+						ch <- &OpResponse{err, pn, num, num200}
 						return
 					}
 				} else {
@@ -87,12 +87,12 @@ func AsyncUpdatePns(pns []string, srcEnv string, targetEnv string) []*CopyRespon
 						err = errors.New("Metadata is missing for " + srcPath)
 					}
 					goLog.Warning.Println(err)
-					ch <- &CopyResponse{err, pn, num, num200}
+					ch <- &OpResponse{err, pn, num, num200}
 					return
 				}
 			} else {
 				goLog.Error.Println(err)
-				ch <- &CopyResponse{err, pn, num, num200}
+				ch <- &OpResponse{err, pn, num, num200}
 				return
 			}
 			// convert the PN  metadata (TOC) into a go structure
@@ -102,7 +102,7 @@ func AsyncUpdatePns(pns []string, srcEnv string, targetEnv string) []*CopyRespon
 			if err := json.Unmarshal(docmd, &docmeta); err != nil {
 				goLog.Error.Println("Document metadata is invalid ", srcUrl, err)
 				goLog.Error.Println(string(docmd), docmeta)
-				ch <- &CopyResponse{err, pn, num, num200}
+				ch <- &OpResponse{err, pn, num, num200}
 				return
 			} else {
 				header := map[string]string{
@@ -117,7 +117,7 @@ func AsyncUpdatePns(pns []string, srcEnv string, targetEnv string) []*CopyRespon
 			}
 
 			if num, err = docmeta.GetPageNumber(); err != nil {
-				ch <- &CopyResponse{err, pn, num, num200}
+				ch <- &OpResponse{err, pn, num, num200}
 				return
 			}
 			// COPY EVERY PAGES ASYNCHRONOUSLY
@@ -197,7 +197,7 @@ func AsyncUpdatePns(pns []string, srcEnv string, targetEnv string) []*CopyRespon
 					goLog.Info.Printf("Host name:%s,Pid:%d,Publication:%s,Ins:%d,Outs:%d,Notfound:%d,Existed:%d,Other:%d", hostname, pid, pn, num, num200, num404, num412, numOther)
 				}
 			}
-			ch <- &CopyResponse{err, pn, num, num200}
+			ch <- &OpResponse{err, pn, num, num200}
 
 		}(srcUrl, dstUrl)
 	}
@@ -206,13 +206,13 @@ func AsyncUpdatePns(pns []string, srcEnv string, targetEnv string) []*CopyRespon
 	for {
 		select {
 		case r := <-ch:
-			copyResponses = append(copyResponses, r)
-			if len(copyResponses) == treq {
-				return copyResponses
+			responses = append(responses, r)
+			if len(responses) == treq {
+				return responses
 			}
 		case <-time.After(sproxyd.CopyTimeout * time.Millisecond):
 			fmt.Printf("u")
 		}
 	}
-	return copyResponses
+	return responses
 }

@@ -44,7 +44,7 @@ type HttpRequest struct {
 	Media  string
 }
 
-type CopyResponse struct {
+type OpResponse struct {
 	Err    error
 	SrcUrl string
 	Num    int

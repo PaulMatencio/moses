@@ -6,7 +6,7 @@ package main
 //   PUT  the document metadata  to the destination Ring
 //     For every object ( header+ tiff+ png + pdf) of the document
 //         GET The Object  from the source Ring
-//         PUT the object to the destination  Ring
+//
 //
 //
 //  Check the config file sproxyd/conf/<default config file> moses-dev for more detail before running this program
@@ -32,14 +32,14 @@ import (
 
 var (
 	config, srcEnv, targetEnv, logPath, outDir, runname,
-	hostname, pns, cpn, pnfile, trace, test, meta, image,
+	hostname, pns, cpn, pnfile, trace, meta, image,
 	media, doconly string
 	Trace, Meta, Image, CopyObject, Test, Doconly bool
 	pid, Cpn                                      int
 	timeout, duration                             time.Duration
 	scanner                                       *bufio.Scanner
 	action, application                           = "CopyPNs", "Moses"
-	numloop, Numpns, NumpnsDone                   = 0, 0, 0
+	numloop, Numpns, NumpnsDone, Numpns404        = 0, 0, 0, 0
 	Config                                        sproxyd.Configuration
 	err                                           error
 	defaultConfig                                 = "moses-dev"
@@ -100,7 +100,6 @@ func main() {
 	flag.StringVar(&pns, "pns", "", "Publication numbers -pns PN1,PN2,PN3,PN4")
 	flag.StringVar(&pnfile, "pnfile", "", "File of publication numbers, one PN per line  -pnfile filename")
 	flag.StringVar(&cpn, "cpn", "10", "Concurrent number of PN's reading from -pnfile")
-	flag.BoolVar(&Test, "test", false, "Run copy in test mode")
 	flag.BoolVar(&Doconly, "doconly", false, "Copy only the document meta")
 	flag.Parse()
 	sproxyd.Test = Test
@@ -154,20 +153,19 @@ func main() {
 	)
 
 	if len(pns) == 0 {
-		//  Take  the PNs from a file
+		//  Read PNs from a file
 		//  Cpn is the number of concuurent PN's to be processed
 		for !stop {
 			if linea, _ := file.ScanLines(scanner, Cpn); len(linea) > 0 {
 				start = time.Now()
-				copyResponses := bns.AsyncGetPns(linea, srcEnv)
+				r := bns.AsyncGetPns(linea, srcEnv, Numpns404)
 				duration = time.Since(start)
-				for _, copyResponse := range copyResponses {
-					fmt.Printf("\nSource Url=%s,Error=%v,#Input=%d, #Ouput=%d, Duration %v", copyResponse.SrcUrl, copyResponse.Err, copyResponse.Num, copyResponse.Num200, duration)
-					goLog.Info.Printf("\nSource Url=%s,Error=%v,#Input=%d, #Ouput=%d, Duration %v", copyResponse.SrcUrl, copyResponse.Err, copyResponse.Num, copyResponse.Num200, duration)
-					if copyResponse.Num > 0 && copyResponse.Num200 == copyResponse.Num {
+				for _, v := range r {
+					fmt.Printf("\nSource Url=%s,Error=%v,#Input=%d, #Ouput=%d, Duration %v", v.SrcUrl, v.Err, v.Num, v.Num200, duration)
+					goLog.Info.Printf("\nSource Url=%s,Error=%v,#Input=%d, #Ouput=%d, Duration %v", v.SrcUrl, v.Err, v.Num, v.Num200, duration)
+					if v.Num > 0 && v.Num200 == v.Num {
 						NumpnsDone++
 					}
-
 				}
 				numloop++
 				Numpns = Numpns + len(linea)
@@ -178,18 +176,18 @@ func main() {
 	} else {
 		// take the PN's from the pna ( -pns PN1,PN2,PN3,PN4 )
 		start = time.Now()
-		copyResponses := bns.AsyncGetPns(pna, srcEnv)
+		r := bns.AsyncGetPns(pna, srcEnv, Numpns404)
 		Numpns = len(pna)
 		duration = time.Since(start)
-		for _, copyResponse := range copyResponses {
-			fmt.Printf("\nSource Url=%s,Error=%v,#Input=%d, #Ouput=%d, Duration %v", copyResponse.SrcUrl, copyResponse.Err, copyResponse.Num, copyResponse.Num200, duration)
-			goLog.Info.Printf("\nSource Url=%s,Error=%v,#Input=%d, #Ouput=%d, Duration %v", copyResponse.SrcUrl, copyResponse.Err, copyResponse.Num, copyResponse.Num200, duration)
-			if copyResponse.Num > 0 && copyResponse.Num200 == copyResponse.Num {
+		for _, v := range r {
+			fmt.Printf("\nSource Url=%s,Error=%v,#Input=%d, #Ouput=%d, Duration %v", v.SrcUrl, v.Err, v.Num, v.Num200, duration)
+			goLog.Info.Printf("\nSource Url=%s,Error=%v,#Input=%d, #Ouput=%d, Duration %v", v.SrcUrl, v.Err, v.Num, v.Num200, duration)
+			if v.Num > 0 && v.Num200 == v.Num {
 				NumpnsDone++
 			}
 		}
 	}
 
-	fmt.Printf("\nTotal Elapsed Time %v \nNumber of PN's completed %d / Number of PN's", time.Since(start0), NumpnsDone, Numpns)
-	goLog.Info.Printf("\nTotal Elapsed Time %v \nNumber of PN's completed %d / Number of PN's", time.Since(start0), NumpnsDone, Numpns)
+	fmt.Printf("\nTotal Elapsed Time %v \n Total PN: %d/ done: %d / not found: %d", time.Since(start0), Numpns, NumpnsDone, Numpns404)
+	goLog.Info.Printf("\nTotal Elapsed Time %v \n Total PN %d /done: %d / not found", time.Since(start0), Numpns, NumpnsDone, Numpns404)
 }

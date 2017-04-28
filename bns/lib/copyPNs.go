@@ -16,16 +16,16 @@ import (
 	"time"
 )
 
-func AsyncCopyPns(pns []string, srcEnv string, targetEnv string) []*CopyResponse {
+func AsyncCopyPns(pns []string, srcEnv string, targetEnv string) []*OpResponse {
 	var (
-		duration      time.Duration
-		media         string = "binary"
-		treq          int    = 0
-		ch                   = make(chan *CopyResponse)
-		copyResponses        = []*CopyResponse{}
-		pid                  = os.Getpid()
-		hostname, _          = os.Hostname()
-		start                = time.Now()
+		duration    time.Duration
+		media       string = "binary"
+		treq        int    = 0
+		ch                 = make(chan *OpResponse)
+		responses          = []*OpResponse{}
+		pid                = os.Getpid()
+		hostname, _        = os.Hostname()
+		start              = time.Now()
 	)
 
 	SetCPU("100%")
@@ -69,7 +69,7 @@ func AsyncCopyPns(pns []string, srcEnv string, targetEnv string) []*CopyResponse
 
 					if docmd, err = base64.Decode64(encoded_docmd); err != nil {
 						goLog.Error.Println(err) // Invalid meta data
-						ch <- &CopyResponse{err, pn, num, num200}
+						ch <- &OpResponse{err, pn, num, num200}
 						return
 					}
 				} else {
@@ -79,12 +79,12 @@ func AsyncCopyPns(pns []string, srcEnv string, targetEnv string) []*CopyResponse
 						err = errors.New("Metadata is missing for " + srcPath)
 					}
 					goLog.Warning.Println(err)
-					ch <- &CopyResponse{err, pn, num, num200}
+					ch <- &OpResponse{err, pn, num, num200}
 					return
 				}
 			} else {
 				goLog.Error.Println(err)
-				ch <- &CopyResponse{err, pn, num, num200}
+				ch <- &OpResponse{err, pn, num, num200}
 				return
 			}
 			// convert the PN  metadata into a go structure
@@ -94,7 +94,7 @@ func AsyncCopyPns(pns []string, srcEnv string, targetEnv string) []*CopyResponse
 			if err := json.Unmarshal(docmd, &docmeta); err != nil {
 				goLog.Error.Println("Document metadata is invalid ", srcUrl, err)
 				goLog.Error.Println(string(docmd), docmeta)
-				ch <- &CopyResponse{err, pn, num, num200}
+				ch <- &OpResponse{err, pn, num, num200}
 				return
 			} else {
 				header := map[string]string{
@@ -108,7 +108,7 @@ func AsyncCopyPns(pns []string, srcEnv string, targetEnv string) []*CopyResponse
 			}
 
 			if num, err = docmeta.GetPageNumber(); err != nil {
-				ch <- &CopyResponse{err, pn, num, num200}
+				ch <- &OpResponse{err, pn, num, num200}
 			}
 
 			var (
@@ -182,7 +182,7 @@ func AsyncCopyPns(pns []string, srcEnv string, targetEnv string) []*CopyResponse
 				}
 
 			}
-			ch <- &CopyResponse{err, pn, num, num200}
+			ch <- &OpResponse{err, pn, num, num200}
 
 		}(srcUrl, dstUrl)
 	}
@@ -191,13 +191,13 @@ func AsyncCopyPns(pns []string, srcEnv string, targetEnv string) []*CopyResponse
 	for {
 		select {
 		case r := <-ch:
-			copyResponses = append(copyResponses, r)
-			if len(copyResponses) == treq {
-				return copyResponses
+			responses = append(responses, r)
+			if len(responses) == treq {
+				return responses
 			}
 		case <-time.After(sproxyd.CopyTimeout * time.Millisecond):
 			fmt.Printf("c")
 		}
 	}
-	return copyResponses
+	return responses
 }

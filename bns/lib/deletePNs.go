@@ -16,16 +16,16 @@ import (
 	"time"
 )
 
-func AsyncDeletePns(pns []string, targetEnv string) []*CopyResponse {
+func AsyncDeletePns(pns []string, targetEnv string) []*OpResponse {
 
 	var (
-		pid           = os.Getpid()
-		hostname, _   = os.Hostname()
-		ch            = make(chan *CopyResponse)
-		copyResponses = []*CopyResponse{}
-		media         = "binary"
-		statusCode    int
-		treq          = 0
+		pid         = os.Getpid()
+		hostname, _ = os.Hostname()
+		ch          = make(chan *OpResponse)
+		responses   = []*OpResponse{}
+		media       = "binary"
+		statusCode  int
+		treq        = 0
 	)
 
 	if len(targetEnv) == 0 {
@@ -67,7 +67,7 @@ func AsyncDeletePns(pns []string, targetEnv string) []*CopyResponse {
 				if len(encoded_docmd) > 0 {
 					if docmd, err = base64.Decode64(encoded_docmd); err != nil {
 						goLog.Error.Println(err)
-						ch <- &CopyResponse{err, targetUrl, num, num200}
+						ch <- &OpResponse{err, targetUrl, num, num200}
 						return
 					}
 				} else {
@@ -77,12 +77,12 @@ func AsyncDeletePns(pns []string, targetEnv string) []*CopyResponse {
 						err = errors.New("Metadata is missing for " + targetUrl)
 					}
 					goLog.Warning.Println(err)
-					ch <- &CopyResponse{err, pn, num, num200}
+					ch <- &OpResponse{err, pn, num, num200}
 					return
 				}
 			} else {
 				goLog.Error.Println(err)
-				ch <- &CopyResponse{err, targetUrl, num, num200}
+				ch <- &OpResponse{err, targetUrl, num, num200}
 				return
 			}
 
@@ -93,12 +93,12 @@ func AsyncDeletePns(pns []string, targetEnv string) []*CopyResponse {
 			if err := json.Unmarshal(docmd, &docmeta); err != nil {
 				goLog.Error.Println("Document metadata is invalid ", targetUrl, err)
 				goLog.Error.Println(string(docmd), docmeta)
-				ch <- &CopyResponse{err, targetUrl, num, num200}
+				ch <- &OpResponse{err, targetUrl, num, num200}
 				return
 			}
 
 			if num, err = docmeta.GetPageNumber(); err != nil {
-				ch <- &CopyResponse{err, targetUrl, num, num200}
+				ch <- &OpResponse{err, targetUrl, num, num200}
 				return
 			}
 
@@ -175,7 +175,7 @@ func AsyncDeletePns(pns []string, targetEnv string) []*CopyResponse {
 				}
 			}
 
-			ch <- &CopyResponse{err, pn, num, num200}
+			ch <- &OpResponse{err, pn, num, num200}
 
 		}(targetUrl)
 
@@ -185,14 +185,14 @@ func AsyncDeletePns(pns []string, targetEnv string) []*CopyResponse {
 	for {
 		select {
 		case r := <-ch:
-			copyResponses = append(copyResponses, r)
-			if len(copyResponses) == treq {
-				return copyResponses
+			responses = append(responses, r)
+			if len(responses) == treq {
+				return responses
 			}
 		case <-time.After(sproxyd.CopyTimeout * time.Millisecond):
 			fmt.Printf("c")
 		}
 	}
 
-	return copyResponses
+	return responses
 }

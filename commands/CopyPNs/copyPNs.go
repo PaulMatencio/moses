@@ -159,12 +159,12 @@ func main() {
 		for !stop {
 			if linea, _ := file.ScanLines(scanner, Cpn); len(linea) > 0 {
 				start = time.Now()
-				copyResponses := bns.AsyncCopyPns(linea, srcEnv, targetEnv)
+				r := bns.AsyncCopyPns(linea, srcEnv, targetEnv)
 				duration = time.Since(start)
-				for _, copyResponse := range copyResponses {
-					fmt.Printf("\nSource Url=%s,Error=%v,#Input=%d, #Ouput=%d, Duration %v", copyResponse.SrcUrl, copyResponse.Err, copyResponse.Num, copyResponse.Num200, duration)
-					goLog.Info.Printf("\nSource Url=%s,Error=%v,#Input=%d, #Ouput=%d, Duration %v", copyResponse.SrcUrl, copyResponse.Err, copyResponse.Num, copyResponse.Num200, duration)
-					if copyResponse.Num > 0 && copyResponse.Num200 == copyResponse.Num {
+				for _, v := range r {
+					fmt.Printf("\nSource Url=%s,Error=%v,#Input=%d, #Ouput=%d, Duration %v", v.SrcUrl, v.Err, v.Num, v.Num200, duration)
+					goLog.Info.Printf("\nSource Url=%s,Error=%v,#Input=%d, #Ouput=%d, Duration %v", v.SrcUrl, v.Err, v.Num, v.Num200, duration)
+					if v.Num > 0 && v.Num200 == v.Num {
 						NumpnsDone++
 					}
 
@@ -178,13 +178,13 @@ func main() {
 	} else {
 		// take the PN's from the pna ( -pns PN1,PN2,PN3,PN4 )
 		start = time.Now()
-		copyResponses := bns.AsyncCopyPns(pna, srcEnv, targetEnv)
+		r := bns.AsyncCopyPns(pna, srcEnv, targetEnv)
 		Numpns = len(pna)
 		duration = time.Since(start)
-		for _, copyResponse := range copyResponses {
-			fmt.Printf("\nSource Url=%s,Error=%v,#Input=%d, #Ouput=%d, Duration %v", copyResponse.SrcUrl, copyResponse.Err, copyResponse.Num, copyResponse.Num200, duration)
-			goLog.Info.Printf("\nSource Url=%s,Error=%v,#Input=%d, #Ouput=%d, Duration %v", copyResponse.SrcUrl, copyResponse.Err, copyResponse.Num, copyResponse.Num200, duration)
-			if copyResponse.Num > 0 && copyResponse.Num200 == copyResponse.Num {
+		for _, v := range r {
+			fmt.Printf("\nSource Url=%s,Error=%v,#Input=%d, #Ouput=%d, Duration %v", v.SrcUrl, v.Err, v.Num, v.Num200, duration)
+			goLog.Info.Printf("\nSource Url=%s,Error=%v,#Input=%d, #Ouput=%d, Duration %v", v.SrcUrl, v.Err, v.Num, v.Num200, duration)
+			if v.Num > 0 && v.Num200 == v.Num {
 				NumpnsDone++
 			}
 		}
