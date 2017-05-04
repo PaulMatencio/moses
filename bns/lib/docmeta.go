@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	base64 "moses/user/base64j"
 	goLog "moses/user/goLog"
 	"os"
 	"strconv"
@@ -143,29 +144,29 @@ func (docmeta *DocumentMetadata) Decode(filename string) error {
 }
 
 // Get total number of pages of a document
-func (usermd *DocumentMetadata) GetPageNumber() (int, error) {
-	if page := usermd.TotalPage; page > 0 {
-		return usermd.TotalPage, nil
+func (docmeta *DocumentMetadata) GetPageNumber() (int, error) {
+	if page := docmeta.TotalPage; page > 0 {
+		return docmeta.TotalPage, nil
 	} else {
 		return 0, errors.New("Page number invalid")
 	}
 }
 
 // Get  the publication date of a document
-func (usermd *DocumentMetadata) GetPubDate() (Date, error) {
+func (docmeta *DocumentMetadata) GetPubDate() (Date, error) {
 	date := Date{}
 	err := error(nil)
-	if usermd.PubDate != "" {
-		date, err = ParseDate(usermd.PubDate)
+	if docmeta.PubDate != "" {
+		date, err = ParseDate(docmeta.PubDate)
 	} else {
 		err = errors.New("no Publication date")
 	}
 	return date, err
 }
 
+// get pages ranges and sub pages
 func (docmeta *DocumentMetadata) GetPagesRanges(section string) string {
 	var pagesranges string
-
 	switch section {
 	case "Abstract":
 		for _, ranges := range docmeta.AbsRangePageNumber {
@@ -216,6 +217,22 @@ func (docmeta *DocumentMetadata) GetPagesRanges(section string) string {
 
 }
 
+func (docmeta *DocumentMetadata) UsermdToStruct(meta string) error {
+
+	if jsonByte, err := base64.Decode64(meta); err == nil {
+		return json.Unmarshal(jsonByte, &docmeta)
+	} else {
+		return err
+	}
+}
+
+// return the document Id  in the format CC/PN/KC
+func (docmeta *DocumentMetadata) GetPathName() string {
+	return (fmt.Sprintf("%s/%s/%s", docmeta.PubId.CountryCode, docmeta.PubId.PubNumber, docmeta.PubId.KindCode))
+	// return  docmeta.BnsId.CountryCode + "/" + docmeta.BnsId.PubNumber + "/" + docmeta.BnsId.KindCode
+}
+
+// Get document metadata
 func (docmeta *DocumentMetadata) GetMetadata(bnsRequest *HttpRequest, pathname string) error {
 	var (
 		err        error

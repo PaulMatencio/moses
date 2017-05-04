@@ -2,11 +2,15 @@ package bns
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
+	base64 "moses/user/base64j"
 	goLog "moses/user/goLog"
 	"os"
+	"strconv"
 )
 
+// Structure of the user page metadata
 type Pagemeta struct {
 	PubId struct {
 		CountryCode string `json:"countryCode"`
@@ -49,8 +53,8 @@ type Pagemeta struct {
 	} `json:"pdfOffset,omitempty"`
 }
 
+// Convert a structure  into Json format  and write it to a file
 func (pagemeta *Pagemeta) Encode(filename string) error {
-
 	file, err := os.Create(filename)
 	if err == nil {
 		defer file.Close()
@@ -60,6 +64,8 @@ func (pagemeta *Pagemeta) Encode(filename string) error {
 		return err
 	}
 }
+
+// Read a json format into a structure
 func (pagemeta *Pagemeta) Decode(filename string) error {
 	file, err := os.Open(filename)
 	if err == nil {
@@ -71,7 +77,23 @@ func (pagemeta *Pagemeta) Decode(filename string) error {
 	}
 }
 
+// return document id  in the form CC/PN/KC/pn
+func (pagemeta *Pagemeta) GetPathName() string {
+	//return "/" + pagemeta.BnsId.CountryCode + "/" + pagemeta.BnsId.PubNumber + "/" + pagemeta.BnsId.KindCode + "/p" + strconv.Itoa(pagemeta.PageNumber)
+	return (fmt.Sprintf("%s/%s/%s/p%s", pagemeta.BnsId.CountryCode, pagemeta.BnsId.PubNumber, pagemeta.BnsId.KindCode, strconv.Itoa(pagemeta.PageNumber)))
+}
+
+func (pagemeta *Pagemeta) UsermdToStruct(meta string) error {
+
+	if jsonByte, err := base64.Decode64(meta); err == nil {
+		return json.Unmarshal(jsonByte, &pagemeta)
+	} else {
+		return err
+	}
+}
+
 // Read from a file a page in json format ans store it in a page structure
+// same as Decode
 func (pagemeta *Pagemeta) SetPagemd(filename string) error {
 	//* USE Encode
 	var (

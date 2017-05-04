@@ -38,8 +38,9 @@ var (
 
 func usage() {
 
-	usage := "DocumentGet: \n -action <action> -config  <config>, sproxyd configfile;default file is [$HOME/sproxyd/moses-dev]\n" +
-		"-pn pn -page page"
+	usage := "DocumentGet: \n -action [action] -config  <config>  [sproxyd configfile]\n" +
+		"-pn Document path [/CC/Pn/KC]\n" +
+		"-page [page number]\n"
 
 	fmt.Println(usage)
 	flag.PrintDefaults()
@@ -118,8 +119,8 @@ func BuildSubPagesRanges(action string, bnsRequest *bns.HttpRequest, pathname st
 func main() {
 
 	flag.Usage = usage
-	flag.StringVar(&action, "action", "", "<getPageMeta> <getPageType> <getDocumentMeta> <getDocumentType> <PagesRanges> <Subpages>")
-	flag.StringVar(&config, "config", "moses-dev", "Config file")
+	flag.StringVar(&action, "action", "", "<getObject> <getPageMeta> <getPageType> <getDocumentMeta> <getDocumentType> <getPagesRanges> <getSubpages><getAbstract>, <getDescription>, <getClaims>, <getDrawings>, <getCitations>, <getDNASequence>, <getBiblio>, <getAmendement")
+	flag.StringVar(&config, "config", "moses-prod", "Config file")
 	flag.StringVar(&env, "env", "", "Environment")
 	flag.StringVar(&trace, "trace", "0", "Trace")   // Trace
 	flag.StringVar(&test, "test", "0", "Test mode") // Test mode
