@@ -2,9 +2,9 @@ package files
 
 import (
 	"fmt"
+	goLog "moses/user/goLog"
 	"os"
 	"time"
-	"user/goLog"
 )
 
 func DeleteFile(filename string) error {

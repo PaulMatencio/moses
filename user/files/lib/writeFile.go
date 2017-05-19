@@ -3,9 +3,9 @@ package files
 import (
 	"fmt"
 	"io/ioutil"
+	goLog "moses/user/goLog"
 	"os"
 	"time"
-	"user/goLog"
 )
 
 func WriteFile(filename string, buf []byte, mode os.FileMode) error {

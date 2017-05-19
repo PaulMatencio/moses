@@ -1,0 +1,186 @@
+//None "Overnet OS section": None
+/OOS/CPU/BlkioCPU "CPU spent in IO (1/1000)": 0
+/OOS/CPU/SystemCPU "System CPU usage (1/1000)": 2
+/OOS/CPU/TotalCPU "Total CPU usage": 18
+/OOS/CPU/UserCPU "User CPU usage (1/1000)": 16
+/OOS/Cache/authentication/NbEntries "Nb entries for "Cache of authentication requests"": 1
+/OOS/Cache/authentication/NbRequests "Nb requests for "Cache of authentication requests"": 42431
+/OOS/Cache/authentication/NbRequestsMatch "Nb requests found in "Cache of authentication requests"": 42430
+/OOS/Cache/dnsip/NbEntries "Nb entries for "Cache of DNS requests for IP"": 0
+/OOS/Cache/dnsip/NbRequests "Nb requests for "Cache of DNS requests for IP"": 0
+/OOS/Cache/dnsip/NbRequestsMatch "Nb requests found in "Cache of DNS requests for IP"": 0
+/OOS/Cache/dnsname/NbEntries "Nb entries for "Cache of DNS requests for name"": 1
+/OOS/Cache/dnsname/NbRequests "Nb requests for "Cache of DNS requests for name"": 1
+/OOS/Cache/dnsname/NbRequestsMatch "Nb requests found in "Cache of DNS requests for name"": 0
+/OOS/Disk/Storage/Logs/Available "Available size in filesystem for the logs (KBytes)": 206173396
+/OOS/Disk/Storage/Logs/Total "Total size in filesystem for the logs (KBytes)": 209612800
+/OOS/Disk/Storage/Logs/Used "Use size in filesystem for the logs (KBytes)": 3439404
+/OOS/Disk/Storage/Logs/Usedpercent "Use percentage in filesystem for the logs (100 * %)": 2
+/OOS/Disk/Storage/Os/Available "Available size in filesystem for the os (KBytes)": 1445212
+/OOS/Disk/Storage/Os/Total "Total size in filesystem for the os (KBytes)": 2093740
+/OOS/Disk/Storage/Os/Used "Use size in filesystem for the os (KBytes)": 648528
+/OOS/Disk/Storage/Os/Usedpercent "Use percentage in filesystem for the os (100 * %)": 31
+/OOS/Load/15m "Load avg 15m (*100)": 8
+/OOS/Load/1m "Load avg 1m (*100)": 4
+/OOS/Load/5m "Load avg 5m (*100)": 4
+/OOS/Memory/Cache/FoundReq "Memory cache requests found on cache": 0
+/OOS/Memory/Cache/NotFoundReq "Memory cache requests not found on cache": 0
+/OOS/Memory/Cache/OutReq "Memory cache requests out of range": 0
+/OOS/Memory/Cache/TotalAllocated "Total memory allocated by cache (in Bytes)": 0
+/OOS/Memory/Global/TotalAllocated "Total memory allocated by application (in Bytes)": 34411680
+/OOS/Memory/System/Buffers "Buffers memory reported by the system (kB)": 2880
+/OOS/Memory/System/Cached "Cached memory reported by the system (kB)": 401872
+/OOS/Memory/System/Free "Free memory reported by the system (kB)": 30591304
+/OOS/Memory/System/FreeCache "Free memory reported by the system (without buffers/cached) (kB)": 30996056
+/OOS/Memory/System/SwapFree "Free swap memory reported by the system (kB)": 2097148
+/OOS/Memory/System/SwapTotal "Total swap memory reported by the system (kB)": 2097148
+/OOS/Memory/System/SwapUsed "Used swap memory reported by the system (kB)": 0
+/OOS/Memory/System/Total "Total memory reported by the system (kB)": 32776768
+/OOS/Memory/System/Used "Used memory reported by the system (kB)": 2185464
+/OOS/Memory/System/UsedCache "Used memory reported by the system (without buffers/cached) (kB)": 1780712
+/OOS/Network/Nic/All/Bandwidth_RX "Incoming bandwidth in Kbits/s": 1688
+/OOS/Network/Nic/All/Bandwidth_TX "Outgoing bandwidth in Kbits/s": 367
+/OOS/Network/Nic/eth0/Bandwidth_RX "Incoming bandwidth in Kbits/s": 0
+/OOS/Network/Nic/eth0/Bandwidth_TX "Outgoing bandwidth in Kbits/s": 0
+/OOS/Network/Nic/eth1/Bandwidth_RX "Incoming bandwidth in Kbits/s": 1688
+/OOS/Network/Nic/eth1/Bandwidth_TX "Outgoing bandwidth in Kbits/s": 367
+/OOS/System/Availability "Availability of system (in % * 100)": 10000
+/Process/Netscript/9T Critical Path/Global/AvgSessionTime "Average Session time (in ms)": 0
+/Process/Netscript/9T Critical Path/Global/Close "Total number of connections closed": 0
+/Process/Netscript/9T Critical Path/Global/Current "Number of current connections": 0
+/Process/Netscript/9T Critical Path/Global/ErrTimeout "Total number of connections closed due to timeout": 0
+/Process/Netscript/9T Critical Path/Global/Failed "Total number of connections that failed": 0
+/Process/Netscript/9T Critical Path/Global/Open "Total number of connections opened": 0
+/Process/Netscript/9T Critical Path/States/Check Login "Total number of time the state was reached": 0
+/Process/Netscript/9T Critical Path/States/Check User "Total number of time the state was reached": 0
+/Process/Netscript/9T Critical Path/States/Proto Error "Total number of time the state was reached": 0
+/Process/Netscript/9T Critical Path/States/Send Login "Total number of time the state was reached": 0
+/Process/Netscript/9T Critical Path/States/Send Quit "Total number of time the state was reached": 0
+/Process/Netscript/9T Critical Path/States/Send User "Total number of time the state was reached": 0
+/Process/Netscript/9T Critical Path/States/Unknown User "Total number of time the state was reached": 0
+/Process/Netscript/9T Critical Path/States/Valid User "Total number of time the state was reached": 0
+/Process/Netscript/9T Critical Path/States/Wait Banner "Total number of time the state was reached": 0
+/Process/Netscript/CriticalPathGeneric/Global/AvgSessionTime "Average Session time (in ms)": 0
+/Process/Netscript/CriticalPathGeneric/Global/Close "Total number of connections closed": 0
+/Process/Netscript/CriticalPathGeneric/Global/Current "Number of current connections": 0
+/Process/Netscript/CriticalPathGeneric/Global/ErrTimeout "Total number of connections closed due to timeout": 0
+/Process/Netscript/CriticalPathGeneric/Global/Failed "Total number of connections that failed": 0
+/Process/Netscript/CriticalPathGeneric/Global/Open "Total number of connections opened": 0
+/Process/Netscript/CriticalPathGeneric/States/Auth Error "Total number of time the state was reached": 0
+/Process/Netscript/CriticalPathGeneric/States/Check Auth "Total number of time the state was reached": 0
+/Process/Netscript/CriticalPathGeneric/States/Error Generic "Total number of time the state was reached": 0
+/Process/Netscript/CriticalPathGeneric/States/Pause "Total number of time the state was reached": 0
+/Process/Netscript/CriticalPathGeneric/States/Proto Error "Total number of time the state was reached": 0
+/Process/Netscript/CriticalPathGeneric/States/Proto Ok "Total number of time the state was reached": 0
+/Process/Netscript/CriticalPathGeneric/States/Recv Request "Total number of time the state was reached": 0
+/Process/Netscript/CriticalPathGeneric/States/Send Auth "Total number of time the state was reached": 0
+/Process/Netscript/CriticalPathGeneric/States/Send Quit "Total number of time the state was reached": 0
+/Process/Netscript/CriticalPathGeneric/States/Send Request "Total number of time the state was reached": 0
+/Process/Netscript/CriticalPathGeneric/States/Wait Banner "Total number of time the state was reached": 0
+/Process/Netscript/HTTP/1.0 client/Global/AvgSessionTime "Average Session time (in ms)": 57276
+/Process/Netscript/HTTP/1.0 client/Global/Close "Total number of connections closed": 22069
+/Process/Netscript/HTTP/1.0 client/Global/Current "Number of current connections": 20
+/Process/Netscript/HTTP/1.0 client/Global/ErrTimeout "Total number of connections closed due to timeout": 0
+/Process/Netscript/HTTP/1.0 client/Global/Failed "Total number of connections that failed": 0
+/Process/Netscript/HTTP/1.0 client/Global/Open "Total number of connections opened": 22089
+/Process/Netscript/HTTP/1.0 client/States/Cache Session "Total number of time the state was reached": 173494
+/Process/Netscript/HTTP/1.0 client/States/Data Transfer "Total number of time the state was reached": 173494
+/Process/Netscript/HTTP/1.0 client/States/No Data "Total number of time the state was reached": 0
+/Process/Netscript/HTTP/1.0 client/States/Proto Bad Gateway "Total number of time the state was reached": 0
+/Process/Netscript/HTTP/1.0 client/States/Proto Bad Request "Total number of time the state was reached": 0
+/Process/Netscript/HTTP/1.0 client/States/Proto Error "Total number of time the state was reached": 0
+/Process/Netscript/HTTP/1.0 client/States/Proto Forbidden "Total number of time the state was reached": 21689
+/Process/Netscript/HTTP/1.0 client/States/Proto Internal Error "Total number of time the state was reached": 0
+/Process/Netscript/HTTP/1.0 client/States/Proto Locked "Total number of time the state was reached": 0
+/Process/Netscript/HTTP/1.0 client/States/Proto Moved Perm "Total number of time the state was reached": 0
+/Process/Netscript/HTTP/1.0 client/States/Proto Moved Temp "Total number of time the state was reached": 0
+/Process/Netscript/HTTP/1.0 client/States/Proto Not Found "Total number of time the state was reached": 30
+/Process/Netscript/HTTP/1.0 client/States/Proto Not Implemented "Total number of time the state was reached": 0
+/Process/Netscript/HTTP/1.0 client/States/Proto Not Modified "Total number of time the state was reached": 0
+/Process/Netscript/HTTP/1.0 client/States/Proto Payment Required "Total number of time the state was reached": 0
+/Process/Netscript/HTTP/1.0 client/States/Proto Precondition Failed "Total number of time the state was reached": 0
+/Process/Netscript/HTTP/1.0 client/States/Proto Service Unavailable "Total number of time the state was reached": 0
+/Process/Netscript/HTTP/1.0 client/States/Proto Unauthorized "Total number of time the state was reached": 0
+/Process/Netscript/HTTP/1.0 client/States/Proto Unprocessable Entity "Total number of time the state was reached": 0
+/Process/Netscript/HTTP/1.0 client/States/Send Body "Total number of time the state was reached": 195213
+/Process/Netscript/HTTP/1.0 client/States/Send Request "Total number of time the state was reached": 195213
+/Process/Netscript/HTTP/1.0 client/States/Wait Response "Total number of time the state was reached": 195213
+/Process/Netscript/POP3 check pass/Global/AvgSessionTime "Average Session time (in ms)": 0
+/Process/Netscript/POP3 check pass/Global/Close "Total number of connections closed": 0
+/Process/Netscript/POP3 check pass/Global/Current "Number of current connections": 0
+/Process/Netscript/POP3 check pass/Global/ErrTimeout "Total number of connections closed due to timeout": 0
+/Process/Netscript/POP3 check pass/Global/Failed "Total number of connections that failed": 0
+/Process/Netscript/POP3 check pass/Global/Open "Total number of connections opened": 0
+/Process/Netscript/POP3 check pass/States/Auth NOK "Total number of time the state was reached": 0
+/Process/Netscript/POP3 check pass/States/Auth OK "Total number of time the state was reached": 0
+/Process/Netscript/POP3 check pass/States/Check Password "Total number of time the state was reached": 0
+/Process/Netscript/POP3 check pass/States/Check User "Total number of time the state was reached": 0
+/Process/Netscript/POP3 check pass/States/Proto Error "Total number of time the state was reached": 0
+/Process/Netscript/POP3 check pass/States/Send Password "Total number of time the state was reached": 0
+/Process/Netscript/POP3 check pass/States/Send Quit "Total number of time the state was reached": 0
+/Process/Netscript/POP3 check pass/States/Send User "Total number of time the state was reached": 0
+/Process/Netscript/POP3 check pass/States/Unknown User "Total number of time the state was reached": 0
+/Process/Netscript/POP3 check pass/States/Wait Banner "Total number of time the state was reached": 0
+/Process/Netscript/POP3 full email as login/Global/AvgSessionTime "Average Session time (in ms)": 0
+/Process/Netscript/POP3 full email as login/Global/Close "Total number of connections closed": 0
+/Process/Netscript/POP3 full email as login/Global/Current "Number of current connections": 0
+/Process/Netscript/POP3 full email as login/Global/ErrTimeout "Total number of connections closed due to timeout": 0
+/Process/Netscript/POP3 full email as login/Global/Failed "Total number of connections that failed": 0
+/Process/Netscript/POP3 full email as login/Global/Open "Total number of connections opened": 0
+/Process/Netscript/POP3 full email as login/States/Check User "Total number of time the state was reached": 0
+/Process/Netscript/POP3 full email as login/States/Proto Error "Total number of time the state was reached": 0
+/Process/Netscript/POP3 full email as login/States/Send Quit "Total number of time the state was reached": 0
+/Process/Netscript/POP3 full email as login/States/Send User "Total number of time the state was reached": 0
+/Process/Netscript/POP3 full email as login/States/Unknown User "Total number of time the state was reached": 0
+/Process/Netscript/POP3 full email as login/States/Valid User "Total number of time the state was reached": 0
+/Process/Netscript/POP3 full email as login/States/Wait Banner "Total number of time the state was reached": 0
+/Process/Netscript/SMTP Check/Global/AvgSessionTime "Average Session time (in ms)": 0
+/Process/Netscript/SMTP Check/Global/Close "Total number of connections closed": 0
+/Process/Netscript/SMTP Check/Global/Current "Number of current connections": 0
+/Process/Netscript/SMTP Check/Global/ErrTimeout "Total number of connections closed due to timeout": 0
+/Process/Netscript/SMTP Check/Global/Failed "Total number of connections that failed": 0
+/Process/Netscript/SMTP Check/Global/Open "Total number of connections opened": 0
+/Process/Netscript/SMTP Check/States/Check From "Total number of time the state was reached": 0
+/Process/Netscript/SMTP Check/States/Check Helo "Total number of time the state was reached": 0
+/Process/Netscript/SMTP Check/States/Check Reset "Total number of time the state was reached": 0
+/Process/Netscript/SMTP Check/States/Check User "Total number of time the state was reached": 0
+/Process/Netscript/SMTP Check/States/End Banner "Total number of time the state was reached": 0
+/Process/Netscript/SMTP Check/States/End Helo "Total number of time the state was reached": 0
+/Process/Netscript/SMTP Check/States/End MailFrom "Total number of time the state was reached": 0
+/Process/Netscript/SMTP Check/States/Rcptnok "Total number of time the state was reached": 0
+/Process/Netscript/SMTP Check/States/Rcptok "Total number of time the state was reached": 0
+/Process/Netscript/SMTP Check/States/Reset "Total number of time the state was reached": 0
+/Process/Netscript/SMTP Check/States/Send From "Total number of time the state was reached": 0
+/Process/Netscript/SMTP Check/States/Send Helo "Total number of time the state was reached": 0
+/Process/Netscript/SMTP Check/States/Send Quit "Total number of time the state was reached": 0
+/Process/Netscript/SMTP Check/States/Send User "Total number of time the state was reached": 0
+/Process/Netscript/SMTP Check/States/Wait Banner "Total number of time the state was reached": 0
+/Process/Netscript/SMTP/Global/AvgSessionTime "Average Session time (in ms)": 0
+/Process/Netscript/SMTP/Global/Close "Total number of connections closed": 0
+/Process/Netscript/SMTP/Global/Current "Number of current connections": 0
+/Process/Netscript/SMTP/Global/ErrTimeout "Total number of connections closed due to timeout": 0
+/Process/Netscript/SMTP/Global/Failed "Total number of connections that failed": 0
+/Process/Netscript/SMTP/Global/Open "Total number of connections opened": 0
+/Process/Netscript/SMTP/States/Check From "Total number of time the state was reached": 0
+/Process/Netscript/SMTP/States/Check Helo "Total number of time the state was reached": 0
+/Process/Netscript/SMTP/States/Check User "Total number of time the state was reached": 0
+/Process/Netscript/SMTP/States/Proto Error "Total number of time the state was reached": 0
+/Process/Netscript/SMTP/States/Send From "Total number of time the state was reached": 0
+/Process/Netscript/SMTP/States/Send Helo "Total number of time the state was reached": 0
+/Process/Netscript/SMTP/States/Send Quit "Total number of time the state was reached": 0
+/Process/Netscript/SMTP/States/Send User "Total number of time the state was reached": 0
+/Process/Netscript/SMTP/States/Unknown User "Total number of time the state was reached": 0
+/Process/Netscript/SMTP/States/Valid User "Total number of time the state was reached": 0
+/Process/Netscript/SMTP/States/Wait Banner "Total number of time the state was reached": 0
+/Protocol/HTTP_client/avg_reqtime_ms "Avg time spent in requests (ms/req)": 46
+/Protocol/HTTP_client/bytes_received "Total size of data received (bytes)": 13722649579
+/Protocol/HTTP_client/bytes_sent "Total size of data sent (bytes)": 90288677
+/Protocol/HTTP_client/nb_requests "Total number of requests initiated": 195222
+/Protocol/HTTP_client/nb_requests_done "Total number of requests finished": 195222
+/Protocol/HTTP_server/None "Services section": None
+/Protocol/HTTP_server/avg_reqtime_ms "Avg time spent in requests (ms/req)": 3
+/Protocol/HTTP_server/bytes_received "Total size of data received (bytes)": 11405447
+/Protocol/HTTP_server/bytes_sent "Total size of data sent (bytes)": 3149573423
+/Protocol/HTTP_server/nb_connections "Total number of connections received": 42466
+/Protocol/HTTP_server/nb_requests "Number of requests received": 42466
+/Protocol/HTTP_server/nb_requests_done "Number of requests received and done": 42465

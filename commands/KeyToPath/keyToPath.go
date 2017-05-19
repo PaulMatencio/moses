@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	bns "moses/bns/lib"
 	sproxyd "moses/sproxyd/lib"
+	base64 "moses/user/base64j"
 	"net/http"
 	"os"
 	"time"
@@ -37,7 +38,7 @@ func getPath(req *http.Request, client *http.Client) (string, error) {
 
 		if resp.StatusCode == 200 {
 			usermd := resp.Header["X-Scal-Usermd"][0]
-			fmt.Println(time.Since(start))
+			fmt.Printf("Time to getPath %v\n", time.Since(start))
 			if err = pagemeta.UsermdToStruct(usermd); err == nil {
 				if pagemeta.PageNumber > 0 {
 					return pagemeta.GetPathName(), nil
@@ -48,6 +49,8 @@ func getPath(req *http.Request, client *http.Client) (string, error) {
 			} else if err = docmeta.UsermdToStruct(usermd); err == nil {
 				return docmeta.GetPathName(), nil
 			} else {
+				usermd_decoded, _ := base64.Decode64(usermd)
+				fmt.Printf("Bad user metata : %v\n", string(usermd_decoded))
 				return "", err
 			}
 
@@ -98,10 +101,12 @@ func main() {
 	flag.Parse()
 
 	var (
-		req    *http.Request
-		proxy  = sproxyd.Proxy
-		hostbk = fmt.Sprintf("http://%s/%s/%s/", ip, proxy, driver)
-		hostbp = fmt.Sprintf("http://%s/%s/%s/%s/", ip, proxy, bpdriver, env)
+		req      *http.Request
+		proxy    = sproxyd.Proxy
+		pathname string
+		err      error
+		hostbk   = fmt.Sprintf("http://%s/%s/%s/", ip, proxy, driver)
+		hostbp   = fmt.Sprintf("http://%s/%s/%s/%s/", ip, proxy, bpdriver, env)
 	)
 
 	client := &http.Client{
@@ -116,9 +121,10 @@ func main() {
 		usage()
 	}
 
-	if pathname, err := getPath(req, client); err == nil {
+	if pathname, err = getPath(req, client); err == nil {
 		fmt.Printf("Hostname: %s\nPathname:%s\n", hostbp, pathname)
 		if get {
+			start := time.Now()
 			req, _ = http.NewRequest("GET", hostbp+pathname, nil)
 			var body []byte
 			if body, err = getObject(req, client); err == nil {
@@ -126,9 +132,9 @@ func main() {
 			} else {
 				fmt.Printf("Error: %v\n", err)
 			}
+			fmt.Printf("Time for getting=> %s%s : %v", hostbp, pathname, time.Since(start))
 		}
 	} else {
 		fmt.Printf("Error: %v\n", err)
 	}
-
 }

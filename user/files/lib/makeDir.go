@@ -1,8 +1,8 @@
 package files
 
 import (
+	goLog "moses/user/goLog"
 	"os"
-	goLog "user/goLog"
 )
 
 func MakeDir(dirname string, mode os.FileMode) error {

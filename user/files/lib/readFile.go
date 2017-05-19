@@ -3,9 +3,9 @@ package files
 import (
 	"fmt"
 	"io/ioutil"
+	// goLog "moses/user/goLog"
 	"os"
 	"time"
-	"user/goLog"
 )
 
 func ReadFile(filename string) ([]byte, error) {
@@ -15,7 +15,8 @@ func ReadFile(filename string) ([]byte, error) {
 	)
 	if buf, err = ioutil.ReadFile(filename); err != nil {
 		hostname, _ := os.Hostname()
-		goLog.Warning.Println(hostname, os.Getpid(), err, "Reading", filename)
+		// goLog.Warning.Println(hostname, os.Getpid(), err, "Reading", filename)
+		fmt.Println(hostname, os.Getpid(), err, "Reading", filename)
 	}
 
 	return buf, err
