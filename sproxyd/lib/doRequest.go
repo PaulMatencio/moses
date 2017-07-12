@@ -1,9 +1,9 @@
 package sproxyd
 
 import (
-	"errors"
-
 	"bytes"
+	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	goLog "moses/user/goLog"
@@ -27,6 +27,7 @@ func DoRequest(hspool hostpool.HostPool, client *http.Client, req *http.Request,
 	uPath := u.Path
 	waittime = 50 * time.Millisecond
 	// goLog.Trace.Println(req.Method, req.Header, u.Host, u.Path, len(object))
+	// fmt.Printf("INFO: &HP %v\n HP: %v\n", &HP, HP)
 	for r = 1; r <= DoRetry; r++ {
 		// hpool = HP.Get()
 		hpool = hspool.Get()
@@ -36,6 +37,7 @@ func DoRequest(hspool hostpool.HostPool, client *http.Client, req *http.Request,
 		req.Host = u1.Host
 		// req.URL.Path = u1.Path + u.Path
 		req.URL.Path = u1.Path + uPath
+		fmt.Println(r, host, req.URL.Path)
 		// goLog.Trace.Println(r, host, req.URL.Path)
 		if r > 1 && req.ContentLength > 0 && len(object) > 0 {
 			var body io.Reader

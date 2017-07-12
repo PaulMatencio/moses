@@ -48,13 +48,14 @@ func AsyncHttpGetBlobs(bnsRequest *HttpRequest, getHeader map[string]string) []*
 		go func(url string) {
 			sproxydRequest.Path = url
 			resp, err := sproxyd.Getobject(&sproxydRequest)
-			defer resp.Body.Close()
 			var body []byte
 			if err == nil {
+				defer resp.Body.Close()
 				body, _ = ioutil.ReadAll(resp.Body)
-			} else {
+			} else if resp != nil {
 				resp.Body.Close()
 			}
+
 			// WARNING The caller must close the Body after it is consumed
 			ch <- &sproxyd.HttpResponse{url, resp, &body, err}
 		}(url)

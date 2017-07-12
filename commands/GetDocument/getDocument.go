@@ -26,8 +26,8 @@ import (
 )
 
 var (
-	action, config, env, logPath, outDir, runname, subpages,
-	hostname, pn, page, trace, test, meta, image, media, ranges string
+	action, config, rPolicy, env, logPath, outDir, runname, subpages,
+	hostname, pn, page, media, ranges string
 	Trace, Meta, Image, CopyObject, Test bool
 	pid                                  int
 	timeout                              time.Duration
@@ -122,10 +122,11 @@ func main() {
 	flag.StringVar(&action, "action", "", "<getObject> <getPageMeta> <getPageType> <getDocumentMeta> <getDocumentType> <getPagesRanges> <getSubpages><getAbstract>, <getDescription>, <getClaims>, <getDrawings>, <getCitations>, <getDNASequence>, <getBiblio>, <getAmendement")
 	flag.StringVar(&config, "config", "moses-prod", "Config file")
 	flag.StringVar(&env, "env", "", "Environment")
-	flag.StringVar(&trace, "trace", "0", "Trace")   // Trace
-	flag.StringVar(&test, "test", "0", "Test mode") // Test mode
-	flag.StringVar(&meta, "meta", "0", "Save object meta in output Directory")
-	flag.StringVar(&image, "image", "0", "Save object image  type in output Directory")
+	flag.BoolVar(&Trace, "Trace", false, "Trace")   // Trace
+	flag.BoolVar(&Test, "Test", false, "Test mode") // Test mode
+	flag.BoolVar(&Meta, "Meta", false, "Save object meta in output Directory")
+	flag.BoolVar(&Image, "Image", false, "Save object image  type in output Directory")
+	flag.StringVar(&rPolicy, "rPolicy", "", "Replica policy <none/immuntale/consistent>")
 	flag.StringVar(&runname, "runname", "", "") // Test name
 	flag.StringVar(&pn, "pn", "", "Publication number")
 	flag.StringVar(&page, "page", "1", "page number")
@@ -135,11 +136,6 @@ func main() {
 	flag.StringVar(&outDir, "outDir", "", "output directory")
 
 	flag.Parse()
-	Trace, _ = strconv.ParseBool(trace)
-	Meta, _ = strconv.ParseBool(meta)
-	Image, _ = strconv.ParseBool(image)
-	Test, _ = strconv.ParseBool(test)
-	sproxyd.Test = Test
 
 	if len(action) == 0 {
 		usage()
@@ -161,11 +157,25 @@ func main() {
 	if Config, err = sproxyd.InitConfig(config); err != nil {
 		os.Exit(12)
 	}
+	//set default out directory
 	if len(outDir) == 0 {
 		outDir = path.Join(homeDir, Config.GetOutputDir())
 	}
+
 	logPath = path.Join(homeDir, Config.GetLogPath())
-	fmt.Printf("INFO: Logs Path=>%s", logPath)
+
+	// overide replica policy of the config file with the given value of the parameter rPolicy <replica-policy>
+	// if not immutable or consistent or no then use the default value of the sproxyd.ReplicaPolicy set by the sproxyd.InitConfig()
+	rPolicy = strings.ToLower(rPolicy)
+	if rPolicy == "immutable" || rPolicy == "consistent" {
+		sproxyd.ReplicaPolicy = rPolicy
+	} else if rPolicy == "none" {
+		// no   => overide the value of the config file and the default of the application
+		//         no replica_policy
+		sproxyd.ReplicaPolicy = ""
+	}
+
+	fmt.Printf("INFO: Logs Path:%s , ReplicaPolicy:%s\n", logPath, sproxyd.ReplicaPolicy)
 
 	// init logging
 
@@ -183,6 +193,7 @@ func main() {
 		env = sproxyd.Env
 	}
 	pathname := env + "/" + pn
+
 	bnsRequest := bns.HttpRequest{
 		Hspool: sproxyd.HP,
 		Client: &http.Client{
@@ -191,6 +202,7 @@ func main() {
 		},
 		Media: media,
 	}
+
 	n := 0
 	switch action {
 	case "getPageMeta":
@@ -455,6 +467,6 @@ func main() {
 		goLog.Info.Println("-action <action value> is missing")
 	}
 	duration := time.Since(start)
-	fmt.Println("\nTotal Get pages elapsed times", duration, " for ", n, " pages ")
-	goLog.Info.Println("Total Get pages elapsed times", duration, " for ", n, " pages ")
+	fmt.Printf("Get pages elapsed times: %v for %d pages\n", duration, n)
+	goLog.Info.Printf("Get pages elapsed times: %v for %d pages\n", duration, n)
 }

@@ -78,7 +78,7 @@ func main() {
 	flag.StringVar(&outputDir, "outputDir", "", "Output directory for spliiting")
 	flag.BoolVar(&Concurrent, "con", true, "Use Goroutine when it is possible")
 	flag.BoolVar(&Count, "count", false, "Count the number")
-	flag.StringVar(&config, "config", "moses-test", "Default Config file")
+	flag.StringVar(&config, "config", "moses-prod", "Default Config file")
 	flag.Parse()
 	if len(action) == 0 {
 		usage()
