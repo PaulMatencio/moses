@@ -1,7 +1,7 @@
 package files
 
 import (
-	goLog "moses/user/goLog"
+	goLog "github.com/moses/user/goLog"
 	"os"
 )
 
