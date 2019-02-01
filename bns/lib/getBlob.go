@@ -6,7 +6,7 @@ package bns
 import (
 	"fmt"
 	"io/ioutil"
-	sproxyd "moses/sproxyd/lib"
+	sproxyd "github.com/moses/sproxyd/lib"
 	"net/http"
 	"time"
 

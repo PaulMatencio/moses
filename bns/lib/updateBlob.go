@@ -4,8 +4,8 @@ package bns
 
 import (
 	"fmt"
-	sproxyd "moses/sproxyd/lib"
-	goLog "moses/user/goLog"
+	sproxyd "github.com/moses/sproxyd/lib"
+	goLog "github.com/moses/user/goLog"
 	"net/http"
 	"os"
 	"time"

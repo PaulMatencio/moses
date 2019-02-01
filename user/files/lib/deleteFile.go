@@ -2,7 +2,7 @@ package files
 
 import (
 	"fmt"
-	goLog "moses/user/goLog"
+	goLog "github.com/moses/user/goLog"
 	"os"
 	"time"
 )

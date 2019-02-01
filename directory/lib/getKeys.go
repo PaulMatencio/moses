@@ -1,8 +1,8 @@
 package directory
 
 import (
-	sindexd "moses/sindexd/lib"
-	goLog "moses/user/goLog"
+	sindexd "github.com/moses/sindexd/lib"
+	goLog "github.com/moses/user/goLog"
 	"net/http"
 	"time"
 

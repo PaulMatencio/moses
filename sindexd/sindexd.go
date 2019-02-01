@@ -5,7 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	goLog "moses/user/goLog"
+	goLog "github.com/moses/user/goLog"
 	"net/http"
 	"os"
 	"sort"
@@ -13,9 +13,9 @@ import (
 	"strings"
 	"time"
 
-	directory "moses/directory/lib"
+	directory "github.com/moses/directory/lib"
 
-	sindexd "moses/sindexd/lib"
+	sindexd "github.com/moses/sindexd/lib"
 
 	hostpool "github.com/bitly/go-hostpool"
 	lumberjack "gopkg.in/natefinch/lumberjack.v2"

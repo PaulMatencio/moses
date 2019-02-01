@@ -5,7 +5,7 @@ import (
 
 	"fmt"
 	"io/ioutil"
-	goLog "moses/user/goLog"
+	goLog "github.com/moses/user/goLog"
 	"net/http"
 )
 

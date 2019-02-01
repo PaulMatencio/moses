@@ -3,16 +3,18 @@ package files
 import (
 	"fmt"
 	"io/ioutil"
-	goLog "moses/user/goLog"
+	goLog "github.com/moses/user/goLog"
 	"os"
 	"time"
+
 )
 
 func WriteFile(filename string, buf []byte, mode os.FileMode) error {
 	var err error
 	if err = ioutil.WriteFile(filename, buf, mode); err != nil {
 		hostname, _ := os.Hostname()
-		goLog.Warning.Println(hostname, os.Getpid(), err, "Writing", filename)
+		goLog.Warning.Println(hostname, os.Getpid(), err, "Writing", filename,len(buf))
+		// log.Println(hostname, os.Getpid(), err, "Writing", filename)
 	}
 	return err
 }

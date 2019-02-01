@@ -3,8 +3,8 @@ package directory
 import (
 	"encoding/json"
 	"errors"
-	sindexd "moses/sindexd/lib"
-	goLog "moses/user/goLog"
+	sindexd "github.com/moses/sindexd/lib"
+	goLog "github.com/moses/user/goLog"
 	"net/http"
 	"runtime"
 	"strconv"

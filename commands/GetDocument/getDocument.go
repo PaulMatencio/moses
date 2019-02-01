@@ -1,15 +1,16 @@
 package main
 
 import (
-	directory "directory/lib"
+	directory "github.com/moses/directory/lib"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/emicklei/go-restful/log"
 
 	"io/ioutil"
-	bns "moses/bns/lib"
-	sproxyd "moses/sproxyd/lib"
+	bns "github.com/moses/bns/lib"
+	sproxyd "github.com/moses/sproxyd/lib"
 	"net/http"
 	"os"
 	"os/user"
@@ -18,9 +19,9 @@ import (
 	"strings"
 	"time"
 
-	base64 "moses/user/base64j"
-	file "moses/user/files/lib"
-	goLog "moses/user/goLog"
+	base64 "github.com/moses/user/base64j"
+	file "github.com/moses/user/files/lib"
+	goLog "github.com/moses/user/goLog"
 
 	"github.com/bradfitz/slice"
 )
@@ -54,18 +55,43 @@ func check(e error) {
 }
 
 func writeMeta(outDir string, page string, metadata []byte) {
+
 	if !Meta {
+
 		return
 	}
 
 	if err := checkOutdir(outDir); err != nil {
+		os.MkdirAll(outDir,7644)
 		goLog.Error.Println(err)
 		return
 	}
 
 	myfile := outDir + string(os.PathSeparator) + bns.RemoveSlash(pn) + page + ".md"
 	goLog.Trace.Println("myfile:", myfile)
+
 	err := ioutil.WriteFile(myfile, metadata, 0644)
+	check(err)
+}
+
+
+func writeMetaError(outDir string, page string) {
+
+	if !Meta {
+
+		return
+	}
+
+	if err := checkOutdir(outDir); err != nil {
+		os.MkdirAll(outDir,7644)
+		goLog.Error.Println(err)
+		return
+	}
+
+	myfile := outDir + string(os.PathSeparator) + bns.RemoveSlash(pn) + page + ".404"
+	goLog.Trace.Println("myfile:", myfile)
+
+	err := ioutil.WriteFile(myfile,[]byte{}, 0644)
 	check(err)
 }
 
@@ -119,7 +145,7 @@ func BuildSubPagesRanges(action string, bnsRequest *bns.HttpRequest, pathname st
 func main() {
 
 	flag.Usage = usage
-	flag.StringVar(&action, "action", "", "<getObject> <getPageMeta> <getPageType> <getDocumentMeta> <getDocumentType> <getPagesRanges> <getSubpages><getAbstract>, <getDescription>, <getClaims>, <getDrawings>, <getCitations>, <getDNASequence>, <getBiblio>, <getAmendement")
+	flag.StringVar(&action, "action", "", "<getObject> <chkPageMeta> <getPageMeta> <getPageType> <getDocumentMeta> <getDocumentType> <getPagesRanges> <getSubpages><getAbstract>, <getDescription>, <getClaims>, <getDrawings>, <getCitations>, <getDNASequence>, <getBiblio>, <getAmendement")
 	flag.StringVar(&config, "config", "moses-prod", "Config file")
 	flag.StringVar(&env, "env", "", "Environment")
 	flag.BoolVar(&Trace, "Trace", false, "Trace")   // Trace
@@ -208,13 +234,24 @@ func main() {
 	case "getPageMeta":
 		Meta = true
 		pathname = pathname + "/" + page
-		if pagemd, err, _ := bns.GetPageMetadata(&bnsRequest, pathname); err == nil {
+		if pagemd, err, status := bns.GetPageMetadata(&bnsRequest, pathname); err == nil {
+
 			writeMeta(outDir, page, pagemd)
 		} else {
-			goLog.Error.Println(err)
+			goLog.Error.Println(err,status)
 		}
 		n++
 
+	case "chkPageMeta":
+		Meta = true
+		pathname = pathname + "/" + page
+		if pagemd, err, status := bns.ChkPageMetadata(&bnsRequest, pathname); err == nil {
+			writeMeta(outDir, page, pagemd)
+		} else {
+			log.Printf("Err: %v  Status: %d",err,status)
+			writeMetaError(outDir, page, pagemd)
+		}
+		n++
 	case "getDocumentMeta":
 		// the document's  metatadata is the metadata the object given <pathname>
 		// bnsRequest.Path = pathname

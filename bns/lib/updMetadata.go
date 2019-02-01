@@ -3,9 +3,9 @@ package bns
 import (
 	"encoding/json"
 	"fmt"
-	sproxyd "moses/sproxyd/lib"
-	base64 "moses/user/base64j"
-	goLog "moses/user/goLog"
+	sproxyd "github.com/moses/sproxyd/lib"
+	base64 "github.com/moses/user/base64j"
+	goLog "github.com/moses/user/goLog"
 	"net/http"
 	"time"
 )
