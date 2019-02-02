@@ -3,7 +3,6 @@ package sproxyd
 import (
 	"net"
 	"net/http"
-	"sync"
 	"time"
 
 	hostpool "github.com/bitly/go-hostpool"
@@ -20,9 +19,8 @@ var (
 	TargetHP            hostpool.HostPool                       /* destination hostpool */
 	Driver              = "bparc"                               /* default  source sproxyd driver */
 	TargetDriver        = "bpchord"                             /* destination sproxy driver */
-	ReplicaPolicy       = "consistent"                          /* Possible value immutable or consistent*/
 	DummyHost           = "http://0.0.0.0:81/"                  /* Used by doRequest.go  to build the url with hostpool */
-	Timeout             = time.Duration(30 * time.Second)       /* GET/PUT timeout */
+	Timeout             = time.Duration(50)                     /* GET/PUT timeout */
 	CopyTimeout         = time.Duration(1 * time.Second)        /* Copy PNsend 5sec*/
 	WriteTimeout        = time.Duration(20 * time.Second)       /* send time out */
 	ReadTimeout         = time.Duration(5 * time.Second)        /* receive timeout */
@@ -35,7 +33,6 @@ var (
 	Env                    = "prod"
 	TargetHost             = []string{"http://10.12.202.10:81/proxy/bpchord/", "http://10.12.202.11:81/proxy/bpchord/", "http://10.12.202.12:81/proxy/bpchord/", "http://10.12.202.13:81/proxy/bpchord/", "http://10.12.202.20:81/proxy/bpchord/", "http://10.12.202.21:81/proxy/bpchord/", "http://10.12.202.22:81/proxy/bpchord/", "http://10.12.202.23:81/proxy/bpchord/"}
 	TargetEnv              = "moses-prod"
-	Dorequest              sync.Mutex
 	Num200, Num404, Num412 = 0, 0, 0
 
 	//Host = []string{"http://10.12.201.11:81/proxy/bparc/", "http://10.12.201.12:81/proxy/bparc/"}
