@@ -98,7 +98,7 @@ func main() {
 			if pnOidSpec := Config.GetPnOidSpec(); len(pnOidSpec) != 0 {
 				sindexd.PnOidSpec = pnOidSpec
 			}
-			if pdOidSpec := Config.GetPnOidSpec(); len(pdOidSpec) != 0 {
+			if pdOidSpec := Config.GetPdOidSpec(); len(pdOidSpec) != 0 {
 				sindexd.PdOidSpec = pdOidSpec
 			}
 			sindexd.SetNewHost(Config)
