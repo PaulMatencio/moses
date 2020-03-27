@@ -66,6 +66,11 @@ func (r *Response) PrintFetched() string {
 	return r.Next_marker
 }
 
+func (r *Response) GetFetched() map[string]interface{} {
+	return r.Fetched
+
+}
+
 func (r *Response) GetFetchedKeys() ([]string, string) {
 
 	num := len(r.Fetched)

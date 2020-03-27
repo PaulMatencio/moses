@@ -54,7 +54,7 @@ func main() {
 	flag.StringVar(&iIndex, "index", "PN", "Index Table <PN or PD>")
 	flag.StringVar(&concurrent, "C", "true", "Use Goroutine when it is possible")
 	flag.StringVar(&count, "count", "false", "Count the number")
-	flag.StringVar(&config, "config", "moses-dev", "Default Config file")
+	flag.StringVar(&config, "config", "moses-prod", "Default Config file")
 	flag.Parse()
 	var (
 		Limit, _      = strconv.Atoi(lim)
@@ -96,7 +96,7 @@ func main() {
 	// MaxSize is the maximum size in megabytes of the log file before it gets
 	// rotated.
 	// MaxBackups is the maximum number of old log files to retain
-	// Make sure the directory of the log file exists and the application has the write autorization
+	// Make sure the directory of the log file exists and the application has the write authorization
 
 	logfile := logPath + string(os.PathSeparator) + action + "_" + iIndex + ".log"
 	l := &lumberjack.Logger{
