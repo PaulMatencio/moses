@@ -3,7 +3,7 @@ package sindexd
 import (
 	"bytes"
 	"encoding/json"
-	goLog "moses/user/goLog"
+	goLog "github.com/moses/user/goLog"
 	"net/http"
 )
 

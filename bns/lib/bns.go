@@ -9,6 +9,11 @@ func GetPageMetadata(bnsRequest *HttpRequest, url string) ([]byte, error, int) {
 	return GetMetadata(bnsRequest, url)
 }
 
+
+func ChkPageMetadata(bnsRequest *HttpRequest, url string) ([]byte, error, int) {
+	return ChkMetadata(bnsRequest, url)
+}
+
 func GetDocMetadata(bnsRequest *HttpRequest, url string) ([]byte, error, int) {
 	return GetMetadata(bnsRequest, url)
 }

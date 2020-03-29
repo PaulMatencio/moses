@@ -4,7 +4,7 @@ package sindexd
 import (
 	"bytes"
 	"errors"
-	goLog "moses/user/goLog"
+	goLog "github.com/moses/user/goLog"
 	"net/http"
 	"strconv"
 

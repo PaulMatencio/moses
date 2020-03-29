@@ -3,9 +3,9 @@ package directory
 import (
 	"encoding/json"
 	"fmt"
-	sindexd "moses/sindexd/lib"
-	files "moses/user/files/lib"
-	goLog "moses/user/goLog"
+	sindexd "github.com/moses/sindexd/lib"
+	files "github.com/moses/user/files/lib"
+	goLog "github.com/moses/user/goLog"
 	"os"
 )
 

@@ -5,7 +5,7 @@ import (
 
 	"fmt"
 	"io/ioutil"
-	goLog "moses/user/goLog"
+	goLog "github.com/moses/user/goLog"
 	"net/http"
 )
 
@@ -64,6 +64,11 @@ func (r *Response) PrintFetched() string {
 		goLog.Info.Println("key:", k, "value:", v)
 	}
 	return r.Next_marker
+}
+
+func (r *Response) GetFetched() map[string]interface{} {
+	return r.Fetched
+
 }
 
 func (r *Response) GetFetchedKeys() ([]string, string) {

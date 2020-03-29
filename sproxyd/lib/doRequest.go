@@ -6,7 +6,7 @@ import (
 	"bytes"
 	"io"
 	"io/ioutil"
-	goLog "moses/user/goLog"
+	goLog "github.com/moses/user/goLog"
 	"net/http"
 	"net/url"
 	"strings"

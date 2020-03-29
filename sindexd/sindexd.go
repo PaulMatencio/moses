@@ -5,7 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	goLog "moses/user/goLog"
+	goLog "github.com/moses/user/goLog"
 	"net/http"
 	"os"
 	"sort"
@@ -13,9 +13,9 @@ import (
 	"strings"
 	"time"
 
-	directory "moses/directory/lib"
+	directory "github.com/moses/directory/lib"
 
-	sindexd "moses/sindexd/lib"
+	sindexd "github.com/moses/sindexd/lib"
 
 	hostpool "github.com/bitly/go-hostpool"
 	lumberjack "gopkg.in/natefinch/lumberjack.v2"
@@ -98,7 +98,7 @@ func main() {
 			if pnOidSpec := Config.GetPnOidSpec(); len(pnOidSpec) != 0 {
 				sindexd.PnOidSpec = pnOidSpec
 			}
-			if pdOidSpec := Config.GetPnOidSpec(); len(pdOidSpec) != 0 {
+			if pdOidSpec := Config.GetPdOidSpec(); len(pdOidSpec) != 0 {
 				sindexd.PdOidSpec = pdOidSpec
 			}
 			sindexd.SetNewHost(Config)
@@ -326,7 +326,7 @@ func check(f string, start time.Time, resp *http.Response, err error) {
 	if err != nil {
 		goLog.Error.Println("Function:", f, err)
 	} else {
-		response := sindexd.GetResponse(resp)
+		response,_ := sindexd.GetResponse(resp)
 		goLog.Info.Println("Function:", f, "sindexd.Response:", response.Status, response.Reason, "Duration:", time.Since(start))
 
 	}

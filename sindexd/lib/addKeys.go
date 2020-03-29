@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"runtime"
-	goLog "user/goLog"
+	"user/goLog"
 )
 
 type PubRecord struct {

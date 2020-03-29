@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	base64 "moses/user/base64j"
-	goLog "moses/user/goLog"
+	base64 "github.com/moses/user/base64j"
+	goLog "github.com/moses/user/goLog"
 	"os"
 	"strconv"
 )

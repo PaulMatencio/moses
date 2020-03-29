@@ -2,11 +2,12 @@ package bns
 
 import (
 	"fmt"
-	sproxyd "moses/sproxyd/lib"
-	base64 "moses/user/base64j"
-	goLog "moses/user/goLog"
+	sproxyd "github.com/moses/sproxyd/lib"
+	base64 "github.com/moses/user/base64j"
+	"github.com/moses/user/goLog"
 	"net/http"
 	"time"
+	"errors"
 )
 
 func GetMetadata(bnsRequest *HttpRequest, url string) ([]byte, error, int) {
@@ -38,6 +39,49 @@ func GetMetadata(bnsRequest *HttpRequest, url string) ([]byte, error, int) {
 		default:
 			goLog.Info.Println(resp.Request.URL.Path, resp.Status)
 		}
+	} else {
+		return usermd, err, -1
+	}
+	/* the resp,Body is closed by sproxyd.getMetadata */
+	return usermd, err, resp.StatusCode
+}
+
+
+func ChkMetadata(bnsRequest *HttpRequest, url string) ([]byte, error, int) {
+
+	var (
+		usermd []byte
+		resp   *http.Response
+		err    error = error(nil)
+	)
+
+	sproxydRequest := sproxyd.HttpRequest{
+		Hspool:    bnsRequest.Hspool,
+		Client:    bnsRequest.Client,
+		Path:      url,
+		ReqHeader: map[string]string{},
+	}
+
+	if resp, err = sproxyd.GetMetadata(&sproxydRequest); err == nil {
+		switch resp.StatusCode {
+		case 200:
+			encoded_usermd := resp.Header["X-Scal-Usermd"]
+			usermd, err = base64.Decode64(encoded_usermd[0])
+			err = nil
+		case 404:
+			fmt.Println(resp.Request.URL.Path, resp.Status)
+			err = errors.New(resp.Status)
+		case 412:
+			fmt.Println(resp.Request.URL.Path, resp.Status, "key=", resp.Header["X-Scal-Ring-Key"], " does not exist")
+			err = errors.New(resp.Status)
+		case 422:
+			fmt.Println(resp.Request.URL.Path, resp.Status, resp.Header["X-Scal-Ring-Status"])
+			err = errors.New(resp.Status)
+		default:
+			fmt.Println(resp.Request.URL.Path, resp.Status)
+			err = errors.New(resp.Status)
+		}
+
 	} else {
 		return usermd, err, -1
 	}
