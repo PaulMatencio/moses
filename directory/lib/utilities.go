@@ -405,3 +405,38 @@ func GetAsyncKeys(specs map[string][]string, Ind_Specs map[string]*sindexd.Index
 	}
 	return responses
 }
+
+func AddSerialPrefix(prefix string, Ind_Specs map[string]*sindexd.Index_spec, keyObj map[string]string) *HttpResponse {
+
+	var (
+		iresponse *sindexd.Response
+		resp      *http.Response
+		err       error
+		j string
+		//index     *sindexd.Index_spec
+	)
+	responses := &HttpResponse{}
+	client := &http.Client{}
+	if len(prefix) > 2 {
+		j = prefix[0:2]
+	} else {
+		j = prefix[0:]
+	}
+	index := Ind_Specs[j]
+	if index == nil {
+		index = Ind_Specs["OTHER"]
+	}
+	// goLog.Info.Println(index, pref, delimiter, marker, Limit)
+	if resp,err = AddKeys(client,index,keyObj);err == nil  {
+		if resp.StatusCode == 200 {
+			iresponse, err = sindexd.GetResponse(resp)
+		} else {
+			iresponse = nil
+			err = errors.New(resp.Status)
+		}
+
+	}
+	// iresponse is nil if err != nil
+	responses = &HttpResponse{prefix, iresponse, err}
+	return responses
+}
