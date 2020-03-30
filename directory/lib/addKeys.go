@@ -134,6 +134,18 @@ func AddKeys(client *http.Client, index *sindexd.Index_spec, keyObject map[strin
 	return sindexd.Addkeys(client, l, keyObject)
 }
 
+func AddKeys1(HP hostpool.HostPool, client *http.Client, index *sindexd.Index_spec, keyObject map[string]string) (*http.Response, error) {
+	// add indexes  (keyObject) to an index table (index)
+	l := &sindexd.Load{
+		Index_spec: sindexd.Index_spec{
+			Index_id: index.Index_id,
+			Cos:      index.Cos,
+			Vol_id:   index.Vol_id,
+			Specific: index.Specific,
+		},
+	}
+	return sindexd.Addkeys1(HP,client, l, keyObject)
+}
 func AddKeysa(client *http.Client, index *sindexd.Index_spec, pdatep *[]sindexd.PubRecord) (*http.Response, error) {
 	//add indexes  (key and values array) to an index table (index)
 	l := &sindexd.Load{

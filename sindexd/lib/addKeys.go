@@ -3,6 +3,7 @@ package sindexd
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/bitly/go-hostpool"
 	"net/http"
 	"runtime"
 	// goLog "github.com/moses/user/goLog"
@@ -68,6 +69,48 @@ func Addkeys(client *http.Client, l *Load, keyObject map[string]string) (*http.R
 
 }
 
+
+func Addkeys1(HP hostpool.HostPool, client *http.Client, l *Load, keyObject map[string]string) (*http.Response, error) {
+	/*
+		l is a pointer to a Load (sindexd) structure
+		keyObject is a map of "key" = obj  pair to be indexed
+		[ { "hello":{ "protocol": "sindexd-1"} },
+		{ "load":   {  "index_id": "xxxx", "cos": x, "vol_id": x, "specific": x}},
+		{ "add": { "k1": obj1, "k2": obj2, ..., "kn": objn }}]
+	*/
+	var keyobj bytes.Buffer
+	keyobj.WriteString(`{"add":{`)
+	i := 0
+	for k, v := range keyObject {
+		keyobj.WriteString(`"`)
+		keyobj.WriteString(k) // key
+		keyobj.WriteString(`":`)
+		keyobj.WriteString(v) // value
+		i++
+		if i < len(keyObject) {
+			keyobj.WriteString(V)
+		}
+	}
+	// keyobj.WriteString("}}")
+	keyobj.WriteString("},")
+	keyobj.WriteString(`"prefetch":false`)
+	keyobj.WriteString("}")
+
+	pj := keyobj.Bytes()
+	if lj, err := json.Marshal(l); err != nil {
+		return nil, err
+	} else {
+		myreq := [][]byte{[]byte(AG), []byte(HELLO), []byte(V), lj, []byte(V), pj, []byte(AD)}
+		request := bytes.Join(myreq, []byte(""))
+		if Memstat {
+			var m runtime.MemStats
+			runtime.ReadMemStats(&m)
+			goLog.Info.Println(m.HeapSys, m.HeapAlloc, m.HeapIdle, m.HeapReleased)
+		}
+		return PostRequest1(HP,client, request)
+	}
+
+}
 /*
 func Addkeysa(client *http.Client, url string, l *Load, keyp *[]string, valuep *[]string) (*http.Response, error) {
 	/*
