@@ -5,7 +5,8 @@ import (
 	"fmt"
 	sindexd "github.com/moses/sindexd/lib"
 	files "github.com/moses/user/files/lib"
-	goLog "github.com/moses/user/goLog"
+	// goLog "github.com/moses/user/goLog"
+	goLog "github.com/s3/gLog"
 	"os"
 )
 

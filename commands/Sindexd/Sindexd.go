@@ -4,8 +4,10 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
-	goLog "github.com/moses/user/goLog"
+	//goLog "github.com/moses/user/goLog"
+	goLog "github.com/s3/gLog"
 	"net/http"
 	"os"
 	"sort"
@@ -132,9 +134,9 @@ func main() {
 	// Create  Log categories : Trace, Info, Warning, Error
 
 	if Debug {
-		goLog.Init(os.Stdout, os.Stdout, os.Stdout, os.Stderr)
+		goLog.Init(os.Stdout, os.Stdout, os.Stdout, os.Stderr,ioutil.Discard,ioutil.Discard)
 	} else {
-		goLog.Init(os.Stdout, l, l, os.Stderr)
+		goLog.Init(os.Stdout, l, l, os.Stderr,ioutil.Discard,ioutil.Discard,)
 	}
 
 	var (

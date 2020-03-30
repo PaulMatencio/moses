@@ -6,11 +6,13 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	directory "github.com/moses/directory/lib"
 	sindexd "github.com/moses/sindexd/lib"
 	files "github.com/moses/user/files/lib"
-	goLog "github.com/moses/user/goLog"
+	// goLog "github.com/moses/user/goLog"
+	goLog "github.com/s3/gLog"
 	// "net/http"
 	"os"
 	"os/user"
@@ -110,9 +112,9 @@ func main() {
 	Debug, _ = strconv.ParseBool(debug)
 	Concurrent, _ = strconv.ParseBool(concurrent)
 	if Debug {
-		goLog.Init(os.Stdout, os.Stdout, os.Stdout, os.Stderr)
+		goLog.Init(os.Stdout, os.Stdout, os.Stdout, os.Stderr,ioutil.Discard,ioutil.Discard)
 	} else {
-		goLog.Init(os.Stdout, l, l, os.Stderr)
+		goLog.Init(os.Stdout, l, l, os.Stderr,ioutil.Discard,ioutil.Discard)
 	}
 
 	sindexd.Debug = Debug
