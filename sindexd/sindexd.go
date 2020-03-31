@@ -4,8 +4,9 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
-	goLog "github.com/moses/user/goLog"
+	goLog "github.com/s3/gLog"
 	"net/http"
 	"os"
 	"sort"
@@ -109,7 +110,9 @@ func main() {
 			os.Exit(1)
 		}
 	}
-
+	if Debug {
+		sindexd.Debug = true
+	}
 	// Filename is the file to write logs to.  Backup log files will be retained
 	// in the same directory
 	// MaxSize is the maximum size in megabytes of the log file before it gets
@@ -132,9 +135,9 @@ func main() {
 	// Create  Log categories : Trace, Info, Warning, Error
 
 	if Debug {
-		goLog.Init(os.Stdout, os.Stdout, os.Stdout, os.Stderr)
+		goLog.Init(os.Stdout, os.Stdout, os.Stdout, os.Stderr,ioutil.Discard,ioutil.Discard)
 	} else {
-		goLog.Init(os.Stdout, l, l, os.Stderr)
+		goLog.Init(os.Stdout, l, l, os.Stderr,ioutil.Discard,ioutil.Discard)
 	}
 
 	var (
