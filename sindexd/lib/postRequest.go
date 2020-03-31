@@ -88,7 +88,7 @@ func PostRequest1(HP hostpool.HostPool, client *http.Client, d []byte) (*http.Re
 		}
 		// execute the request
 		//resp, err = client.Do(req)
-
+		resp := http.Response{}
 		resp.StatusCode = 200
 		err = nil
 
