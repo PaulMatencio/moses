@@ -89,12 +89,13 @@ func PostRequest1(HP hostpool.HostPool, client *http.Client, d []byte) (*http.Re
 		goLog.Info.Println(r, "REQUEST_HEADER:> ", req.Header, "REQUEST_URL:>", req.URL, "REQUEST_BODY:> ", req.Body)
 
 		// execute the request
-		//resp, err = client.Do(req)
-
+		resp, err = client.Do(req)
+                /*
 		resp := http.Response{}
 		resp.StatusCode = 200
 		resp.Status="200"
 		err = nil
+                */
 
 		if err != nil {
 			hpool.Mark(err)
