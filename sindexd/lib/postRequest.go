@@ -86,7 +86,7 @@ func PostRequest1(HP hostpool.HostPool, client *http.Client, d []byte) (*http.Re
 		if Debug {
 			goLog.Trace.Println(r, "REQUEST_HEADER:> ", req.Header, "REQUEST_URL:>", req.URL, "REQUEST_BODY:> ", req.Body)
 		}
-		goLog.Info.Println(r, "REQUEST_HEADER:> ", req.Header, "REQUEST_URL:>", req.URL, "REQUEST_BODY:> ", req.Body)
+	        //	goLog.Info.Println(r, "REQUEST_HEADER:> ", req.Header, "REQUEST_URL:>", req.URL, "REQUEST_BODY:> ", req.Body)
 
 		// execute the request
 		resp, err = client.Do(req)
