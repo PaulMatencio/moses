@@ -18,6 +18,7 @@ type Configuration struct {
 	Log          string   `json:"logpath"`
 	PnOidSpec    string   `json:pnOidSpec,omitempty`
 	PdOidSpec    string   `json:pdOidSpec,omitempty`
+	JsOidSpec    string   `json:jsOidSpec,omitempty`
 }
 
 /*
@@ -59,6 +60,10 @@ func (c Configuration) GetPnOidSpec() string {
 func (c Configuration) GetPdOidSpec() string {
 	return c.PdOidSpec
 
+}
+
+func (c Configuration) GetJsOidSpec() string {
+	return c.JsOidSpec
 }
 
 func GetConfig(c_file string) (Configuration, error) {

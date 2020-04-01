@@ -79,6 +79,10 @@ func main() {
 			if pdOidSpec := Config.GetPdOidSpec(); len(pdOidSpec) != 0 {
 				sindexd.PdOidSpec = pdOidSpec
 			}
+			if jsOidSpec := Config.GetJsOidSpec(); len(jsOidSpec) != 0 {
+				sindexd.JsOidSpec = jsOidSpec
+			}
+
 
 			sindexd.SetNewHost(Config)
 			fmt.Println("INFO: Using config Hosts", sindexd.Host, logPath)
