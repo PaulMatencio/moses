@@ -53,7 +53,7 @@ func main() {
 	flag.StringVar(&debug, "debug", "false", "Debug mode")
 	flag.StringVar(&delimiter, "delimiter", "", "Delimiter value")
 	flag.StringVar(&prefix, "prefix", "", "Prefix Key")
-	flag.StringVar(&iIndex, "index", "PN", "Index Table <PN or PD>")
+	flag.StringVar(&iIndex, "index", "PN", "Index Table <PN,PD,BN>")
 	flag.StringVar(&concurrent, "C", "true", "Use Goroutine when it is possible")
 	flag.StringVar(&count, "count", "false", "Count the number")
 	flag.StringVar(&config, "config", "moses-prod", "Default Config file")

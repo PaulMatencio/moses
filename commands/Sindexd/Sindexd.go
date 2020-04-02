@@ -75,7 +75,7 @@ func main() {
 	flag.StringVar(&prefix, "prefix", "", "Prefix Key")
 	flag.BoolVar(&Test, "test", false, "Test mode")
 	flag.StringVar(&keys, "key", "", "Keys <seprated by comma>  to be fetched")
-	flag.StringVar(&iIndex, "index", "", "Index Table <PN or PD>")
+	flag.StringVar(&iIndex, "index", "", "Index Table <PN/PD/BN>")
 	flag.StringVar(&inputFile, "input", "", "Input file for indexing or Splitting")
 	flag.StringVar(&outputDir, "outputDir", "", "Output directory for spliiting")
 	flag.BoolVar(&Concurrent, "con", true, "Use Goroutine when it is possible")
