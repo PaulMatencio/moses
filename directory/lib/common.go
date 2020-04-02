@@ -113,7 +113,7 @@ const (
 func BuildIndexspec(file string) map[string]*sindexd.Index_spec {
 	m := make(map[string]*sindexd.Index_spec)
 	if scanner, err := files.Scanner(file); err != nil {
-		goLog.Error.Println(scanner, err)
+		goLog.Error.Printf("Error building Index specification: %v", err)
 		os.Exit(2)
 	} else if linea, err := files.ScanLines(scanner, 200); err == nil {
 		index := sindexd.IndexTab{}
