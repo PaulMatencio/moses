@@ -299,23 +299,26 @@ func GetSerialPrefix(iIndex string, prefix string, delimiter string, marker stri
 		iresponse *sindexd.Response
 		resp      *http.Response
 		err       error
-
 		j string
-		//index     *sindexd.Index_spec
+		index     *sindexd.Index_spec
 	)
 	responses := &HttpResponse{}
 	client := &http.Client{}
 	//prefixs = strings.Split(prefix, ",")
-
-	if len(prefix) > 2 {
-		j = prefix[0:2]
+    if iIndex != "NL" {
+		if len(prefix) > 2 {
+			j = prefix[0:2]
+		} else {
+			j = prefix[0:]
+		}
+		index = Ind_Specs[j]
+		if index == nil {
+			index = Ind_Specs["OTHER"]
+		}
 	} else {
-		j = prefix[0:]
+		index=Ind_Specs["XX"]
 	}
-	index := Ind_Specs[j]
-	if index == nil {
-		index = Ind_Specs["OTHER"]
-	}
+
 	// goLog.Info.Println(index, pref, delimiter, marker, Limit)
 	if resp, err = GetPrefix(client, index, prefix, delimiter, marker, Limit); err == nil {
 		// goLog.Info.Println("Status Code ===>", resp.StatusCode)
