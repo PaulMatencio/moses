@@ -145,6 +145,9 @@ func GetIndexSpec(iIndex string) map[string]*sindexd.Index_spec {
 	case "BN":
 		// return BuildIndexSpec(PdoidSpec)
 		return BuildIndexspec(sindexd.JsOidSpec)
+	case "NL":
+		// return BuildIndexSpec(PdoidSpec)
+		return BuildIndexspec(sindexd.NlOidSpec)
 	default:
 		return nil
 	}
