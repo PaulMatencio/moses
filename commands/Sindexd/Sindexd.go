@@ -104,7 +104,7 @@ func main() {
 				sindexd.PdOidSpec = pdOidSpec
 			}
 
-			if jsOidSpec := Config.GetPdOidSpec(); len(jsOidSpec) != 0 {
+			if jsOidSpec := Config.GetJsOidSpec(); len(jsOidSpec) != 0 {
 				sindexd.JsOidSpec = jsOidSpec
 			}
 			sindexd.SetNewHost(Config)
