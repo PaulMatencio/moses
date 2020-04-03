@@ -305,20 +305,20 @@ func GetSerialPrefix(iIndex string, prefix string, delimiter string, marker stri
 	client := &http.Client{}
 	//prefixs = strings.Split(prefix, ",")
 	switch (iIndex) {
-	case "NL":  /* recently loaded document */
-		index=Ind_Specs["XX"]
-	case "NP":  /* cite NPL*/
-		index=Ind_Specs["NP"]
-	default:    /* all other cases */
-		if len(prefix) > 2 {
-			j = prefix[0:2]
-		} else {
-			j = prefix[0:]
-		}
-		index = Ind_Specs[j]
-		if index == nil {
-			index = Ind_Specs["OTHER"]
-		}
+		case "NL":  /* recently loaded document */
+			index=Ind_Specs["XX"]
+		case "NP":  /* cite NPL*/
+			index=Ind_Specs["NP"]
+		default:    /* all other cases */
+			if len(prefix) > 2 {
+				j = prefix[0:2]
+			} else {
+				j = prefix[0:]
+			}
+			index = Ind_Specs[j]
+			if index == nil {
+				index = Ind_Specs["OTHER"]
+			}
 	}
 
 	/*
@@ -428,7 +428,7 @@ func GetAsyncKeys(specs map[string][]string, Ind_Specs map[string]*sindexd.Index
 	return responses
 }
 
-func AddSerialPrefix1(HP hostpool.HostPool,prefix string, Ind_Specs map[string]*sindexd.Index_spec, keyObj map[string]string) *HttpResponse {
+func AddSerialPrefix1(HP hostpool.HostPool,iIndex string, prefix string, Ind_Specs map[string]*sindexd.Index_spec, keyObj map[string]string) *HttpResponse {
 
 	var (
 		iresponse *sindexd.Response
@@ -439,15 +439,38 @@ func AddSerialPrefix1(HP hostpool.HostPool,prefix string, Ind_Specs map[string]*
 	)
 	responses := &HttpResponse{}
 	client := &http.Client{}
+
+	switch (iIndex) {
+		case "NL":  /* recently loaded document */
+			index=Ind_Specs["XX"]
+		case "NP":  /* cite NPL*/
+			index=Ind_Specs["NP"]
+		default:    /* all other cases */
+			if len(prefix) > 2 {
+				j = prefix[0:2]
+			} else {
+				j = prefix[0:]
+			}
+			index = Ind_Specs[j]
+			if index == nil {
+				index = Ind_Specs["OTHER"]
+			}
+	}
+
+	/*
 	if len(prefix) > 2 {
 		j = prefix[0:2]
+
 	} else {
 		j = prefix[0:]
 	}
 	index = Ind_Specs[j]
+
 	if index == nil {
 		index = Ind_Specs["OTHER"]
 	}
+	*/
+
 	// goLog.Info.Println(index, pref, delimiter, marker, Limit)
 	if resp,err = AddKeys1(HP,client,index,keyObj);err == nil  {
 		if resp.StatusCode == 200 {
