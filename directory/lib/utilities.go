@@ -417,7 +417,7 @@ func AddSerialPrefix1(HP hostpool.HostPool,prefix string, Ind_Specs map[string]*
 		resp      *http.Response
 		err       error
 		j string
-		//index     *sindexd.Index_spec
+		index     *sindexd.Index_spec
 	)
 	responses := &HttpResponse{}
 	client := &http.Client{}
@@ -426,7 +426,7 @@ func AddSerialPrefix1(HP hostpool.HostPool,prefix string, Ind_Specs map[string]*
 	} else {
 		j = prefix[0:]
 	}
-	index := Ind_Specs[j]
+	index = Ind_Specs[j]
 	if index == nil {
 		index = Ind_Specs["OTHER"]
 	}
@@ -444,6 +444,34 @@ func AddSerialPrefix1(HP hostpool.HostPool,prefix string, Ind_Specs map[string]*
 	responses = &HttpResponse{prefix, iresponse, err}
 	return responses
 }
+
+/*  Other Index spec */
+func AddSerialPrefix2(HP hostpool.HostPool,prefix string, Ind_Specs map[string]*sindexd.Index_spec, keyObj map[string]string) *HttpResponse {
+	var (
+		iresponse *sindexd.Response
+		resp      *http.Response
+		err       error
+		index     *sindexd.Index_spec
+	)
+	responses := &HttpResponse{}
+	client := &http.Client{}
+	index = Ind_Specs["OTHER"]
+	prefix=""
+	// goLog.Info.Println(index, pref, delimiter, marker, Limit)
+	if resp,err = AddKeys1(HP,client,index,keyObj);err == nil  {
+		if resp.StatusCode == 200 {
+			iresponse, err = sindexd.GetResponse(resp)
+		} else {
+			iresponse = nil
+			err = errors.New(resp.Status)
+		}
+
+	}
+	// iresponse is nil if err != nil
+	responses = &HttpResponse{prefix, iresponse, err}
+	return responses
+}
+
 
 func AddSerialPrefix(prefix string, Ind_Specs map[string]*sindexd.Index_spec, keyObj map[string]string) *HttpResponse {
 
