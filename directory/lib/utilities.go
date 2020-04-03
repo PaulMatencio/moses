@@ -47,9 +47,7 @@ func PrintResponse(responses []*HttpResponse) {
 		//index_id := responses[i].indexId
 		if err == nil {
 			iresponse = *responses[i].Response
-
 			iresponse.PrintFetched()
-
 			if iresponse.Next_marker != "" {
 				goLog.Info.Println("Next marker:", iresponse.Next_marker)
 			}
@@ -270,6 +268,7 @@ func GetSerialPrefixs(iIndex string, prefixs []string, delimiter string, markers
 			j = pref[0:]
 		}
 		index := Ind_Specs[j]
+
 		if index == nil {
 			index = Ind_Specs["OTHER"]
 		}
@@ -305,6 +304,24 @@ func GetSerialPrefix(iIndex string, prefix string, delimiter string, marker stri
 	responses := &HttpResponse{}
 	client := &http.Client{}
 	//prefixs = strings.Split(prefix, ",")
+	switch (iIndex) {
+	case "NL":  /* recently loaded document */
+		index=Ind_Specs["XX"]
+	case "NP":  /* cite NPL*/
+		index=Ind_Specs["NP"]
+	default:    /* all other cases */
+		if len(prefix) > 2 {
+			j = prefix[0:2]
+		} else {
+			j = prefix[0:]
+		}
+		index = Ind_Specs[j]
+		if index == nil {
+			index = Ind_Specs["OTHER"]
+		}
+	}
+
+	/*
     if iIndex != "NL" {
 		if len(prefix) > 2 {
 			j = prefix[0:2]
@@ -318,6 +335,7 @@ func GetSerialPrefix(iIndex string, prefix string, delimiter string, marker stri
 	} else {
 		index=Ind_Specs["XX"]
 	}
+	*/
 
 	// goLog.Info.Println(index, pref, delimiter, marker, Limit)
 	if resp, err = GetPrefix(client, index, prefix, delimiter, marker, Limit); err == nil {
