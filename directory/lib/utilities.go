@@ -305,7 +305,7 @@ func GetSerialPrefix(iIndex string, prefix string, delimiter string, marker stri
 	client := &http.Client{}
 	//prefixs = strings.Split(prefix, ",")
 	switch (iIndex) {
-		case "NL":  /* recently loaded document */
+		case "XX":  /* recently loaded document */
 			index=Ind_Specs["XX"]
 		case "NP":  /* cite NPL*/
 			index=Ind_Specs["NP"]
