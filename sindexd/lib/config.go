@@ -19,6 +19,7 @@ type Configuration struct {
 	PnOidSpec    string   `json:pnOidSpec,omitempty`
 	PdOidSpec    string   `json:pdOidSpec,omitempty`
 	JsOidSpec    string   `json:jsOidSpec,omitempty`
+	XxOidSpec    string   `json:xxOidSpec,omitempty`
 }
 
 /*

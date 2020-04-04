@@ -43,7 +43,7 @@ var (
 	PnOidSpec = "/etc/moses/sindexd/config/sindexd-prod-pn.json"
 	PdOidSpec = "/etc/moses/sindexd/config/sindexd-prod-pd.json"
 	JsOidSpec = "/etc/moses/sindexd/config/sindexd-prod-js.json"
-	NlOidSpec = "/etc/moses/sindexd/config/sindexd-prod-nl.json"
+	XxOidSpec = "/etc/moses/sindexd/config/sindexd-prod-xx.json"
 )
 
 type Index_spec struct {
