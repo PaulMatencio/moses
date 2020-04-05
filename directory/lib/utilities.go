@@ -228,7 +228,7 @@ func GetAsyncPrefixs(iIndex string, prefixs []string, delimiter string, markers 
 						err = errors.New(resp.Status)
 					}
 				}
-				ch <- &HttpResponse{pref, iresponse, err}
+				ch <- &HttpResponse{pref, iresponse, index,err}
 			}(index, pref, marker)
 		}
 		// wait for Http response message
@@ -291,7 +291,7 @@ func GetSerialPrefixs(iIndex string, prefixs []string, delimiter string, markers
 			}
 		}
 		// iresponse is nil if err != nil
-		r = &HttpResponse{pref, iresponse, err}
+		r = &HttpResponse{pref, iresponse, index,err}
 		responses = append(responses, r)
 	}
 	return responses
@@ -337,7 +337,7 @@ func GetSerialPrefix(iIndex string, prefix string, delimiter string, marker stri
 		}
 	}
 	// iresponse is nil if err != nil
-	responses = &HttpResponse{prefix, iresponse, err}
+	responses = &HttpResponse{prefix, iresponse, index,err}
 
 	return responses
 }
@@ -362,7 +362,7 @@ func GetSerialKeys(specs map[string][]string, Ind_Specs map[string]*sindexd.Inde
 			resp, err = DeleteKeys(client, index, &AKey)
 		}
 		response, err = sindexd.GetResponse(resp)
-		r := &HttpResponse{"", response, err}
+		r := &HttpResponse{"", response, index,err}
 		responses = append(responses, r)
 	}
 	return responses
@@ -396,7 +396,7 @@ func GetAsyncKeys(specs map[string][]string, Ind_Specs map[string]*sindexd.Index
 						err = errors.New(resp.Status)
 					}
 				}
-				ch <- &HttpResponse{"", iresponse, err}
+				ch <- &HttpResponse{"", iresponse, index,err}
 			}(index, AKey)
 		}
 		// wait for Http response message
@@ -448,20 +448,6 @@ func AddSerialPrefix1(HP hostpool.HostPool,iIndex string, prefix string, Ind_Spe
 			}
 	}
 
-	/*
-	if len(prefix) > 2 {
-		j = prefix[0:2]
-
-	} else {
-		j = prefix[0:]
-	}
-	index = Ind_Specs[j]
-
-	if index == nil {
-		index = Ind_Specs["OTHER"]
-	}
-	*/
-
 	// goLog.Info.Println(index, pref, delimiter, marker, Limit)
 	if resp,err = AddKeys1(HP,client,index,keyObj);err == nil  {
 		if resp.StatusCode == 200 {
@@ -473,7 +459,7 @@ func AddSerialPrefix1(HP hostpool.HostPool,iIndex string, prefix string, Ind_Spe
 
 	}
 	// iresponse is nil if err != nil
-	responses = &HttpResponse{prefix, iresponse, err}
+	responses = &HttpResponse{prefix, iresponse, index,err}
 	return responses
 }
 
@@ -516,6 +502,6 @@ func AddSerialPrefix(prefix string, iIndex string, Ind_Specs map[string]*sindexd
 
 	}
 	// iresponse is nil if err != nil
-	responses = &HttpResponse{prefix, iresponse, err}
+	responses = &HttpResponse{prefix, iresponse, index,err}
 	return responses
 }

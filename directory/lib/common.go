@@ -100,6 +100,7 @@ var (
 type HttpResponse struct { // used for get prefix
 	Pref     string
 	Response *sindexd.Response
+	Index_Spec *sindexd.Index_spec
 	Err      error
 }
 
