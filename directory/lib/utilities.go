@@ -63,6 +63,8 @@ func PrintResponse(responses []*HttpResponse) {
 	}
 }
 
+
+
 func CountResponse(responses []*HttpResponse) (map[string]int, string) {
 	m := make(map[string]int)
 	var nextMarker string
@@ -119,6 +121,7 @@ func GetResponse(response *HttpResponse) ([]string, string) {
 	}
 	return keys, nextMarker
 }
+
 
 func Check(iIndex string, start time.Time, resp *http.Response) {
 
@@ -311,8 +314,7 @@ func GetSerialPrefix(iIndex string, prefix string, delimiter string, marker stri
 	switch (iIndex) {
 		case "XX","NP":  /* recently loaded document */
 			index=Ind_Specs[iIndex]
-
-		default:    /* all other cases */
+		default:    /* all other cases  PN, PD, OM , OB */
 			if len(prefix) > 2 {
 				j = prefix[0:2]
 			} else {
@@ -414,6 +416,10 @@ func GetAsyncKeys(specs map[string][]string, Ind_Specs map[string]*sindexd.Index
 	}
 	return responses
 }
+
+
+
+
 
 func AddSerialPrefix1(HP hostpool.HostPool,iIndex string, prefix string, Ind_Specs map[string]*sindexd.Index_spec, keyObj map[string]string) *HttpResponse {
 
