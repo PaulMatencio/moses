@@ -306,7 +306,7 @@ func GetSerialPrefix(iIndex string, prefix string, delimiter string, marker stri
 	responses := &HttpResponse{}
 	client := &http.Client{}
 
-	goLog.Info.Printf("Index: %s - Index Specifiaction %v",iIndex,Ind_Specs)
+	// goLog.Info.Printf("Index: %s - Index Specifiaction %v",iIndex,Ind_Specs)
 
 	switch (iIndex) {
 		case "XX","NP":  /* recently loaded document */
