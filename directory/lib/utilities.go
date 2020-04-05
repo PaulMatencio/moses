@@ -138,8 +138,8 @@ func Check(iIndex string, start time.Time, resp *http.Response) {
 }
 
 func SetCPU(cpu string) error {
-	var numCPU int
 
+	var numCPU int
 	availCPU := runtime.NumCPU()
 
 	if strings.HasSuffix(cpu, "%") {
@@ -463,7 +463,32 @@ func AddSerialPrefix1(HP hostpool.HostPool,iIndex string, prefix string, Ind_Spe
 	return responses
 }
 
+func AddSerialPrefix2(HP hostpool.HostPool,index *sindexd.Index_spec, prefix string, keyObj map[string]string) *HttpResponse {
 
+	var (
+		iresponse *sindexd.Response
+		resp      *http.Response
+		err       error
+
+	)
+	responses := &HttpResponse{}
+	client := &http.Client{}
+
+
+	// goLog.Info.Println(index, pref, delimiter, marker, Limit)
+	if resp,err = AddKeys1(HP,client,index,keyObj);err == nil  {
+		if resp.StatusCode == 200 {
+			iresponse, err = sindexd.GetResponse(resp)
+		} else {
+			iresponse = nil
+			err = errors.New(resp.Status)
+		}
+
+	}
+	// iresponse is nil if err != nil
+	responses = &HttpResponse{prefix, iresponse, index,err}
+	return responses
+}
 func AddSerialPrefix(prefix string, iIndex string, Ind_Specs map[string]*sindexd.Index_spec, keyObj map[string]string) *HttpResponse {
 
 	var (
