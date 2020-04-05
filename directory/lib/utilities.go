@@ -195,6 +195,7 @@ func GetAsyncPrefixs(iIndex string, prefixs []string, delimiter string, markers 
 	responses := []*HttpResponse{}
 	if treq > 0 {
 		for i := range prefixs {
+
 			pref := prefixs[i]
 			if len(pref) > 2 {
 				j = pref[0:2]
@@ -246,7 +247,7 @@ func GetAsyncPrefixs(iIndex string, prefixs []string, delimiter string, markers 
 }
 
 func GetSerialPrefixs(iIndex string, prefixs []string, delimiter string, markers []string, Limit int, Ind_Specs map[string]*sindexd.Index_spec) []*HttpResponse {
-
+	/* Does not work for XX and NP index tables*/
 	var (
 		iresponse *sindexd.Response
 		resp      *http.Response
@@ -254,24 +255,25 @@ func GetSerialPrefixs(iIndex string, prefixs []string, delimiter string, markers
 		marker    string
 		j         string
 		r         *HttpResponse
-		//index     *sindexd.Index_spec
+		index     *sindexd.Index_spec
+		pref	 string
 	)
 	responses := []*HttpResponse{}
 	client := &http.Client{}
 	//prefixs = strings.Split(prefix, ",")
 	for i := range prefixs {
-		pref := prefixs[i]
+		pref = prefixs[i]
 
 		if len(pref) > 2 {
 			j = pref[0:2]
 		} else {
 			j = pref[0:]
 		}
-		index := Ind_Specs[j]
-
+		index = Ind_Specs[j]
 		if index == nil {
 			index = Ind_Specs["OTHER"]
 		}
+
 		if len(markers) > i {
 			marker = markers[i]
 		}
@@ -303,12 +305,13 @@ func GetSerialPrefix(iIndex string, prefix string, delimiter string, marker stri
 	)
 	responses := &HttpResponse{}
 	client := &http.Client{}
-	//prefixs = strings.Split(prefix, ",")
+
+	goLog.Info.Printf("Index: %s - Index Specifiaction %v",iIndex,Ind_Specs)
+
 	switch (iIndex) {
-		case "XX":  /* recently loaded document */
-			index=Ind_Specs["XX"]
-		case "NP":  /* cite NPL*/
-			index=Ind_Specs["NP"]
+		case "XX","NP":  /* recently loaded document */
+			index=Ind_Specs[iIndex]
+
 		default:    /* all other cases */
 			if len(prefix) > 2 {
 				j = prefix[0:2]
@@ -320,22 +323,6 @@ func GetSerialPrefix(iIndex string, prefix string, delimiter string, marker stri
 				index = Ind_Specs["OTHER"]
 			}
 	}
-
-	/*
-    if iIndex != "NL" {
-		if len(prefix) > 2 {
-			j = prefix[0:2]
-		} else {
-			j = prefix[0:]
-		}
-		index = Ind_Specs[j]
-		if index == nil {
-			index = Ind_Specs["OTHER"]
-		}
-	} else {
-		index=Ind_Specs["XX"]
-	}
-	*/
 
 	// goLog.Info.Println(index, pref, delimiter, marker, Limit)
 	if resp, err = GetPrefix(client, index, prefix, delimiter, marker, Limit); err == nil {
@@ -441,10 +428,8 @@ func AddSerialPrefix1(HP hostpool.HostPool,iIndex string, prefix string, Ind_Spe
 	client := &http.Client{}
 
 	switch (iIndex) {
-		case "NL":  /* recently loaded document */
-			index=Ind_Specs["XX"]
-		case "NP":  /* cite NPL*/
-			index=Ind_Specs["NP"]
+		case "XX","NP":
+			index=Ind_Specs[iIndex]
 		default:    /* all other cases */
 			if len(prefix) > 2 {
 				j = prefix[0:2]
@@ -486,54 +471,34 @@ func AddSerialPrefix1(HP hostpool.HostPool,iIndex string, prefix string, Ind_Spe
 	return responses
 }
 
-/*  Other Index spec */
-func AddSerialPrefix2(HP hostpool.HostPool,prefix string, Ind_Specs map[string]*sindexd.Index_spec, keyObj map[string]string) *HttpResponse {
-	var (
-		iresponse *sindexd.Response
-		resp      *http.Response
-		err       error
-		index     *sindexd.Index_spec
-	)
-	responses := &HttpResponse{}
-	client := &http.Client{}
-	index = Ind_Specs["OTHER"]
-	prefix=""
-	// goLog.Info.Println(index, pref, delimiter, marker, Limit)
-	if resp,err = AddKeys1(HP,client,index,keyObj);err == nil  {
-		if resp.StatusCode == 200 {
-			iresponse, err = sindexd.GetResponse(resp)
-		} else {
-			iresponse = nil
-			err = errors.New(resp.Status)
-		}
 
-	}
-	// iresponse is nil if err != nil
-	responses = &HttpResponse{prefix, iresponse, err}
-	return responses
-}
-
-
-func AddSerialPrefix(prefix string, Ind_Specs map[string]*sindexd.Index_spec, keyObj map[string]string) *HttpResponse {
+func AddSerialPrefix(prefix string, iIndex string, Ind_Specs map[string]*sindexd.Index_spec, keyObj map[string]string) *HttpResponse {
 
 	var (
 		iresponse *sindexd.Response
 		resp      *http.Response
 		err       error
 		j string
-		//index     *sindexd.Index_spec
+		index     *sindexd.Index_spec
 	)
 	responses := &HttpResponse{}
 	client := &http.Client{}
-	if len(prefix) > 2 {
-		j = prefix[0:2]
-	} else {
-		j = prefix[0:]
+	switch (iIndex) {
+	case "XX","NP":  /* recently loaded document */
+		index=Ind_Specs[iIndex]
+	default:    /* all other cases */
+		if len(prefix) > 2 {
+			j = prefix[0:2]
+		} else {
+			j = prefix[0:]
+		}
+		index = Ind_Specs[j]
+		if index == nil {
+			index = Ind_Specs["OTHER"]
+		}
 	}
-	index := Ind_Specs[j]
-	if index == nil {
-		index = Ind_Specs["OTHER"]
-	}
+
+
 	// goLog.Info.Println(index, pref, delimiter, marker, Limit)
 	if resp,err = AddKeys(client,index,keyObj);err == nil  {
 		if resp.StatusCode == 200 {
