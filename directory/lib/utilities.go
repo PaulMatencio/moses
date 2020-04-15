@@ -249,6 +249,20 @@ func GetAsyncPrefixs(iIndex string, prefixs []string, delimiter string, markers 
 	return responses
 }
 
+func DeleteSerialKey1(HP hostpool.HostPool,indSpec *sindexd.Index_spec, key string ) {
+	keys := &[]string{key}
+	client := &http.Client{}
+	if resp, err := DeleteKey1(HP,client, indSpec, keys); err == nil {
+		// goLog.Info.Println("Status Code ===>", resp.StatusCode)
+		if resp.StatusCode != 200 {
+			goLog.Warning.Println("Status error %v deleting key %s from indSpec %v",resp.StatusCode, key,indSpec)
+			// resp.Body.Close()
+		}
+	} else {
+		goLog.Error.Printf("Error %v deleting key %s from indSpec %v",err,key,indSpec)
+	}
+}
+
 func GetSerialPrefixs(iIndex string, prefixs []string, delimiter string, markers []string, Limit int, Ind_Specs map[string]*sindexd.Index_spec) []*HttpResponse {
 	/* Does not work for XX and NP index tables*/
 	var (

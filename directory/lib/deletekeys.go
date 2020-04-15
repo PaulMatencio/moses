@@ -3,6 +3,7 @@ package directory
 import (
 	"bufio"
 	"encoding/json"
+	"github.com/bitly/go-hostpool"
 	sindexd "github.com/moses/sindexd/lib"
 	// goLog "github.com/moses/user/goLog"
 	goLog "github.com/s3/gLog"
@@ -28,6 +29,24 @@ func DeleteKeys(client *http.Client, index *sindexd.Index_spec, dKey *[]string) 
 	}
 	return g.DeleteKeys(client, l)
 }
+
+func DeleteKey1(HP hostpool.HostPool, client *http.Client, index *sindexd.Index_spec, dKey *[]string) (resp *http.Response, err error) {
+
+	l := &sindexd.Load{
+		Index_spec: sindexd.Index_spec{
+			Index_id: index.Index_id,
+			Cos:      index.Cos,
+			Vol_id:   index.Vol_id,
+			Specific: index.Specific,
+		},
+	}
+	g := &sindexd.Delete_Keys{
+		Key:      *dKey,
+		Prefetch: false,
+	}
+	return g.DeleteKey1(HP,client, l)
+}
+// HP hostpool.HostPool
 
 func DeleteArray(iIndex string, inputDir string, client *http.Client, index *sindexd.Index_spec, bulk int) {
 	// this function is using the input files extracted by Ernst
