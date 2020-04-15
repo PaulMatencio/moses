@@ -252,12 +252,13 @@ func GetAsyncPrefixs(iIndex string, prefixs []string, delimiter string, markers 
 func DeleteSerialKey1(HP hostpool.HostPool,indSpec *sindexd.Index_spec, key string ) {
 	keys := &[]string{key}
 	client := &http.Client{}
+	goLog.Info.Printf("Deleting key %s from indSpec %v on Host %v",key,indSpec,HP.Hosts())
 	if resp, err := DeleteKey1(HP,client, indSpec, keys); err == nil {
 		// goLog.Info.Println("Status Code ===>", resp.StatusCode)
 		if resp.StatusCode != 200 {
 			goLog.Warning.Println("Status error %v deleting key %s from indSpec %v",resp.StatusCode, key,indSpec)
-			// resp.Body.Close()
 		}
+		defer resp.Body.Close()
 	} else {
 		goLog.Error.Printf("Error %v deleting key %s from indSpec %v",err,key,indSpec)
 	}
