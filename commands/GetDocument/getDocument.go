@@ -6,7 +6,8 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/emicklei/go-restful/log"
+	// "github.com/emicklei/go-restful/log"
+	// "github.com/s3/gLog"
 
 	"io/ioutil"
 	bns "github.com/moses/bns/lib"
@@ -29,7 +30,7 @@ import (
 var (
 	action, config, env, logPath, outDir, runname, subpages,
 	hostname, pn, page, trace, test, meta, image, media, ranges string
-	Trace, Meta, Image, CopyObject, Test bool
+	Trace, Meta, Image, CopyObject, Test ,async bool
 	pid                                  int
 	timeout                              time.Duration
 	application                          = "moses"
@@ -156,6 +157,7 @@ func main() {
 	flag.StringVar(&pn, "pn", "", "Publication number")
 	flag.StringVar(&page, "page", "1", "page number")
 	flag.StringVar(&ranges, "ranges", "", "multiple pages ranges")
+	flag.BoolVar(&async, "async", true, "asynchronous request")
 	// flag.StringVar(&subpages, "subpages", "biblio", "multiple pages ranges")
 	flag.StringVar(&media, "media", "tiff", "media type: tiff/png/pdf")
 	flag.StringVar(&outDir, "outDir", "", "output directory")
@@ -236,8 +238,8 @@ func main() {
 		if pagemd, err, status := bns.ChkPageMetadata(&bnsRequest, pathname); err == nil {
 			writeMeta(outDir, page, pagemd)
 		} else {
-			log.Printf("Err: %v  Status: %d",err,status)
-			writeMetaError(outDir, page, pagemd)
+			goLog.Error.Printf("Err: %v  Status: %d",err,status)
+			writeMetaError(outDir, page)
 		}
 		n++
 	case "getDocumentMeta":
@@ -368,7 +370,6 @@ func main() {
 
 		bnsRequest.Urls = urls
 		sproxyResponses := bns.AsyncHttpGetpageType(&bnsRequest)
-
 		bnsResponses := make([]bns.BnsResponseLi, num, num)
 
 		for k, v := range sproxyResponses {
@@ -382,6 +383,7 @@ func main() {
 			}
 		}
 		// Sort the bnsResponse array by page number
+
 		slice.Sort(bnsResponses[:], func(i, j int) bool {
 			return bnsResponses[i].Page < bnsResponses[j].Page
 		})
