@@ -93,7 +93,7 @@ func GetPageType(bnsRequest *HttpRequest, url string) (*http.Response, error) {
 
 func AsyncHttpGetpageType(bnsRequest *HttpRequest) []*sproxyd.HttpResponse {
 
-	ch := make(chan *sproxyd.HttpResponse,2)
+	ch := make(chan *sproxyd.HttpResponse)
 	sproxydResponses := []*sproxyd.HttpResponse{}
 	treq := 0
 	bnsRequest.Client = &http.Client{
