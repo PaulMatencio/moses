@@ -31,7 +31,8 @@ var (
 	action, config, env, logPath, outDir, runname, subpages,
 	hostname, pn, page, trace, test, meta, image, media, ranges string
 	Trace, Meta, Image, CopyObject, Test ,async bool
-	pid                                  int
+	pid                             int
+	Size                            int64 =0
 	timeout                              time.Duration
 	application                          = "moses"
 	Config                               sproxyd.Configuration
@@ -319,11 +320,14 @@ func main() {
 		}
 		// Sort the bnsResponse array by page number
 
-		slice.Sort(bnsResponses[:], func(i, j int) bool {
+		slice.SortInterface(bnsResponses[:], func(i, j int) bool {
 			return bnsResponses[i].Page < bnsResponses[j].Page
 		})
 		for _, bnsResponse := range bnsResponses {
 			Page = "p" + strconv.Itoa(bnsResponse.Page)
+			if *bnsResponse.Image != nil {
+				Size += int64(len(*bnsResponse.Image))
+			}
 			if Image {
 				writeImage(outDir, Page, media, bnsResponse.Image)
 			}
@@ -384,11 +388,14 @@ func main() {
 		}
 		// Sort the bnsResponse array by page number
 
-		slice.Sort(bnsResponses[:], func(i, j int) bool {
+		slice.SortInterface(bnsResponses[:], func(i, j int) bool {
 			return bnsResponses[i].Page < bnsResponses[j].Page
 		})
 
 		for _, v := range bnsResponses {
+			if v.Image != nil {
+				Size += int64(len(*v.Image))
+			}
 			Page = "p" + strconv.Itoa(v.Page)
 			if Image {
 				writeImage(outDir, Page, media, v.Image)
@@ -460,7 +467,7 @@ func main() {
 				body := *v.Body
 				bnsResponse := bns.BuildBnsResponse(resp, getHeader["Content-Type"], &body) // bnsImage is a Go structure
 				page := bnsResponse.PageNumber
-
+				Size += int64(len(bnsResponse.Image))
 				if Image {
 					writeImage(outDir, page, media, &bnsResponse.Image)
 				}
@@ -483,6 +490,7 @@ func main() {
 			body, _ := ioutil.ReadAll(resp.Body)
 			bnsResponse := bns.BuildBnsResponse(resp, getHeader["Content-Type"], &body)
 			page = bnsResponse.PageNumber
+			Size += int64(len(bnsResponse.Image))
 			writeImage(outDir, page, media, &bnsResponse.Image)
 			writeMeta(outDir, page, bnsResponse.Pagemd)
 
@@ -494,6 +502,6 @@ func main() {
 		goLog.Info.Println("-action <action value> is missing")
 	}
 	duration := time.Since(start)
-	fmt.Println("\nTotal Get pages elapsed times", duration, " for ", n, " pages ")
+	fmt.Printf("\nTotal elapsed time: %v - Total number of pages: %d - Total size(KB): %d\n", duration,n, Size/1024.0)
 	goLog.Info.Println("Total Get pages elapsed times", duration, " for ", n, " pages ")
 }
