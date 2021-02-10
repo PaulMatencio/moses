@@ -153,3 +153,11 @@ func GetIndexSpec(iIndex string) map[string]*sindexd.Index_spec {
 		return nil
 	}
 }
+
+func GetCountrySpec(country map[string]*sindexd.Index_spec) (map[string]string){
+	result := make(map[string]string)
+	for k,v := range country {
+		result[v.Index_id] = k
+	}
+	return result
+}
