@@ -326,7 +326,7 @@ func GetSerialPrefix(iIndex string, prefix string, delimiter string, marker stri
 	// goLog.Info.Printf("Index: %s - Index Specifiaction %v",iIndex,Ind_Specs)
 
 	switch (iIndex) {
-		case "XX","NP":  /* recently loaded document */
+		case "XX","NP","NB":  /* recently loaded document */
 			index=Ind_Specs[iIndex]
 		default:    /* all other cases  PN, PD, OM , OB */
 			if len(prefix) > 2 {
