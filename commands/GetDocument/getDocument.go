@@ -1,7 +1,7 @@
 package main
 
 import (
-	directory "github.com/moses/directory/lib"
+	directory "github.com/paulmatencio/moses/directory/lib"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -10,8 +10,8 @@ import (
 	// "github.com/s3/gLog"
 
 	"io/ioutil"
-	bns "github.com/moses/bns/lib"
-	sproxyd "github.com/moses/sproxyd/lib"
+	bns "github.com/paulmatencio/moses/bns/lib"
+	sproxyd "github.com/paulmatencio/moses/sproxyd/lib"
 	"net/http"
 	"os"
 	"os/user"
@@ -20,9 +20,9 @@ import (
 	"strings"
 	"time"
 
-	base64 "github.com/moses/user/base64j"
-	file "github.com/moses/user/files/lib"
-	goLog "github.com/moses/user/goLog"
+	base64 "github.com/paulmatencio/moses/user/base64j"
+	file "github.com/paulmatencio/moses/user/files/lib"
+	goLog "github.com/paulmatencio/moses/user/goLog"
 
 	"github.com/bradfitz/slice"
 )

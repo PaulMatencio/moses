@@ -14,9 +14,9 @@ import (
 	"strings"
 	"time"
 
-	directory "github.com/moses/directory/lib"
+	directory "github.com/paulmatencio/moses/directory/lib"
 
-	sindexd "github.com/moses/sindexd/lib"
+	sindexd "github.com/paulmatencio/moses/sindexd/lib"
 
 	hostpool "github.com/bitly/go-hostpool"
 	lumberjack "gopkg.in/natefinch/lumberjack.v2"

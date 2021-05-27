@@ -3,10 +3,10 @@ package directory
 import (
 	"encoding/json"
 	"fmt"
-	sindexd "github.com/moses/sindexd/lib"
-	files "github.com/moses/user/files/lib"
-	// goLog "github.com/moses/user/goLog"
-	goLog "github.com/s3/gLog"
+	sindexd "github.com/paulmatencio/moses/sindexd/lib"
+	files "github.com/paulmatencio/moses/user/files/lib"
+	// goLog "github.com/paulmatencio/moses/user/goLog"
+	goLog "github.com/paulmatencio/s3/gLog"
 	"os"
 )
 

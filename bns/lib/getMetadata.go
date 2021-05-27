@@ -2,9 +2,9 @@ package bns
 
 import (
 	"fmt"
-	sproxyd "github.com/moses/sproxyd/lib"
-	base64 "github.com/moses/user/base64j"
-	"github.com/moses/user/goLog"
+	sproxyd "github.com/paulmatencio/moses/sproxyd/lib"
+	base64 "github.com/paulmatencio/moses/user/base64j"
+	"github.com/paulmatencio/moses/user/goLog"
 	"net/http"
 	"time"
 	"errors"

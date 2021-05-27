@@ -1,9 +1,9 @@
 package directory
 
 import (
-	sindexd "github.com/moses/sindexd/lib"
-	// goLog "github.com/moses/user/goLog"
-	goLog "github.com/s3/gLog"
+	sindexd "github.com/paulmatencio/moses/sindexd/lib"
+	// goLog "github.com/paulmatencio/moses/user/goLog"
+	goLog "github.com/paulmatencio/s3/gLog"
 	"net/http"
 	"time"
 

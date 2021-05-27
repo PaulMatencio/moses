@@ -1,7 +1,7 @@
 package directory
 
 import (
-	sindexd "github.com/moses/sindexd/lib"
+	sindexd "github.com/paulmatencio/moses/sindexd/lib"
 	"net/http"
 )
 

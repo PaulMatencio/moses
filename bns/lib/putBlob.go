@@ -4,7 +4,7 @@ package bns
 
 import (
 	"fmt"
-	sproxyd "github.com/moses/sproxyd/lib"
+	sproxyd "github.com/paulmatencio/moses/sproxyd/lib"
 	"net/http"
 	"time"
 )

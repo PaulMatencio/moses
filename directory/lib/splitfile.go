@@ -6,8 +6,8 @@ import (
 	// "os/user"
 	// "path"
 	// "poc/files"
-	// goLog "github.com/moses/user/goLog"
-	goLog "github.com/s3/gLog"
+	// goLog "github.com/paulmatencio/moses/user/goLog"
+	goLog "github.com/paulmatencio/s3/gLog"
 	"strings"
 )
 

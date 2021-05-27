@@ -2,7 +2,7 @@ package directory
 
 import (
 	//hostpool "github.com/bitly/go-hostpool"
-	sindexd "github.com/moses/sindexd/lib"
+	sindexd "github.com/paulmatencio/moses/sindexd/lib"
 	"net/http"
 )
 

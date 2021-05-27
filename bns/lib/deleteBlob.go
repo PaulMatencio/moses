@@ -2,8 +2,8 @@ package bns
 
 import (
 	"fmt"
-	sproxyd "github.com/moses/sproxyd/lib"
-	goLog "github.com/moses/user/goLog"
+	sproxyd "github.com/paulmatencio/moses/sproxyd/lib"
+	goLog "github.com/paulmatencio/moses/user/goLog"
 	"net/http"
 	"time"
 )

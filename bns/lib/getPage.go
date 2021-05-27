@@ -8,7 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	sproxyd "github.com/moses/sproxyd/lib"
+	sproxyd "github.com/paulmatencio/moses/sproxyd/lib"
 	// goLog "moses/user/goLog"
 	"net/http"
 	"strconv"

@@ -6,7 +6,7 @@ import (
 	"github.com/bitly/go-hostpool"
 	"net/http"
 	"runtime"
-	// goLog "github.com/moses/user/goLog"
+	// goLog "github.com/paulmatencio/moses/user/goLog"
 	goLog "github.com/s3/gLog"
 )
 

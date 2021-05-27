@@ -17,8 +17,8 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	bns "github.com/moses/bns/lib"
-	sproxyd "github.com/moses/sproxyd/lib"
+	bns "github.com/paulmatencio/moses/bns/lib"
+	sproxyd "github.com/paulmatencio/moses/sproxyd/lib"
 	"net/http"
 	"os"
 	"os/user"
@@ -26,9 +26,9 @@ import (
 	"strconv"
 	"time"
 
-	base64 "github.com/moses/user/base64j"
-	file "github.com/moses/user/files/lib"
-	goLog "github.com/moses/user/goLog"
+	base64 "github.com/paulmatencio/moses/user/base64j"
+	file "github.com/paulmatencio/moses/user/files/lib"
+	goLog "github.com/paulmatencio/moses/user/goLog"
 
 	// hostpool "github.com/bitly/go-hostpool"
 )
